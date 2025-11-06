@@ -2,33 +2,29 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Panel de SiloBolsas</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <title>Panel de Silobolsas</title>
 </head>
 <body>
-  <h2>Panel de SiloBolsas</h2>
-  <div id="map" style="height:500px;"></div>
-  <table border="1" id="tabla"></table>
-
-  <script>
-    const map = L.map('map').setView([-34, -60], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    fetch('/api/list').then(r=>r.json()).then(data=>{
-      const tabla = document.getElementById('tabla');
-      tabla.innerHTML = "<tr><th>ID</th><th>QR</th><th>Cereal</th><th>Metros</th><th>Fecha</th><th>Lat</th><th>Lon</th><th>Notas</th></tr>";
-      data.forEach(d=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${d.id}</td><td>${d.numero_qr}</td><td>${d.cereal}</td><td>${d.metros}</td>
-          <td>${d.fecha}</td><td>${d.lat}</td><td>${d.lon}</td><td>${d.notas||''}</td>`;
-        tabla.appendChild(tr);
-        if (d.lat && d.lon) {
-          L.marker([d.lat, d.lon]).addTo(map)
-           .bindPopup(`<b>${d.numero_qr}</b><br>${d.cereal}<br>${d.metros} m`);
-        }
-      });
-    });
-  </script>
+  <h2>Panel de Silobolsas</h2>
+  <table border="1">
+    <tr>
+      <th>ID</th>
+      <th>Cereal</th>
+      <th>Metros</th>
+      <th>Lat</th>
+      <th>Lon</th>
+      <th>Fecha</th>
+    </tr>
+    {% for s in silos %}
+    <tr>
+      <td>{{ s[0] }}</td>
+      <td>{{ s[1] }}</td>
+      <td>{{ s[2] }}</td>
+      <td>{{ s[3] }}</td>
+      <td>{{ s[4] }}</td>
+      <td>{{ s[5] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
 </body>
 </html>

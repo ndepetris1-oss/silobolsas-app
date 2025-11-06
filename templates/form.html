@@ -2,35 +2,30 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Registro de Silo {{ numero_qr }}</title>
+  <title>Registro de Silo</title>
 </head>
 <body>
-  <h2>Registro de Silo: {{ numero_qr }}</h2>
+  <h2>Registro de Silo <span id="numero_qr">{{ numero_qr }}</span></h2>
 
   <label>Cereal:</label>
   <select id="cereal">
     <option>Maíz</option>
     <option>Soja</option>
     <option>Trigo</option>
-    <option>Girasol</option>
   </select>
 
   <label>Metros lineales:</label>
-  <input type="number" id="metros">
+  <input type="number" id="metros" />
 
-  <label>Notas:</label>
-  <input type="text" id="notas">
-
-  <button onclick="enviar()">Guardar datos</button>
+  <button onclick="guardar()">Guardar</button>
 
   <script>
-    function enviar() {
+    function guardar() {
       navigator.geolocation.getCurrentPosition((pos) => {
         const data = {
-          numero_qr: "{{ numero_qr }}",
+          numero_qr: document.getElementById("numero_qr").textContent,
           cereal: document.getElementById("cereal").value,
           metros: parseInt(document.getElementById("metros").value),
-          notas: document.getElementById("notas").value,
           lat: pos.coords.latitude,
           lon: pos.coords.longitude
         };
@@ -38,8 +33,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data)
-        }).then(r => r.json()).then(() => alert("Datos guardados correctamente."));
-      }, (err) => alert("Error obteniendo GPS: " + err.message));
+        }).then(() => alert("Datos guardados correctamente ✅"));
+      });
     }
   </script>
 </body>

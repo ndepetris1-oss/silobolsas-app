@@ -1,42 +1,70 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, render_template, jsonify
+import sqlite3
 from datetime import datetime
-import requests
-import os
 
 app = Flask(__name__)
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_TABLE = "silobolsas"
+# --- Crear base de datos si no existe ---
+def init_db():
+    conn = sqlite3.connect("silobolsas.db")
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS silobolsas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_qr TEXT UNIQUE,
+        cereal TEXT,
+        metros INTEGER,
+        lat REAL,
+        lon REAL,
+        fecha TEXT
+    )
+    """)
+    conn.commit()
+    conn.close()
 
-headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
-}
+init_db()
 
-@app.route("/silo")
-def silo_form():
-    numero_qr = request.args.get("id")
+# --- Ruta principal opcional ---
+@app.route("/")
+def home():
+    return "<h2>Sistema de Silobolsas activo ✅</h2><p>Usá /form?id=SB0001 o /panel</p>"
+
+# --- Formulario para registrar datos ---
+@app.route("/form")
+def form():
+    numero_qr = request.args.get("id", "SIN_ID")
     return render_template("form.html", numero_qr=numero_qr)
 
+# --- Guardar datos enviados ---
 @app.route("/api/save", methods=["POST"])
-def save_data():
+def save():
     data = request.json
-    data["fecha"] = datetime.now().isoformat()
-    url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}"
-    r = requests.post(url, headers=headers, json=data)
-    return jsonify({"status": "ok", "supabase_response": r.json()})
+    conn = sqlite3.connect("silobolsas.db")
+    c = conn.cursor()
+    c.execute("""
+        INSERT OR REPLACE INTO silobolsas (numero_qr, cereal, metros, lat, lon, fecha)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        data["numero_qr"],
+        data["cereal"],
+        data["metros"],
+        data["lat"],
+        data["lon"],
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
 
+# --- Panel con los datos ---
 @app.route("/panel")
 def panel():
-    return render_template("panel.html")
-
-@app.route("/api/list")
-def list_data():
-    url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?select=*"
-    r = requests.get(url, headers=headers)
-    return jsonify(r.json())
+    conn = sqlite3.connect("silobolsas.db")
+    c = conn.cursor()
+    c.execute("SELECT numero_qr, cereal, metros, lat, lon, fecha FROM silobolsas")
+    silos = c.fetchall()
+    conn.close()
+    return render_template("panel.html", silos=silos)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
