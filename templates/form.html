@@ -1,29 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>Registro de Silo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2rem;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: none;
+      margin-top: 0.3rem;
+    }
+
+    button {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.8rem;
+      background: #fff;
+      color: #2e7d32;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #c8e6c9;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.9em;
+      opacity: 0.8;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <h2>Registro de Silo <span id="numero_qr">{{ numero_qr }}</span></h2>
+  <div class="card">
+    <h2>📦 Registro de Silo</h2>
 
-  <label>Cereal:</label>
-  <select id="cereal">
-    <option>Maíz</option>
-    <option>Soja</option>
-    <option>Trigo</option>
-  </select>
+    <label>ID de Silo:</label>
+    <input type="text" id="numero_qr" value="{{ numero_qr }}" readonly>
 
-  <label>Metros lineales:</label>
-  <input type="number" id="metros" />
+    <label>Cereal:</label>
+    <select id="cereal">
+      <option>Maíz</option>
+      <option>Soja</option>
+      <option>Trigo</option>
+      <option>Girasol</option>
+    </select>
 
-  <button onclick="guardar()">Guardar</button>
+    <label>Metros lineales:</label>
+    <input type="number" id="metros" placeholder="Ej: 60">
+
+    <button onclick="guardar()">Guardar Registro</button>
+
+    <div class="footer">Se guardará tu ubicación automáticamente 📍</div>
+  </div>
 
   <script>
     function guardar() {
       navigator.geolocation.getCurrentPosition((pos) => {
         const data = {
-          numero_qr: document.getElementById("numero_qr").textContent,
+          numero_qr: document.getElementById("numero_qr").value,
           cereal: document.getElementById("cereal").value,
           metros: parseInt(document.getElementById("metros").value),
           lat: pos.coords.latitude,
@@ -33,8 +107,13 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data)
-        }).then(() => alert("Datos guardados correctamente ✅"));
-      });
+        })
+        .then(() => {
+          alert("✅ Datos guardados correctamente");
+          document.getElementById("metros").value = "";
+        })
+        .catch(() => alert("⚠️ Error al guardar datos"));
+      }, () => alert("No se pudo obtener ubicación GPS"));
     }
   </script>
 </body>
