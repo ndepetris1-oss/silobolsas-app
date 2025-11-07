@@ -3,56 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <title>Panel de Silo Bolsas</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #e8f5e9;
+      font-family: Arial, sans-serif;
+      color: #2e7d32;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #1b5e20; }
+    table {
+      width: 90%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #c8e6c9;
+    }
+    th {
+      background-color: #388e3c;
+      color: white;
+    }
+    tr:hover { background-color: #f1f8e9; }
+    button, a {
+      background-color: #388e3c;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover, a:hover { background-color: #2e7d32; }
+    form { display: inline; }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-6">
+<body>
+  <h1>Panel de Silo Bolsas</h1>
 
-  <div class="bg-white rounded-2xl shadow-lg p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-green-700">Panel de Silo Bolsas</h1>
-      <div class="space-x-2">
-        <a href="{{ url_for('exportar') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">📤 Exportar Excel</a>
-        <a href="{{ url_for('index') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">➕ Nuevo Silo</a>
-      </div>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="min-w-full border border-gray-200 text-sm text-center">
-        <thead class="bg-green-600 text-white">
-          <tr>
-            <th class="p-2 border">QR</th>
-            <th class="p-2 border">Cereal</th>
-            <th class="p-2 border">Metros</th>
-            <th class="p-2 border">Lat</th>
-            <th class="p-2 border">Lon</th>
-            <th class="p-2 border">Fecha Creación</th>
-            <th class="p-2 border">Fecha Extracción</th>
-            <th class="p-2 border">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-          <tr class="hover:bg-gray-100">
-            <td class="border p-2">{{ r.numero_qr }}</td>
-            <td class="border p-2">{{ r.cereal }}</td>
-            <td class="border p-2">{{ r.metros }}</td>
-            <td class="border p-2">{{ r.lat }}</td>
-            <td class="border p-2">{{ r.lon }}</td>
-            <td class="border p-2">{{ r.fecha_creacion }}</td>
-            <td class="border p-2">{{ r.fecha_extraccion or '-' }}</td>
-            <td class="border p-2">
-              {% if not r.fecha_extraccion %}
-                <a href="{{ url_for('marcar_extraccion', numero_qr=r.numero_qr) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">📅 Marcar extracción</a>
-              {% else %}
-                ✅
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div>
+    <a href="/">⬅️ Volver al Registro</a>
+    <a href="/exportar">📤 Exportar a Excel (CSV)</a>
   </div>
 
+  <table>
+    <thead>
+      <tr>
+        <th>QR</th>
+        <th>Cereal</th>
+        <th>Metros</th>
+        <th>Latitud</th>
+        <th>Longitud</th>
+        <th>Fecha Registro</th>
+        <th>Extracción</th>
+        <th>Fecha Extracción</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in registros %}
+      <tr>
+        <td>{{ r.qr }}</td>
+        <td>{{ r.cereal }}</td>
+        <td>{{ r.metros }}</td>
+        <td>{{ r.lat }}</td>
+        <td>{{ r.lon }}</td>
+        <td>{{ r.fecha_registro }}</td>
+        <td>{{ r.extraccion }}</td>
+        <td>{{ r.fecha_extraccion }}</td>
+        <td>
+          <form method="post" action="/eliminar/{{ r.qr }}" onsubmit="return confirm('¿Eliminar este registro?')">
+            <button type="submit">🗑️ Borrar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </body>
 </html>
