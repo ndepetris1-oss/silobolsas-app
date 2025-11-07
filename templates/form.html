@@ -2,48 +2,146 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Registrar Silo Bolsa</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <title>Registro de Silo Bolsa</title>
+  <style>
+    body {
+      background-color: #e8f5e9;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
+    }
+    h2 {
+      color: #2e7d32;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #388e3c;
+    }
+    input, select, button {
+      margin-top: 8px;
+      padding: 10px;
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #c8e6c9;
+      font-size: 16px;
+    }
+    button {
+      background-color: #43a047;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #2e7d32;
+    }
+    #success {
+      color: #2e7d32;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
+<body>
+  <h2>Registro de Silo Bolsa</h2>
+  <form id="form">
+    <label>Número de QR:</label>
+    <input type="text" id="numero_qr" readonly>
 
-  <div class="bg-white p-8 rounded-2xl shadow-md w-full max-w-md">
-    <h2 class="text-2xl font-bold mb-4 text-center text-green-700">Registro de Silo Bolsa</h2>
+    <div id="nuevoRegistro">
+      <label for="cereal">Cereal:</label>
+      <select id="cereal">
+        <option value="">Seleccionar...</option>
+        <option>Maíz</option>
+        <option>Soja</option>
+        <option>Trigo</option>
+        <option>Girasol</option>
+        <option>Sorgo</option>
+      </select>
 
-    {% if numero_qr %}
-      <form method="post">
-        <input type="hidden" name="numero_qr" value="{{ numero_qr }}">
-        <label class="block text-gray-700 mb-2">¿Registrar Extracción?</label>
-        <select name="extraccion" class="w-full border p-2 rounded mb-4">
-          <option value="NO">No</option>
-          <option value="SI">Sí</option>
-        </select>
-        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">Guardar</button>
-      </form>
+      <label for="metros">Metros lineales:</label>
+      <input type="number" id="metros" placeholder="Ej: 75">
+    </div>
 
-    {% else %}
-      <form method="post">
-        <label class="block text-gray-700 mb-1">Número de QR:</label>
-        <input name="numero_qr" required class="border p-2 w-full mb-3 rounded">
+    <div id="extraccionDiv" style="display:none;">
+      <label>¿Extracción?</label>
+      <select id="extraccion">
+        <option value="">Seleccionar...</option>
+        <option value="si">Sí</option>
+        <option value="no">No</option>
+      </select>
+    </div>
 
-        <label class="block text-gray-700 mb-1">Cereal:</label>
-        <input name="cereal" required class="border p-2 w-full mb-3 rounded">
+    <button type="button" onclick="enviar()">Registrar</button>
+  </form>
 
-        <label class="block text-gray-700 mb-1">Metros:</label>
-        <input name="metros" required class="border p-2 w-full mb-3 rounded">
+  <div id="success"></div>
+  <p><a href="/panel">Ir al Panel</a></p>
 
-        <label class="block text-gray-700 mb-1">Latitud:</label>
-        <input name="lat" class="border p-2 w-full mb-3 rounded">
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const numeroQR = params.get("id");
+    document.getElementById("numero_qr").value = numeroQR;
 
-        <label class="block text-gray-700 mb-1">Longitud:</label>
-        <input name="lon" class="border p-2 w-full mb-3 rounded">
+    async function checkExisting() {
+      const res = await fetch(`/api/get/${numeroQR}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.cereal) {
+          document.getElementById("nuevoRegistro").style.display = "none";
+          document.getElementById("extraccionDiv").style.display = "block";
+        }
+      }
+    }
 
-        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">Registrar</button>
-      </form>
-    {% endif %}
+    async function enviar() {
+      if (document.getElementById("extraccionDiv").style.display === "block") {
+        const extraccion = document.getElementById("extraccion").value;
+        if (extraccion === "si") {
+          await fetch("/api/extraccion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ numero_qr: numeroQR })
+          });
+          document.getElementById("success").textContent = "✅ Extracción registrada con fecha actual";
+        } else {
+          document.getElementById("success").textContent = "ℹ️ No se modificó el registro";
+        }
+        return;
+      }
 
-    <a href="{{ url_for('panel') }}" class="block text-center mt-4 text-blue-600 hover:underline">Ir al Panel</a>
-  </div>
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const data = {
+          numero_qr: numeroQR,
+          cereal: document.getElementById("cereal").value,
+          metros: parseInt(document.getElementById("metros").value),
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude
+        };
+        const res = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          document.getElementById("success").textContent = "✅ Registro guardado correctamente";
+          document.getElementById("form").reset();
+        } else {
+          document.getElementById("success").textContent = "❌ Error al guardar los datos";
+        }
+      });
+    }
 
+    checkExisting();
+  </script>
 </body>
 </html>
