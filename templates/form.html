@@ -7,141 +7,80 @@
     body {
       background-color: #e8f5e9;
       font-family: Arial, sans-serif;
-      padding: 30px;
-      text-align: center;
-    }
-    h2 {
       color: #2e7d32;
+      text-align: center;
+      padding-top: 50px;
     }
-    form {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      display: inline-block;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-      color: #388e3c;
-    }
+    h1 { color: #1b5e20; }
     input, select, button {
-      margin-top: 8px;
+      margin: 10px;
       padding: 10px;
-      width: 100%;
-      border-radius: 8px;
-      border: 1px solid #c8e6c9;
+      border-radius: 6px;
+      border: 1px solid #81c784;
       font-size: 16px;
     }
     button {
-      background-color: #43a047;
+      background-color: #388e3c;
       color: white;
       border: none;
       cursor: pointer;
-      margin-top: 20px;
     }
-    button:hover {
-      background-color: #2e7d32;
-    }
-    #success {
-      color: #2e7d32;
-      font-weight: bold;
-      margin-top: 15px;
-    }
+    button:hover { background-color: #2e7d32; }
   </style>
 </head>
 <body>
-  <h2>Registro de Silo Bolsa</h2>
-  <form id="form">
-    <label>Número de QR:</label>
-    <input type="text" id="numero_qr" readonly>
+  <h1>Registro de Silo Bolsa</h1>
 
-    <div id="nuevoRegistro">
-      <label for="cereal">Cereal:</label>
-      <select id="cereal">
-        <option value="">Seleccionar...</option>
-        <option>Maíz</option>
-        <option>Soja</option>
-        <option>Trigo</option>
-        <option>Girasol</option>
-        <option>Sorgo</option>
-      </select>
+  <form id="siloForm">
+    <label>Número de QR:</label><br>
+    <input type="text" name="qr" id="qr" value="SB0001" readonly><br>
 
-      <label for="metros">Metros lineales:</label>
-      <input type="number" id="metros" placeholder="Ej: 75">
-    </div>
+    <label>Cereal:</label><br>
+    <select name="cereal">
+      <option value="Maíz">Maíz</option>
+      <option value="Soja">Soja</option>
+      <option value="Trigo">Trigo</option>
+      <option value="Girasol">Girasol</option>
+    </select><br>
 
-    <div id="extraccionDiv" style="display:none;">
-      <label>¿Extracción?</label>
-      <select id="extraccion">
-        <option value="">Seleccionar...</option>
-        <option value="si">Sí</option>
-        <option value="no">No</option>
-      </select>
-    </div>
+    <label>Metros lineales:</label><br>
+    <input type="number" name="metros" required><br>
 
-    <button type="button" onclick="enviar()">Registrar</button>
+    <label>Extracción:</label><br>
+    <select name="extraccion">
+      <option value="NO">NO</option>
+      <option value="SI">SI</option>
+    </select><br>
+
+    <input type="hidden" name="lat" id="lat">
+    <input type="hidden" name="lon" id="lon">
+
+    <button type="submit">Registrar</button>
   </form>
 
-  <div id="success"></div>
-  <p><a href="/panel">Ir al Panel</a></p>
+  <br>
+  <button onclick="window.location.href='/panel'">Ir al Panel</button>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const numeroQR = params.get("id");
-    document.getElementById("numero_qr").value = numeroQR;
-
-    async function checkExisting() {
-      const res = await fetch(`/api/get/${numeroQR}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.cereal) {
-          document.getElementById("nuevoRegistro").style.display = "none";
-          document.getElementById("extraccionDiv").style.display = "block";
-        }
-      }
-    }
-
-    async function enviar() {
-      if (document.getElementById("extraccionDiv").style.display === "block") {
-        const extraccion = document.getElementById("extraccion").value;
-        if (extraccion === "si") {
-          await fetch("/api/extraccion", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ numero_qr: numeroQR })
-          });
-          document.getElementById("success").textContent = "✅ Extracción registrada con fecha actual";
-        } else {
-          document.getElementById("success").textContent = "ℹ️ No se modificó el registro";
-        }
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const data = {
-          numero_qr: numeroQR,
-          cereal: document.getElementById("cereal").value,
-          metros: parseInt(document.getElementById("metros").value),
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude
-        };
-        const res = await fetch("/api/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        if (res.ok) {
-          document.getElementById("success").textContent = "✅ Registro guardado correctamente";
-          document.getElementById("form").reset();
-        } else {
-          document.getElementById("success").textContent = "❌ Error al guardar los datos";
-        }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById('lat').value = pos.coords.latitude;
+        document.getElementById('lon').value = pos.coords.longitude;
       });
     }
 
-    checkExisting();
+    document.getElementById("siloForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const res = await fetch("/registrar", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.status === "ok") {
+        alert("✅ Registro guardado con éxito");
+        e.target.reset();
+      } else {
+        alert("❌ Error al guardar los datos: " + data.msg);
+      }
+    });
   </script>
 </body>
 </html>
