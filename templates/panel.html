@@ -1,90 +1,143 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel de Silo Bolsas</title>
   <style>
     body {
+      font-family: 'Segoe UI', sans-serif;
       background-color: #e8f5e9;
-      font-family: Arial, sans-serif;
-      color: #2e7d32;
-      text-align: center;
-      padding: 20px;
+      margin: 0;
+      padding: 0;
     }
-    h1 { color: #1b5e20; }
-    table {
-      width: 90%;
+    header {
+      background-color: #2e7d32;
+      color: white;
+      text-align: center;
+      padding: 15px 0;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .container {
+      width: 95%;
       margin: 20px auto;
-      border-collapse: collapse;
       background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
     }
     th, td {
       padding: 10px;
       border-bottom: 1px solid #c8e6c9;
+      text-align: center;
     }
     th {
-      background-color: #388e3c;
-      color: white;
+      background-color: #a5d6a7;
+      color: #1b5e20;
     }
-    tr:hover { background-color: #f1f8e9; }
-    button, a {
-      background-color: #388e3c;
+    tr:hover {
+      background-color: #f1f8e9;
+    }
+    button {
+      background-color: #43a047;
       color: white;
-      padding: 8px 12px;
       border: none;
-      border-radius: 6px;
-      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 14px;
     }
-    button:hover, a:hover { background-color: #2e7d32; }
-    form { display: inline; }
+    button:hover {
+      background-color: #388e3c;
+    }
+    .danger {
+      background-color: #d32f2f;
+    }
+    .danger:hover {
+      background-color: #b71c1c;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .status-ok {
+      color: green;
+      font-weight: bold;
+    }
+    .status-no {
+      color: red;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h1>Panel de Silo Bolsas</h1>
+  <header>PANEL DE CONTROL - SILO BOLSAS</header>
 
-  <div>
-    <a href="/">⬅️ Volver al Registro</a>
-    <a href="/exportar">📤 Exportar a Excel (CSV)</a>
+  <div class="container">
+    <div class="toolbar">
+      <button onclick="exportarExcel()">📤 Exportar a Excel</button>
+      <button onclick="location.href='/form'">➕ Nuevo Registro</button>
+    </div>
+
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>N° QR</th>
+          <th>Cereal</th>
+          <th>Metros</th>
+          <th>Latitud</th>
+          <th>Longitud</th>
+          <th>Extraído</th>
+          <th>Fecha Extracción</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>QR</th>
-        <th>Cereal</th>
-        <th>Metros</th>
-        <th>Latitud</th>
-        <th>Longitud</th>
-        <th>Fecha Registro</th>
-        <th>Extracción</th>
-        <th>Fecha Extracción</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in registros %}
-      <tr>
-        <td>{{ r.qr }}</td>
-        <td>{{ r.cereal }}</td>
-        <td>{{ r.metros }}</td>
-        <td>{{ r.lat }}</td>
-        <td>{{ r.lon }}</td>
-        <td>{{ r.fecha_registro }}</td>
-        <td>{{ r.extraccion }}</td>
-        <td>{{ r.fecha_extraccion }}</td>
-        <td>
-          <form method="post" action="/eliminar/{{ r.qr }}" onsubmit="return confirm('¿Eliminar este registro?')">
-            <button type="submit">🗑️ Borrar</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</body>
-</html>
+  <script>
+    async function cargarDatos() {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      const tbody = document.querySelector('#tabla tbody');
+      tbody.innerHTML = '';
+
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.numero_qr}</td>
+          <td>${row.cereal || '-'}</td>
+          <td>${row.metros || '-'}</td>
+          <td>${row.lat || '-'}</td>
+          <td>${row.lon || '-'}</td>
+          <td>${row.extraido == 1 ? '<span class="status-ok">Sí</span>' : '<span class="status-no">No</span>'}</td>
+          <td>${row.fecha_extraccion ? new Date(row.fecha_extraccion).toLocaleString() : '-'}</td>
+          <td>
+            <button class="danger" onclick="borrar('${row.numero_qr}')">🗑️ Borrar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function borrar(numero_qr) {
+      if (!confirm(`¿Seguro que desea borrar el registro ${numero_qr}?`)) return;
+      const res = await fetch('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numero_qr })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        alert('Registro eliminado correctamente');
+        cargarDatos();
+      } else {
+        alert('Error al eliminar el
