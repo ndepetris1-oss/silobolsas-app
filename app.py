@@ -55,7 +55,29 @@ def panel():
     return render_template("panel.html", silos=silos)
 
 
-# === 4️⃣ Exportar a Excel ===
+# === 4️⃣ Eliminar registro ===
+@app.route("/api/delete", methods=["POST"])
+def api_delete():
+    data = request.get_json()
+    numero_qr = data.get("numero_qr")
+
+    rows = []
+    with open(DATA_FILE, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            if row[0] != numero_qr:
+                rows.append(row)
+
+    with open(DATA_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+
+    return jsonify({"status": "deleted", "numero_qr": numero_qr})
+
+
+# === 5️⃣ Exportar a Excel ===
 @app.route("/exportar_excel")
 def exportar_excel():
     df = pd.read_csv(DATA_FILE)
@@ -70,7 +92,7 @@ def exportar_excel():
     )
 
 
-# === 5️⃣ Página raíz (redirige al panel) ===
+# === 6️⃣ Página raíz (redirige al panel) ===
 @app.route("/")
 def home():
     return "<h3>✅ App de Silobolsas activa. Ir a <a href='/panel'>Panel</a></h3>"
