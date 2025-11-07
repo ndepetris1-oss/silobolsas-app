@@ -1,102 +1,107 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import csv
 import os
 from datetime import datetime
+import io
 import pandas as pd
-from io import BytesIO
 
 app = Flask(__name__)
 
-DATA_FILE = "data.csv"
+CSV_FILE = 'silobolsas.csv'
 
-# Crear archivo CSV si no existe
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w", newline="", encoding="utf-8") as f:
+
+def ensure_csv_exists():
+    if not os.path.exists(CSV_FILE):
+        with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(["numero_qr", "cereal", "metros", "lat", "lon", "fecha_creacion", "fecha_extraccion"])
+
+
+def read_csv():
+    ensure_csv_exists()
+    with open(CSV_FILE, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def write_csv(data):
+    ensure_csv_exists()
+    with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["numero_qr", "cereal", "metros", "lat", "lon", "fecha"])
+        writer.writerow(data)
 
 
-# === 1️⃣ Formulario ===
-@app.route("/form")
-def form():
-    numero_qr = request.args.get("id", "N/A")
-    return render_template("form.html", numero_qr=numero_qr)
+def update_extraccion(numero_qr):
+    rows = read_csv()
+    for row in rows:
+        if row["numero_qr"] == numero_qr and row["fecha_extraccion"] == "":
+            row["fecha_extraccion"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
-# === 2️⃣ Guardar datos ===
-@app.route("/api/save", methods=["POST"])
-def api_save():
-    data = request.get_json()
-    with open(DATA_FILE, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            data["numero_qr"],
-            data["cereal"],
-            data["metros"],
-            data["lat"],
-            data["lon"],
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ])
-    return jsonify({"status": "ok"})
-
-
-# === 3️⃣ Panel con mapa ===
-@app.route("/panel")
-def panel():
-    silos = []
-    with open(DATA_FILE, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader)  # saltar encabezado
-        for row in reader:
-            try:
-                silos.append([row[0], row[1], int(row[2]), float(row[3]), float(row[4]), row[5]])
-            except:
-                pass
-    return render_template("panel.html", silos=silos)
-
-
-# === 4️⃣ Eliminar registro ===
-@app.route("/api/delete", methods=["POST"])
-def api_delete():
-    data = request.get_json()
-    numero_qr = data.get("numero_qr")
-
-    rows = []
-    with open(DATA_FILE, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        for row in reader:
-            if row[0] != numero_qr:
-                rows.append(row)
-
-    with open(DATA_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(header)
+    with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
         writer.writerows(rows)
 
-    return jsonify({"status": "deleted", "numero_qr": numero_qr})
+
+@app.route('/')
+def index():
+    return render_template('form.html')
 
 
-# === 5️⃣ Exportar a Excel ===
-@app.route("/exportar_excel")
-def exportar_excel():
-    df = pd.read_csv(DATA_FILE)
-    output = BytesIO()
-    df.to_excel(output, index=False, sheet_name="Silobolsas")
+@app.route('/form', methods=['GET', 'POST'])
+def form():
+    ensure_csv_exists()
+
+    if request.method == 'POST':
+        numero_qr = request.form['numero_qr']
+        rows = read_csv()
+
+        # Si ya existe el QR → preguntar por extracción
+        for row in rows:
+            if row["numero_qr"] == numero_qr:
+                extraccion = request.form.get('extraccion')
+                if extraccion == "SI":
+                    update_extraccion(numero_qr)
+                    return redirect(url_for('panel'))
+                else:
+                    return redirect(url_for('panel'))
+
+        # Si es un QR nuevo → crear registro
+        cereal = request.form['cereal']
+        metros = request.form['metros']
+        lat = request.form['lat']
+        lon = request.form['lon']
+        fecha_creacion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        write_csv([numero_qr, cereal, metros, lat, lon, fecha_creacion, ""])
+        return redirect(url_for('panel'))
+
+    numero_qr = request.args.get('numero_qr')
+    return render_template('form.html', numero_qr=numero_qr)
+
+
+@app.route('/panel')
+def panel():
+    rows = read_csv()
+    return render_template('panel.html', rows=rows)
+
+
+@app.route('/exportar')
+def exportar():
+    rows = read_csv()
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    df.to_excel(output, index=False)
     output.seek(0)
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name="silobolsas.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    return send_file(output, as_attachment=True, download_name='silobolsas.xlsx')
 
 
-# === 6️⃣ Página raíz (redirige al panel) ===
-@app.route("/")
-def home():
-    return "<h3>✅ App de Silobolsas activa. Ir a <a href='/panel'>Panel</a></h3>"
+@app.route('/marcar_extraccion/<numero_qr>')
+def marcar_extraccion(numero_qr):
+    update_extraccion(numero_qr)
+    return redirect(url_for('panel'))
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == '__main__':
+    ensure_csv_exists()
+    app.run(host='0.0.0.0', port=10000)

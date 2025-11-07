@@ -1,64 +1,58 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Panel de Silobolsas</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f3f4f6; margin: 20px; }
-    h1 { color: #1f2937; }
-    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-    th { background: #e5e7eb; }
-    button { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; }
-    .delete-btn { background: #ef4444; color: white; }
-    .export-btn { background: #2563eb; color: white; margin-bottom: 15px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>Panel de Silo Bolsas</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <h1>📊 Panel de Silobolsas</h1>
+<body class="bg-gray-100 min-h-screen p-6">
 
-  <button class="export-btn" onclick="window.location.href='/exportar_excel'">⬇️ Exportar a Excel</button>
+  <div class="bg-white rounded-2xl shadow-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-green-700">Panel de Silo Bolsas</h1>
+      <div class="space-x-2">
+        <a href="{{ url_for('exportar') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">📤 Exportar Excel</a>
+        <a href="{{ url_for('index') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">➕ Nuevo Silo</a>
+      </div>
+    </div>
 
-  <table>
-    <tr>
-      <th>N° QR</th>
-      <th>Cereal</th>
-      <th>Metros</th>
-      <th>Latitud</th>
-      <th>Longitud</th>
-      <th>Fecha</th>
-      <th>Acción</th>
-    </tr>
-    {% for s in silos %}
-    <tr id="row-{{ s[0] }}">
-      <td>{{ s[0] }}</td>
-      <td>{{ s[1] }}</td>
-      <td>{{ s[2] }}</td>
-      <td>{{ s[3] }}</td>
-      <td>{{ s[4] }}</td>
-      <td>{{ s[5] }}</td>
-      <td><button class="delete-btn" onclick="eliminar('{{ s[0] }}')">🗑️ Eliminar</button></td>
-    </tr>
-    {% endfor %}
-  </table>
+    <div class="overflow-x-auto">
+      <table class="min-w-full border border-gray-200 text-sm text-center">
+        <thead class="bg-green-600 text-white">
+          <tr>
+            <th class="p-2 border">QR</th>
+            <th class="p-2 border">Cereal</th>
+            <th class="p-2 border">Metros</th>
+            <th class="p-2 border">Lat</th>
+            <th class="p-2 border">Lon</th>
+            <th class="p-2 border">Fecha Creación</th>
+            <th class="p-2 border">Fecha Extracción</th>
+            <th class="p-2 border">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr class="hover:bg-gray-100">
+            <td class="border p-2">{{ r.numero_qr }}</td>
+            <td class="border p-2">{{ r.cereal }}</td>
+            <td class="border p-2">{{ r.metros }}</td>
+            <td class="border p-2">{{ r.lat }}</td>
+            <td class="border p-2">{{ r.lon }}</td>
+            <td class="border p-2">{{ r.fecha_creacion }}</td>
+            <td class="border p-2">{{ r.fecha_extraccion or '-' }}</td>
+            <td class="border p-2">
+              {% if not r.fecha_extraccion %}
+                <a href="{{ url_for('marcar_extraccion', numero_qr=r.numero_qr) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">📅 Marcar extracción</a>
+              {% else %}
+                ✅
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-  <script>
-    async function eliminar(numero_qr) {
-      if (!confirm(`¿Seguro que querés eliminar el silo ${numero_qr}?`)) return;
-      const res = await fetch("/api/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numero_qr })
-      });
-      const data = await res.json();
-      if (data.status === "deleted") {
-        document.getElementById(`row-${numero_qr}`).remove();
-        alert(`✅ Silo ${numero_qr} eliminado`);
-      }
-    }
-
-    // 🔄 Actualiza el panel automáticamente cada 30 segundos
-    setInterval(() => location.reload(), 30000);
-  </script>
 </body>
 </html>
