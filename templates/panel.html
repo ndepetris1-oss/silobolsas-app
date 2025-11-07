@@ -1,143 +1,141 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Panel de Silo Bolsas</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #e8f5e9;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #2e7d32;
-      color: white;
-      text-align: center;
-      padding: 15px 0;
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .container {
-      width: 95%;
-      margin: 20px auto;
-      background: white;
-      border-radius: 20px;
+      background-color: #d4edda;
+      font-family: Arial, sans-serif;
       padding: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    h2 {
+      color: #155724;
+      text-align: center;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
     }
     th, td {
+      border-bottom: 1px solid #ccc;
       padding: 10px;
-      border-bottom: 1px solid #c8e6c9;
       text-align: center;
     }
     th {
-      background-color: #a5d6a7;
-      color: #1b5e20;
+      background-color: #28a745;
+      color: white;
     }
     tr:hover {
-      background-color: #f1f8e9;
+      background-color: #f1f1f1;
     }
     button {
-      background-color: #43a047;
-      color: white;
+      background-color: #28a745;
       border: none;
-      padding: 8px 12px;
-      border-radius: 10px;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
       cursor: pointer;
+      font-size: 14px;
     }
     button:hover {
-      background-color: #388e3c;
+      background-color: #218838;
     }
-    .danger {
-      background-color: #d32f2f;
+    .delete-btn {
+      background-color: #dc3545;
     }
-    .danger:hover {
-      background-color: #b71c1c;
+    .delete-btn:hover {
+      background-color: #c82333;
     }
-    .toolbar {
+    .top-buttons {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
-    .status-ok {
-      color: green;
-      font-weight: bold;
-    }
-    .status-no {
-      color: red;
-      font-weight: bold;
+    .top-buttons a {
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <header>PANEL DE CONTROL - SILO BOLSAS</header>
+  <h2>Panel de Silo Bolsas</h2>
 
-  <div class="container">
-    <div class="toolbar">
-      <button onclick="exportarExcel()">📤 Exportar a Excel</button>
-      <button onclick="location.href='/form'">➕ Nuevo Registro</button>
-    </div>
-
-    <table id="tabla">
-      <thead>
-        <tr>
-          <th>N° QR</th>
-          <th>Cereal</th>
-          <th>Metros</th>
-          <th>Latitud</th>
-          <th>Longitud</th>
-          <th>Extraído</th>
-          <th>Fecha Extracción</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div class="top-buttons">
+    <a href="/form?id=SB0001"><button>Nuevo Registro</button></a>
+    <button onclick="exportarExcel()">Exportar a Excel</button>
   </div>
+
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Número QR</th>
+        <th>Cereal</th>
+        <th>Metros</th>
+        <th>Lat</th>
+        <th>Lon</th>
+        <th>Fecha Registro</th>
+        <th>Extracción</th>
+        <th>Fecha Extracción</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
     async function cargarDatos() {
-      const res = await fetch('/api/data');
+      const res = await fetch("/api/list");
       const data = await res.json();
-      const tbody = document.querySelector('#tabla tbody');
-      tbody.innerHTML = '';
+      const tbody = document.querySelector("#tabla tbody");
+      tbody.innerHTML = "";
 
       data.forEach(row => {
-        const tr = document.createElement('tr');
+        const [id, numero_qr, cereal, metros, lat, lon, fecha, extraccion, fecha_extraccion] = row;
+
+        const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${row.numero_qr}</td>
-          <td>${row.cereal || '-'}</td>
-          <td>${row.metros || '-'}</td>
-          <td>${row.lat || '-'}</td>
-          <td>${row.lon || '-'}</td>
-          <td>${row.extraido == 1 ? '<span class="status-ok">Sí</span>' : '<span class="status-no">No</span>'}</td>
-          <td>${row.fecha_extraccion ? new Date(row.fecha_extraccion).toLocaleString() : '-'}</td>
+          <td>${id}</td>
+          <td>${numero_qr}</td>
+          <td>${cereal}</td>
+          <td>${metros ?? ""}</td>
+          <td>${lat?.toFixed(6) ?? ""}</td>
+          <td>${lon?.toFixed(6) ?? ""}</td>
+          <td>${new Date(fecha).toLocaleString("es-AR")}</td>
+          <td>${extraccion ?? "NO"}</td>
+          <td>${fecha_extraccion ? new Date(fecha_extraccion).toLocaleString("es-AR") : "-"}</td>
           <td>
-            <button class="danger" onclick="borrar('${row.numero_qr}')">🗑️ Borrar</button>
+            ${extraccion !== "SI" ? `<button onclick="marcarExtraccion(${id})">Marcar</button>` : ""}
+            <button class="delete-btn" onclick="borrar(${id})">🗑️</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    async function borrar(numero_qr) {
-      if (!confirm(`¿Seguro que desea borrar el registro ${numero_qr}?`)) return;
-      const res = await fetch('/api/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero_qr })
-      });
-      const data = await res.json();
-      if (data.status === 'ok') {
-        alert('Registro eliminado correctamente');
-        cargarDatos();
-      } else {
-        alert('Error al eliminar el
+    async function marcarExtraccion(id) {
+      if (confirm("¿Marcar este silo como extraído?")) {
+        await fetch(`/api/extract/${id}`, { method: "POST" });
+        await cargarDatos();
+      }
+    }
+
+    async function borrar(id) {
+      if (confirm("¿Eliminar este registro?")) {
+        await fetch(`/api/delete/${id}`, { method: "DELETE" });
+        await cargarDatos();
+      }
+    }
+
+    function exportarExcel() {
+      window.location.href = "/export";
+    }
+
+    cargarDatos();
+  </script>
+</body>
+</html>

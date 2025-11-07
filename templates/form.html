@@ -1,181 +1,82 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Registro de Silo Bolsa</title>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #e8f5e9;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background: white;
-      padding: 20px 30px;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
-    h2 {
-      color: #2e7d32;
-      margin-bottom: 20px;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-      color: #2e7d32;
-      text-align: left;
-    }
-    input, select {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #a5d6a7;
-      border-radius: 10px;
-      margin-top: 5px;
-      box-sizing: border-box;
+    body { background-color: #e6f4ea; font-family: Arial, sans-serif; padding: 20px; color: #2d5a27; }
+    h2 { color: #1e4620; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, button {
+      padding: 8px; margin-top: 5px; border-radius: 8px;
+      border: 1px solid #5cb85c; width: 100%; box-sizing: border-box;
     }
     button {
-      background-color: #43a047;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 10px;
-      margin-top: 15px;
-      cursor: pointer;
-      width: 100%;
-      font-size: 16px;
+      background-color: #5cb85c; color: white; border: none; margin-top: 20px;
+      width: 100%; font-size: 16px; font-weight: bold; cursor: pointer;
+      transition: background 0.3s;
     }
-    button:hover {
-      background-color: #388e3c;
-    }
-    .small-btn {
-      background-color: #1b5e20;
-      width: 48%;
-      display: inline-block;
-    }
+    button:hover { background-color: #4cae4c; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Registro de Silo Bolsa</h2>
+  <h2>Registro de Silo Bolsa</h2>
 
-    <label>Número de QR:</label>
-    <input type="text" id="numero_qr" readonly />
+  <label>Número de QR:</label>
+  <input type="text" id="numero_qr" readonly value="{{ numero_qr }}">
 
-    <label>Cereal:</label>
-    <select id="cereal">
-      <option value="">Seleccione...</option>
-      <option value="Maíz">Maíz</option>
-      <option value="Soja">Soja</option>
-      <option value="Trigo">Trigo</option>
-      <option value="Cebada">Cebada</option>
-      <option value="Sorgo">Sorgo</option>
-    </select>
+  <label>Cereal:</label>
+  <select id="cereal">
+    <option>Maíz</option>
+    <option>Soja</option>
+    <option>Trigo</option>
+  </select>
 
-    <label>Metros lineales:</label>
-    <input type="number" id="metros" placeholder="Ej: 75" />
+  <label>Metros lineales:</label>
+  <input type="number" id="metros">
 
-    <input type="hidden" id="lat" />
-    <input type="hidden" id="lon" />
+  <label>Extracción:</label>
+  <select id="extraccion">
+    <option value="">-- Seleccione --</option>
+    <option value="SI">SI</option>
+    <option value="NO">NO</option>
+  </select>
 
-    <button onclick="registrar()">Registrar</button>
-
-    <div style="margin-top:10px;">
-      <button class="small-btn" onclick="marcarExtraccion(true)">Extracción: Sí</button>
-      <button class="small-btn" onclick="marcarExtraccion(false)">Extracción: No</button>
-    </div>
-
-    <div id="msg" style="margin-top:15px; color:red;"></div>
-
-    <button style="margin-top:20px; background:#1b5e20;" onclick="location.href='/panel'">Ir al Panel</button>
-  </div>
+  <button onclick="enviar()">Registrar</button>
 
   <script>
-    let numeroQR = "";
-    let lat = null, lon = null;
+    const numero_qr = document.getElementById("numero_qr").value;
 
-    // Cargar el parámetro del QR
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("id")) {
-      numeroQR = params.get("id");
-      document.getElementById("numero_qr").value = numeroQR;
-    }
+    async function enviar() {
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject)
+        );
 
-    // Obtener ubicación automáticamente
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          lat = pos.coords.latitude;
-          lon = pos.coords.longitude;
-        },
-        err => console.log("No se pudo obtener ubicación")
-      );
-    }
+        const data = {
+          numero_qr: numero_qr,
+          cereal: document.getElementById("cereal").value,
+          metros: parseInt(document.getElementById("metros").value),
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          extraccion: document.getElementById("extraccion").value,
+          fecha_extraccion:
+            document.getElementById("extraccion").value === "SI"
+              ? new Date().toISOString()
+              : null
+        };
 
-    async function registrar() {
-      const cereal = document.getElementById("cereal").value;
-      const metros = document.getElementById("metros").value;
+        const res = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
 
-      if (!numeroQR || !cereal || !metros) {
-        document.getElementById("msg").innerText = "⚠️ Complete todos los campos.";
-        return;
-      }
-
-      const payload = {
-        numero_qr: numeroQR,
-        cereal,
-        metros,
-        lat,
-        lon,
-        extraido: 0
-      };
-
-      const res = await fetch("/api/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (data.status === "ok") {
-        document.getElementById("msg").style.color = "green";
-        document.getElementById("msg").innerText = "✅ Registro guardado correctamente";
-      } else {
-        document.getElementById("msg").innerText = "❌ Error al guardar los datos";
-      }
-    }
-
-    async function marcarExtraccion(si) {
-      if (!numeroQR) return alert("No hay QR válido.");
-      const fecha_extraccion = si ? new Date().toISOString() : null;
-
-      const payload = {
-        numero_qr: numeroQR,
-        extraido: si ? 1 : 0,
-        fecha_extraccion
-      };
-
-      const res = await fetch("/api/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (data.status === "ok") {
-        document.getElementById("msg").style.color = si ? "orange" : "green";
-        document.getElementById("msg").innerText = si
-          ? "📦 Silo marcado como extraído"
-          : "🟢 Silo sigue en uso";
+        const resp = await res.json();
+        if (resp.status === "ok") alert("✅ Datos guardados correctamente!");
+        else alert("❌ Error: " + resp.message);
+      } catch (err) {
+        alert("❌ Error al guardar los datos: " + err.message);
       }
     }
   </script>
