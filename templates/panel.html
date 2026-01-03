@@ -3,139 +3,151 @@
 <head>
   <meta charset="UTF-8">
   <title>Panel de Silo Bolsas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
     body {
-      background-color: #d4edda;
       font-family: Arial, sans-serif;
-      padding: 20px;
+      background-color: #e8f5e9;
+      margin: 0;
+      padding: 0;
+      color: #2e7d32;
     }
-    h2 {
-      color: #155724;
+    header {
+      background-color: #2e7d32;
+      color: white;
       text-align: center;
+      padding: 15px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .container {
+      width: 95%;
+      margin: 20px auto;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
+      margin-top: 15px;
     }
     th, td {
-      border-bottom: 1px solid #ccc;
       padding: 10px;
+      border-bottom: 1px solid #c8e6c9;
       text-align: center;
-    }
-    th {
-      background-color: #28a745;
-      color: white;
-    }
-    tr:hover {
-      background-color: #f1f1f1;
-    }
-    button {
-      background-color: #28a745;
-      border: none;
-      color: white;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
       font-size: 14px;
     }
+    th {
+      background-color: #a5d6a7;
+      color: #1b5e20;
+    }
+    tr:hover {
+      background-color: #f1f8e9;
+    }
+    button {
+      background-color: #43a047;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
     button:hover {
-      background-color: #218838;
+      background-color: #2e7d32;
     }
-    .delete-btn {
-      background-color: #dc3545;
+    .danger {
+      background-color: #d32f2f;
     }
-    .delete-btn:hover {
-      background-color: #c82333;
+    .danger:hover {
+      background-color: #b71c1c;
     }
-    .top-buttons {
+    .toolbar {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 15px;
-    }
-    .top-buttons a {
-      text-decoration: none;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
     }
   </style>
 </head>
-<body>
-  <h2>Panel de Silo Bolsas</h2>
 
-  <div class="top-buttons">
-    <a href="/form?id=SB0001"><button>Nuevo Registro</button></a>
-    <button onclick="exportarExcel()">Exportar a Excel</button>
+<body>
+
+<header>PANEL DE CONTROL · SILO BOLSAS</header>
+
+<div class="container">
+
+  <div class="toolbar">
+    <button onclick="location.href='/form'">➕ Nuevo Registro</button>
+    <button onclick="location.reload()">🔄 Actualizar</button>
   </div>
 
-  <table id="tabla">
+  <table>
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Número QR</th>
+        <th>QR</th>
         <th>Cereal</th>
+        <th>Estado</th>
         <th>Metros</th>
-        <th>Lat</th>
-        <th>Lon</th>
+        <th>Latitud</th>
+        <th>Longitud</th>
+        <th>Extraído</th>
         <th>Fecha Registro</th>
-        <th>Extracción</th>
         <th>Fecha Extracción</th>
-        <th>Acción</th>
+        <th>Acciones</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody>
+      {% for r in registros %}
+      <tr>
+        <td>{{ r.numero_qr }}</td>
+        <td>{{ r.cereal }}</td>
+        <td>{{ r.estado }}</td>
+        <td>{{ r.metros }}</td>
+        <td>{{ r.lat }}</td>
+        <td>{{ r.lon }}</td>
+        <td>
+          {% if r.extraido == 1 %}
+            ✅ Sí
+          {% else %}
+            ❌ No
+          {% endif %}
+        </td>
+        <td>{{ r.fecha_registro }}</td>
+        <td>{{ r.fecha_extraccion or "-" }}</td>
+        <td>
+          <button class="danger" onclick="borrar('{{ r.numero_qr }}')">🗑️</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
 
-  <script>
-    async function cargarDatos() {
-      const res = await fetch("/api/list");
-      const data = await res.json();
-      const tbody = document.querySelector("#tabla tbody");
-      tbody.innerHTML = "";
+</div>
 
-      data.forEach(row => {
-        const [id, numero_qr, cereal, metros, lat, lon, fecha, extraccion, fecha_extraccion] = row;
+<script>
+  async function borrar(numero_qr) {
+    if (!confirm("¿Eliminar el registro " + numero_qr + "?")) return;
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${id}</td>
-          <td>${numero_qr}</td>
-          <td>${cereal}</td>
-          <td>${metros ?? ""}</td>
-          <td>${lat?.toFixed(6) ?? ""}</td>
-          <td>${lon?.toFixed(6) ?? ""}</td>
-          <td>${new Date(fecha).toLocaleString("es-AR")}</td>
-          <td>${extraccion ?? "NO"}</td>
-          <td>${fecha_extraccion ? new Date(fecha_extraccion).toLocaleString("es-AR") : "-"}</td>
-          <td>
-            ${extraccion !== "SI" ? `<button onclick="marcarExtraccion(${id})">Marcar</button>` : ""}
-            <button class="delete-btn" onclick="borrar(${id})">🗑️</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+    const res = await fetch("/api/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ numero_qr })
+    });
+
+    const data = await res.json();
+    if (data.status === "ok") {
+      alert("Registro eliminado");
+      location.reload();
+    } else {
+      alert("Error al eliminar");
     }
+  }
+</script>
 
-    async function marcarExtraccion(id) {
-      if (confirm("¿Marcar este silo como extraído?")) {
-        await fetch(`/api/extract/${id}`, { method: "POST" });
-        await cargarDatos();
-      }
-    }
-
-    async function borrar(id) {
-      if (confirm("¿Eliminar este registro?")) {
-        await fetch(`/api/delete/${id}`, { method: "DELETE" });
-        await cargarDatos();
-      }
-    }
-
-    function exportarExcel() {
-      window.location.href = "/export";
-    }
-
-    cargarDatos();
-  </script>
 </body>
 </html>
