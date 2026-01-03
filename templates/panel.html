@@ -80,7 +80,7 @@
       background-color: #f1f8e9;
     }
     #map {
-      height: 420px;
+      height: 450px;
       width: 100%;
       border-radius: 12px;
       margin-bottom: 20px;
@@ -142,13 +142,17 @@
 </div>
 
 <script>
-  // MAPA
-  const map = L.map('map').setView([-34.6, -58.4], 6);
+  // Crear mapa
+  const map = L.map('map');
+  const bounds = [];
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+  // Vista SATELITAL (campo, caminos, calles internas)
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Tiles © Esri' }
+  ).addTo(map);
 
+  // Marcadores
   {% for r in registros %}
     {% if r.lat and r.lon %}
       L.marker([{{ r.lat }}, {{ r.lon }}]).addTo(map)
@@ -159,8 +163,16 @@
           <b>Metros:</b> {{ r.metros }}<br>
           <b>Extraído:</b> {{ "Sí" if r.extraido == 1 else "No" }}
         `);
+      bounds.push([{{ r.lat }}, {{ r.lon }}]);
     {% endif %}
   {% endfor %}
+
+  // Ajustar zoom automáticamente
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [30, 30] });
+  } else {
+    map.setView([-34.6, -58.4], 6); // fallback
+  }
 
   function exportarExcel() {
     window.location.href = "/api/export";
