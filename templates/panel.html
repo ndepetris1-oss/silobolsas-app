@@ -5,6 +5,13 @@
   <title>Panel de Silo Bolsas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -29,32 +36,21 @@
       padding: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #c8e6c9;
-      text-align: center;
-      font-size: 14px;
-    }
-    th {
-      background-color: #a5d6a7;
-      color: #1b5e20;
-    }
-    tr:hover {
-      background-color: #f1f8e9;
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
     }
     button {
       background-color: #43a047;
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 8px 14px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
     }
     button:hover {
       background-color: #2e7d32;
@@ -65,12 +61,29 @@
     .danger:hover {
       background-color: #b71c1c;
     }
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 10px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #c8e6c9;
+      text-align: center;
+    }
+    th {
+      background-color: #a5d6a7;
+      color: #1b5e20;
+    }
+    tr:hover {
+      background-color: #f1f8e9;
+    }
+    #map {
+      height: 420px;
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
@@ -83,9 +96,14 @@
 
   <div class="toolbar">
     <button onclick="location.href='/form'">➕ Nuevo Registro</button>
+    <button onclick="exportarExcel()">📤 Exportar a Excel</button>
     <button onclick="location.reload()">🔄 Actualizar</button>
   </div>
 
+  <!-- MAPA -->
+  <div id="map"></div>
+
+  <!-- TABLA -->
   <table>
     <thead>
       <tr>
@@ -93,12 +111,12 @@
         <th>Cereal</th>
         <th>Estado</th>
         <th>Metros</th>
-        <th>Latitud</th>
-        <th>Longitud</th>
+        <th>Lat</th>
+        <th>Lon</th>
         <th>Extraído</th>
         <th>Fecha Registro</th>
         <th>Fecha Extracción</th>
-        <th>Acciones</th>
+        <th>Acción</th>
       </tr>
     </thead>
     <tbody>
@@ -110,13 +128,7 @@
         <td>{{ r.metros }}</td>
         <td>{{ r.lat }}</td>
         <td>{{ r.lon }}</td>
-        <td>
-          {% if r.extraido == 1 %}
-            ✅ Sí
-          {% else %}
-            ❌ No
-          {% endif %}
-        </td>
+        <td>{{ "Sí" if r.extraido == 1 else "No" }}</td>
         <td>{{ r.fecha_registro }}</td>
         <td>{{ r.fecha_extraccion or "-" }}</td>
         <td>
@@ -130,6 +142,30 @@
 </div>
 
 <script>
+  // MAPA
+  const map = L.map('map').setView([-34.6, -58.4], 6);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  {% for r in registros %}
+    {% if r.lat and r.lon %}
+      L.marker([{{ r.lat }}, {{ r.lon }}]).addTo(map)
+        .bindPopup(`
+          <b>QR:</b> {{ r.numero_qr }}<br>
+          <b>Cereal:</b> {{ r.cereal }}<br>
+          <b>Estado:</b> {{ r.estado }}<br>
+          <b>Metros:</b> {{ r.metros }}<br>
+          <b>Extraído:</b> {{ "Sí" if r.extraido == 1 else "No" }}
+        `);
+    {% endif %}
+  {% endfor %}
+
+  function exportarExcel() {
+    window.location.href = "/api/export";
+  }
+
   async function borrar(numero_qr) {
     if (!confirm("¿Eliminar el registro " + numero_qr + "?")) return;
 
