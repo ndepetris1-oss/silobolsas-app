@@ -6,138 +6,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-    body {
-      background-color: #e6f4ea;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      color: #2d5a27;
-    }
-    h2 {
-      color: #1e4620;
-      text-align: center;
-    }
-    label {
-      display: block;
-      margin-top: 12px;
-      font-weight: bold;
-    }
+    body { background:#e6f4ea; font-family:Arial; padding:20px }
+    h2 { text-align:center; color:#1e4620 }
+    label { margin-top:12px; display:block; font-weight:bold }
     input, select, button {
-      padding: 10px;
-      margin-top: 6px;
-      border-radius: 8px;
-      border: 1px solid #5cb85c;
-      width: 100%;
-      box-sizing: border-box;
-      font-size: 15px;
+      width:100%; padding:10px; margin-top:6px;
+      border-radius:8px; border:1px solid #5cb85c;
     }
-    button {
-      background-color: #5cb85c;
-      color: white;
-      border: none;
-      margin-top: 20px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #4cae4c;
-    }
+    button { background:#5cb85c; color:white; margin-top:20px }
   </style>
 </head>
 
 <body>
 
-  <h2>Registro de Silo Bolsa</h2>
+<h2>Registro de Silo Bolsa</h2>
 
-  <label>Número de QR:</label>
-  <input type="text" id="numero_qr" readonly>
+<label>QR</label>
+<input id="numero_qr" readonly>
 
-  <label>Cereal:</label>
-  <select id="cereal">
-    <option value="">Seleccione...</option>
-    <option value="Maíz">Maíz</option>
-    <option value="Soja">Soja</option>
-    <option value="Trigo">Trigo</option>
-    <option value="Girasol">Girasol</option>
-  </select>
+<label>Cereal</label>
+<select id="cereal">
+  <option>Maíz</option>
+  <option>Trigo</option>
+  <option>Soja</option>
+  <option>Girasol</option>
+</select>
 
-  <label>Estado del grano:</label>
-  <select id="estado">
-    <option value="">Seleccione...</option>
-    <option value="Seco">Seco</option>
-    <option value="Humedo">Húmedo</option>
-  </select>
+<label>Estado</label>
+<select id="estado">
+  <option>Seco</option>
+  <option>Humedo</option>
+</select>
 
-  <label>Metros lineales:</label>
-  <input type="number" id="metros" placeholder="Ej: 75">
+<label>Metros</label>
+<input type="number" id="metros">
 
-  <label>Extracción:</label>
-  <select id="extraccion">
-    <option value="NO">NO</option>
-    <option value="SI">SI</option>
-  </select>
+<input type="hidden" id="fecha_confeccion">
 
-  <button onclick="enviar()">Registrar</button>
+<button onclick="enviar()">Registrar</button>
 
-  <script>
-    // Obtener QR desde la URL (?id=SB0001)
-    const params = new URLSearchParams(window.location.search);
-    const numero_qr = params.get("id") || "";
-    document.getElementById("numero_qr").value = numero_qr;
+<script>
+const params = new URLSearchParams(location.search);
+document.getElementById("numero_qr").value = params.get("id") || "";
 
-    async function enviar() {
-      try {
-        if (!numero_qr) {
-          alert("QR no válido");
-          return;
-        }
+// 🔑 Fecha REAL de confección (campo)
+document.getElementById("fecha_confeccion").value =
+  new Date().toISOString();
 
-        const cereal = document.getElementById("cereal").value;
-        const estado = document.getElementById("estado").value;
-        const metros = parseInt(document.getElementById("metros").value);
-        const extraccion = document.getElementById("extraccion").value;
+async function enviar(){
+  const pos = await new Promise((ok,err)=>
+    navigator.geolocation.getCurrentPosition(ok,err)
+  );
 
-        if (!cereal || !estado || !metros) {
-          alert("⚠️ Complete todos los campos");
-          return;
-        }
+  const data = {
+    numero_qr: numero_qr.value,
+    cereal: cereal.value,
+    estado: estado.value,
+    metros: metros.value,
+    lat: pos.coords.latitude,
+    lon: pos.coords.longitude,
+    fecha_confeccion: fecha_confeccion.value
+  };
 
-        const pos = await new Promise((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject)
-        );
+  await fetch("/api/save",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  });
 
-        const data = {
-          numero_qr: numero_qr,
-          cereal: cereal,
-          estado: estado,
-          metros: metros,
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          extraido: extraccion === "SI" ? 1 : 0,
-          fecha_extraccion: extraccion === "SI"
-            ? new Date().toISOString()
-            : null
-        };
-
-        const res = await fetch("/api/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-
-        const resp = await res.json();
-
-        if (resp.status === "ok") {
-          alert("✅ Registro guardado correctamente");
-        } else {
-          alert("❌ Error al guardar los datos");
-        }
-
-      } catch (err) {
-        alert("❌ Error: " + err.message);
-      }
-    }
-  </script>
+  alert("Registro guardado");
+}
+</script>
 
 </body>
 </html>
