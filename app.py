@@ -36,7 +36,6 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # Tabla principal de silos
     c.execute("""
         CREATE TABLE IF NOT EXISTS silos (
             numero_qr TEXT PRIMARY KEY,
@@ -53,7 +52,6 @@ def init_db():
         )
     """)
 
-    # Histórico de análisis comercial
     c.execute("""
         CREATE TABLE IF NOT EXISTS analisis_comercial (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,7 +91,6 @@ def panel():
             lon,
             extraido,
             fecha_registro AS fecha_confeccion,
-            fecha_extraccion,
             factor,
             grado
         FROM silos
@@ -111,24 +108,43 @@ def panel():
 @app.route("/api/save", methods=["POST"])
 def save():
     data = request.get_json()
+    conn = get_db()
 
-    try:
-        conn = get_db()
+    # Verificar si ya existe
+    existe = conn.execute(
+        "SELECT fecha_registro FROM silos WHERE numero_qr = ?",
+        (data["numero_qr"],)
+    ).fetchone()
 
-        # INSERTA solo la primera vez
+    if existe:
+        # SOLO actualizar datos operativos, NO fecha
+        conn.execute("""
+            UPDATE silos
+            SET cereal = ?,
+                estado = ?,
+                metros = ?,
+                lat = ?,
+                lon = ?,
+                extraido = ?,
+                fecha_extraccion = ?
+            WHERE numero_qr = ?
+        """, (
+            data.get("cereal"),
+            data.get("estado"),
+            data.get("metros"),
+            data.get("lat"),
+            data.get("lon"),
+            data.get("extraido", 0),
+            data.get("fecha_extraccion"),
+            data["numero_qr"]
+        ))
+    else:
+        # INSERT REAL = fecha de confección
         conn.execute("""
             INSERT INTO silos (
                 numero_qr, cereal, estado, metros, lat, lon,
                 extraido, fecha_registro, fecha_extraccion
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(numero_qr) DO UPDATE SET
-                cereal=excluded.cereal,
-                estado=excluded.estado,
-                metros=excluded.metros,
-                lat=excluded.lat,
-                lon=excluded.lon,
-                extraido=excluded.extraido,
-                fecha_extraccion=excluded.fecha_extraccion
         """, (
             data["numero_qr"],
             data.get("cereal"),
@@ -137,16 +153,13 @@ def save():
             data.get("lat"),
             data.get("lon"),
             data.get("extraido", 0),
-            datetime.now().isoformat(),   # fecha confección SOLO en insert
+            datetime.now().isoformat(),
             data.get("fecha_extraccion")
         ))
 
-        conn.commit()
-        conn.close()
-        return jsonify({"status": "ok"})
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
 
 # =========================
 # CÁLCULOS MAÍZ
@@ -181,6 +194,18 @@ def analisis():
     cereal = normalizar(data["cereal"])
     datos = data["datos"]
 
+    conn = get_db()
+
+    # Verificar que el silo exista
+    silo = conn.execute(
+        "SELECT numero_qr FROM silos WHERE numero_qr = ?",
+        (numero_qr,)
+    ).fetchone()
+
+    if not silo:
+        conn.close()
+        return jsonify({"status": "error", "message": "Silo inexistente"}), 400
+
     factor = None
     grado = None
 
@@ -190,8 +215,6 @@ def analisis():
 
         factor = calcular_factor_maiz(humedad)
         grado = calcular_grado_maiz(ph)
-
-    conn = get_db()
 
     # Guardar histórico
     conn.execute("""
@@ -223,40 +246,19 @@ def analisis():
     })
 
 # =========================
-# API – BORRADOS
-# =========================
-@app.route("/api/delete", methods=["POST"])
-def delete():
-    numero_qr = request.json.get("numero_qr")
-    conn = get_db()
-    conn.execute("DELETE FROM silos WHERE numero_qr = ?", (numero_qr,))
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-
-@app.route("/api/delete_all", methods=["POST"])
-def delete_all():
-    conn = get_db()
-    conn.execute("DELETE FROM silos")
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-# =========================
-# EXPORTAR EXCEL
+# EXPORT EXCEL
 # =========================
 @app.route("/api/export")
 def export_excel():
     conn = get_db()
     rows = conn.execute("""
         SELECT
-            numero_qr      AS QR,
-            cereal         AS Cereal,
-            estado         AS Estado,
-            metros         AS Metros,
-            factor         AS Factor,
-            grado          AS Grado,
+            numero_qr AS QR,
+            cereal AS Cereal,
+            estado AS Estado,
+            metros AS Metros,
+            factor AS Factor,
+            grado AS Grado,
             fecha_registro AS Fecha_Confeccion
         FROM silos
         ORDER BY
@@ -266,20 +268,19 @@ def export_excel():
     conn.close()
 
     if not rows:
-        return "No hay datos para exportar", 400
+        return "No hay datos", 400
 
     df = pd.DataFrame(rows, columns=rows[0].keys())
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Silo Bolsas")
+        df.to_excel(writer, index=False)
 
     output.seek(0)
-
     return send_file(
         output,
         as_attachment=True,
-        download_name="silo_bolsas.xlsx",
+        download_name="silos.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
