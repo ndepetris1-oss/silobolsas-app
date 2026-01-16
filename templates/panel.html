@@ -48,11 +48,9 @@ button {
 }
 button:hover { background-color: #2e7d32; }
 .danger { background-color: #d32f2f; }
-.danger:hover { background-color: #b71c1c; }
 
 #map {
-  height: 460px;
-  width: 100%;
+  height: 420px;
   border-radius: 12px;
   margin-bottom: 15px;
 }
@@ -67,11 +65,17 @@ th, td {
   border-bottom: 1px solid #c8e6c9;
   text-align: center;
 }
-th {
-  background-color: #a5d6a7;
-  color: #1b5e20;
+th { background-color: #a5d6a7; }
+
+.estado-humedo {
+  background:#ffebee;
+  color:#c62828;
+  font-weight:bold;
 }
-tr:hover { background-color: #f1f8e9; cursor:pointer }
+.estado-seco {
+  background:#e8f5e9;
+  color:#2e7d32;
+}
 
 .alerta-OK { color:#2e7d32 }
 .alerta-ATENCION { color:#f9a825 }
@@ -84,8 +88,8 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
   background:rgba(0,0,0,.5); z-index:999
 }
 .modal-content {
-  background:white; max-width:560px; margin:5% auto;
-  padding:20px; border-radius:14px
+  background:white; max-width:600px;
+  margin:4% auto; padding:20px; border-radius:14px
 }
 .modal label { display:block; margin-top:8px }
 .modal input { width:100%; padding:6px }
@@ -99,11 +103,8 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
 <div class="container">
 
 <div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo Registro</button>
-  <button onclick="exportarExcel()">📤 Exportar a Excel</button>
-  <button onclick="centrarUsuario()">📍 Mi ubicación</button>
-  <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
-  <button class="danger" onclick="borrarTodo()">🧹 Limpiar base (pruebas)</button>
+  <button onclick="location.href='/form'">➕ Nuevo registro</button>
+  <button onclick="window.location.href='/api/export'">📤 Exportar Excel</button>
 </div>
 
 <div id="map"></div>
@@ -113,30 +114,25 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
 <tr>
 <th>QR</th>
 <th>Cereal</th>
+<th>Estado</th>
 <th>Fecha confección</th>
 <th>Días sin muestra</th>
 <th>Factor</th>
 <th>Alerta</th>
-<th>Acción</th>
 </tr>
 </thead>
 <tbody>
 {% for r in registros %}
-<tr onclick="abrirModal(
-  '{{ r.numero_qr }}',
-  '{{ r.cereal }}',
-  '{{ r.fecha_confeccion or '' }}',
-  {{ r.dias_desde_ultima_muestra or 0 }}
-)">
+<tr onclick="abrirModal('{{ r.numero_qr }}','{{ r.cereal }}')">
 <td>{{ r.numero_qr }}</td>
 <td>{{ r.cereal }}</td>
-<td>{{ r.fecha_confeccion or "-" }}</td>
-<td>{{ r.dias_desde_ultima_muestra or "-" }}</td>
+<td class="{{ 'estado-humedo' if r.estado == 'Humedo' else 'estado-seco' }}">
+  {{ r.estado }}
+</td>
+<td>{{ r.fecha_confeccion }}</td>
+<td>{{ r.dias_sin_muestra or "-" }}</td>
 <td>{{ r.factor or "-" }}</td>
 <td class="alerta-{{ r.alerta or 'OK' }}">{{ r.alerta or "OK" }}</td>
-<td>
-  <button class="danger" onclick="event.stopPropagation(); borrar('{{ r.numero_qr }}')">🗑️</button>
-</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -144,199 +140,122 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
 
 </div>
 
-<!-- MODAL -->
+<!-- MODAL ANALISIS COMERCIAL -->
 <div id="modal" class="modal">
 <div class="modal-content">
 <h3 id="titulo"></h3>
-<p>Días desde confección: <b id="dias"></b></p>
 
-<form id="formCalidad">
+<form id="formAnalisis">
 <input type="hidden" name="numero_qr" id="qr">
 
-<label>Temperatura (°C)</label>
-<input name="temperatura" type="number" step="0.1">
-
-<label>Humedad (%)</label>
-<input name="humedad" type="number" step="0.1">
-
 <div id="campos"></div>
-<br>
 
-<button type="submit">💾 Guardar muestra</button>
+<br>
+<button type="submit">💾 Guardar análisis</button>
 <button type="button" onclick="cerrar()">Cancelar</button>
 </form>
+
+<div id="resultado"></div>
 </div>
 </div>
 
 <script>
-/* ================= MAPA ================= */
+/* =============== MAPA =============== */
 const map = L.map('map');
 L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '© Esri' }
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 ).addTo(map);
 
 const bounds = [];
-
 {% for r in registros %}
 {% if r.lat and r.lon %}
 L.marker([{{ r.lat }},{{ r.lon }}])
 .addTo(map)
-.bindPopup("{{ r.numero_qr }} · {{ r.cereal }}")
-.on("click",()=>abrirModal(
-  "{{ r.numero_qr }}",
-  "{{ r.cereal }}",
-  "{{ r.fecha_confeccion or '' }}",
-  {{ r.dias_desde_ultima_muestra or 0 }}
-));
+.bindPopup("{{ r.numero_qr }} · {{ r.cereal }}");
 bounds.push([{{ r.lat }},{{ r.lon }}]);
 {% endif %}
 {% endfor %}
 
-if (bounds.length) map.fitBounds(bounds,{padding:[30,30]});
-else map.setView([-34.6,-58.4],6);
+if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 
-/* ================= TOOLBAR ================= */
-function exportarExcel(){ window.location.href="/api/export"; }
+/* =============== MODAL =============== */
+let cerealActual = "";
 
-function centrarUsuario(){
-  if(!navigator.geolocation) return alert("Geolocalización no soportada");
-  navigator.geolocation.getCurrentPosition(p=>{
-    map.setView([p.coords.latitude,p.coords.longitude],16);
-    L.circleMarker([p.coords.latitude,p.coords.longitude],{radius:8}).addTo(map);
-  });
-}
-
-function pantallaCompleta(){
-  const el=document.getElementById("map");
-  if(el.requestFullscreen){
-    el.requestFullscreen();
-    setTimeout(()=>map.invalidateSize(),300);
-  }
-}
-
-/* ================= MODAL ================= */
-let cerealActual="", diasUlt=0;
-
-function abrirModal(qr,cereal,fecha,dias){
-  cerealActual=cereal.toLowerCase();
-  diasUlt=dias;
+function abrirModal(qr, cereal) {
+  cerealActual = cereal.toLowerCase();
   document.getElementById("modal").style.display="block";
-  document.getElementById("qr").value=qr;
-  document.getElementById("titulo").innerText=cereal+" · "+qr;
+  document.getElementById("qr").value = qr;
+  document.getElementById("titulo").innerText =
+    "Análisis comercial · " + cereal + " · " + qr;
 
-  let diasConf="-";
-  if(fecha){
-    const d1=new Date(fecha), d2=new Date();
-    if(!isNaN(d1)) diasConf=Math.floor((d2-d1)/(1000*60*60*24));
-  }
-  document.getElementById("dias").innerText=diasConf;
+  document.getElementById("campos").innerHTML =
+    camposAnalisis(cerealActual);
 
-  document.getElementById("campos").innerHTML=camposPorCereal(cerealActual);
+  document.getElementById("resultado").innerHTML = "";
 }
 
-function cerrar(){ document.getElementById("modal").style.display="none"; }
+function cerrar() {
+  document.getElementById("modal").style.display="none";
+}
 
-/* ================= CAMPOS ================= */
-function camposPorCereal(c){
-if(c=="maiz") return `
+/* =============== CAMPOS ANALISIS =============== */
+function camposAnalisis(c) {
+
+if(c === "maiz") return `
+<label>Humedad (%)</label><input name="humedad" type="number" step="0.1">
 <label>Peso hectolítrico</label><input name="ph" type="number" step="0.1">
-<label>Granos dañados %</label><input name="danados" type="number" step="0.1">
-<label>Quebrados %</label><input name="quebrados" type="number" step="0.1">
-<label>Materia extraña %</label><input name="extraña" type="number" step="0.1">
+<label>Granos dañados (%)</label><input name="danados" type="number" step="0.1">
+<label>Quebrados (%)</label><input name="quebrados" type="number" step="0.1">
+<label>Materia extraña (%)</label><input name="extraña" type="number" step="0.1">
 `;
-if(c=="trigo") return `
+
+if(c === "soja") return `
+<label>Humedad (%)</label><input name="humedad" type="number" step="0.1">
+<label>Materia extraña (%)</label><input name="extraña" type="number" step="0.1">
+<label>Granos dañados (%)</label><input name="danados" type="number" step="0.1">
+<label>Granos verdes (%)</label><input name="verdes" type="number" step="0.1">
+`;
+
+if(c === "trigo") return `
+<label>Humedad (%)</label><input name="humedad" type="number" step="0.1">
 <label>Peso hectolítrico</label><input name="ph" type="number" step="0.1">
-<label>Dañados totales %</label><input name="danados_total" type="number" step="0.1">
-<label>Carbón %</label><input name="carbon" type="number" step="0.1">
-<label>Panza blanca %</label><input name="panza" type="number" step="0.1">
-<label>Granos quebrados %</label><input name="quebrados" type="number" step="0.1">
-<label>Granos picados %</label><input name="picados" type="number" step="0.1">
+<label>Dañados totales (%)</label><input name="danados" type="number" step="0.1">
+<label>Panza blanca (%)</label><input name="panza" type="number" step="0.1">
+<label>Carbón (%)</label><input name="carbon" type="number" step="0.1">
 `;
-if(c=="soja") return `
-<label>Materia extraña %</label><input name="extraña" type="number" step="0.1">
-<label>Granos dañados %</label><input name="danados" type="number" step="0.1">
-<label>Granos quebrados %</label><input name="quebrados" type="number" step="0.1">
+
+if(c === "girasol") return `
+<label>Humedad (%)</label><input name="humedad" type="number" step="0.1">
+<label>Materia extraña (%)</label><input name="extraña" type="number" step="0.1">
+<label>Granos dañados (%)</label><input name="danados" type="number" step="0.1">
 `;
-if(c=="girasol") return `
-<label>Materia extraña %</label><input name="extraña" type="number" step="0.1">
-<label>Granos dañados %</label><input name="danados" type="number" step="0.1">
-`;
+
 return "";
 }
 
-/* ================= TAS ================= */
-const TAS_MAIZ={40:{24:1,22:3,20:4,18:9,16:17,14:27},35:{24:2,22:3,20:5,18:11,16:19,14:32},
-30:{24:2,22:4,20:7,18:15,16:23,14:48},25:{24:4,22:7,20:12,18:28,16:45,14:90},
-20:{24:8,22:12,20:22,18:49,16:80,14:170},15:{24:16,22:22,20:39,18:85,16:160,14:320},
-10:{24:26,22:35,20:60,18:140,16:265,14:500},5:{24:50,22:90,20:150,18:350,16:650,14:1000}};
+/* =============== GUARDAR ANALISIS =============== */
+document.getElementById("formAnalisis").onsubmit = async e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
 
-const TAS_TRIGO={40:{24:1,22:1,20:2,18:2,16:3,14:4},35:{24:1,22:4,20:10,18:13,16:17,14:25},
-30:{24:1,22:5,20:11,18:15,16:21,14:30},25:{24:1,22:7,20:12,18:18,16:35,14:40},
-20:{24:3,22:8,20:13,18:30,16:54,14:80},15:{24:8,22:10,20:20,18:41,16:56,14:105},
-10:{24:10,22:15,20:29,18:50,16:100,14:200},5:{24:13,22:20,20:36,18:73,16:180,14:250}};
+  const res = await fetch("/api/analisis", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      numero_qr: data.numero_qr,
+      cereal: cerealActual,
+      datos: data
+    })
+  });
 
-function obtenerTAS(tabla,temp,hum){
-  const temps=Object.keys(tabla).map(Number).sort((a,b)=>b-a);
-  const hums=[24,22,20,18,16,14];
-  const t=temps.find(v=>temp>=v)||temps.at(-1);
-  const h=hums.find(v=>hum>=v)||hums.at(-1);
-  return tabla[t][h];
-}
+  const r = await res.json();
 
-/* ================= GUARDAR ================= */
-document.getElementById("formCalidad").onsubmit=async e=>{
-e.preventDefault();
-const d=Object.fromEntries(new FormData(e.target));
-let alerta="OK";
-
-if(cerealActual=="maiz"){
-  const tas=obtenerTAS(TAS_MAIZ,+d.temperatura,+d.humedad);
-  const c=diasUlt/tas;
-  if(c>=0.9) alerta="URGENTE";
-  else if(c>=0.7) alerta="ALERTA";
-  else if(c>=0.5) alerta="ATENCION";
-}
-
-if(cerealActual=="trigo"){
-  const tas=obtenerTAS(TAS_TRIGO,+d.temperatura,+d.humedad);
-  const c=diasUlt/tas;
-  if(c>=0.9) alerta="URGENTE";
-  else if(c>=0.7) alerta="ALERTA";
-  else if(c>=0.5) alerta="ATENCION";
-}
-
-await fetch("/api/calidad",{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({...d,alerta})
-});
-
-alert("Muestra guardada · Alerta: "+alerta);
-cerrar();
+  document.getElementById("resultado").innerHTML = `
+    <hr>
+    <b>Grado:</b> ${r.grado}<br>
+    <b>Factor:</b> ${r.factor}
+  `;
 };
-
-/* ================= BORRADOS ================= */
-async function borrar(qr){
-if(!confirm("¿Eliminar "+qr+"?"))return;
-await fetch("/api/delete",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({numero_qr:qr})});
-location.reload();
-}
-
-async function borrarTodo(){
-if(!confirm("⚠️ ATENCIÓN\nSe eliminarán TODOS los registros.\n¿Continuar?")) return;
-if(!confirm("⚠️ CONFIRMACIÓN FINAL\nEsta acción NO se puede deshacer.\n¿Seguro?")) return;
-
-const res=await fetch("/api/delete_all",{method:"POST"});
-const r=await res.json();
-
-if(r.status==="ok"){
-  alert("Base limpiada correctamente");
-  location.reload();
-}else{
-  alert("Error al limpiar la base");
-}
-}
 </script>
 
 </body>
