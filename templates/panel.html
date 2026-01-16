@@ -84,7 +84,7 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
   background:rgba(0,0,0,.5); z-index:999
 }
 .modal-content {
-  background:white; max-width:520px; margin:5% auto;
+  background:white; max-width:560px; margin:5% auto;
   padding:20px; border-radius:14px
 }
 .modal label { display:block; margin-top:8px }
@@ -113,6 +113,7 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
 <tr>
 <th>QR</th>
 <th>Cereal</th>
+<th>Fecha confección</th>
 <th>Días sin muestra</th>
 <th>Factor</th>
 <th>Alerta</th>
@@ -124,11 +125,12 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
 <tr onclick="abrirModal(
   '{{ r.numero_qr }}',
   '{{ r.cereal }}',
-  '{{ r.fecha_confeccion }}',
+  '{{ r.fecha_confeccion or '' }}',
   {{ r.dias_desde_ultima_muestra or 0 }}
 )">
 <td>{{ r.numero_qr }}</td>
 <td>{{ r.cereal }}</td>
+<td>{{ r.fecha_confeccion or "-" }}</td>
 <td>{{ r.dias_desde_ultima_muestra or "-" }}</td>
 <td>{{ r.factor or "-" }}</td>
 <td class="alerta-{{ r.alerta or 'OK' }}">{{ r.alerta or "OK" }}</td>
@@ -184,7 +186,7 @@ L.marker([{{ r.lat }},{{ r.lon }}])
 .on("click",()=>abrirModal(
   "{{ r.numero_qr }}",
   "{{ r.cereal }}",
-  "{{ r.fecha_confeccion }}",
+  "{{ r.fecha_confeccion or '' }}",
   {{ r.dias_desde_ultima_muestra or 0 }}
 ));
 bounds.push([{{ r.lat }},{{ r.lon }}]);
@@ -223,9 +225,12 @@ function abrirModal(qr,cereal,fecha,dias){
   document.getElementById("qr").value=qr;
   document.getElementById("titulo").innerText=cereal+" · "+qr;
 
-  const d1=new Date(fecha), d2=new Date();
-  document.getElementById("dias").innerText =
-    Math.floor((d2-d1)/(1000*60*60*24));
+  let diasConf="-";
+  if(fecha){
+    const d1=new Date(fecha), d2=new Date();
+    if(!isNaN(d1)) diasConf=Math.floor((d2-d1)/(1000*60*60*24));
+  }
+  document.getElementById("dias").innerText=diasConf;
 
   document.getElementById("campos").innerHTML=camposPorCereal(cerealActual);
 }
@@ -245,6 +250,8 @@ if(c=="trigo") return `
 <label>Dañados totales %</label><input name="danados_total" type="number" step="0.1">
 <label>Carbón %</label><input name="carbon" type="number" step="0.1">
 <label>Panza blanca %</label><input name="panza" type="number" step="0.1">
+<label>Granos quebrados %</label><input name="quebrados" type="number" step="0.1">
+<label>Granos picados %</label><input name="picados" type="number" step="0.1">
 `;
 if(c=="soja") return `
 <label>Materia extraña %</label><input name="extraña" type="number" step="0.1">
