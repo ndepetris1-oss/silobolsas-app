@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3
 from datetime import datetime
+import pandas as pd
+import io
 
 app = Flask(__name__)
 DB_NAME = "silos.db"
-
 
 # ---------- DB ----------
 def get_db():
@@ -35,7 +36,6 @@ def init_db():
 
 init_db()
 
-
 # ---------- VISTAS ----------
 @app.route("/")
 @app.route("/form")
@@ -46,12 +46,25 @@ def form():
 @app.route("/panel")
 def panel():
     conn = get_db()
-    registros = conn.execute(
-        "SELECT * FROM silos ORDER BY fecha_registro DESC"
-    ).fetchall()
+    registros = conn.execute("""
+        SELECT
+            numero_qr,
+            cereal,
+            estado,
+            metros,
+            lat,
+            lon,
+            extraido,
+            fecha_registro AS fecha_confeccion,
+            fecha_extraccion
+        FROM silos
+        ORDER BY
+            CASE WHEN estado = 'Humedo' THEN 0 ELSE 1 END,
+            fecha_registro DESC
+    """).fetchall()
     conn.close()
-    return render_template("panel.html", registros=registros)
 
+    return render_template("panel.html", registros=registros)
 
 # ---------- API ----------
 @app.route("/api/save", methods=["POST"])
@@ -81,7 +94,7 @@ def save():
             data.get("lat"),
             data.get("lon"),
             data.get("extraido", 0),
-            datetime.now().isoformat(),
+            datetime.now().isoformat(),   # fecha confección
             data.get("fecha_extraccion")
         ))
         conn.commit()
@@ -89,14 +102,6 @@ def save():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route("/api/data")
-def data():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM silos").fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
 
 
 @app.route("/api/delete", methods=["POST"])
@@ -107,6 +112,56 @@ def delete():
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/delete_all", methods=["POST"])
+def delete_all():
+    conn = get_db()
+    conn.execute("DELETE FROM silos")
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+# ---------- EXPORT EXCEL (SOLUCIÓN DEFINITIVA) ----------
+@app.route("/api/export")
+def export_excel():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT
+            numero_qr        AS QR,
+            cereal           AS Cereal,
+            estado           AS Estado,
+            metros           AS Metros,
+            lat              AS Latitud,
+            lon              AS Longitud,
+            extraido         AS Extraido,
+            fecha_registro   AS Fecha_Confeccion,
+            fecha_extraccion AS Fecha_Extraccion
+        FROM silos
+        ORDER BY
+            CASE WHEN estado = 'Humedo' THEN 0 ELSE 1 END,
+            fecha_registro DESC
+    """).fetchall()
+    conn.close()
+
+    if not rows:
+        return "No hay datos para exportar", 400
+
+    df = pd.DataFrame(rows, columns=rows[0].keys())
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Silo Bolsas")
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="silo_bolsas.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 # ---------- MAIN ----------
