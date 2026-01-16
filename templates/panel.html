@@ -1,64 +1,240 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="utf-8">
-<title>Panel</title>
+  <meta charset="UTF-8">
+  <title>Panel de Silo Bolsas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e8f5e9;
+      margin: 0;
+      color: #2e7d32;
+    }
+    header {
+      background-color: #2e7d32;
+      color: white;
+      text-align: center;
+      padding: 14px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .container {
+      width: 95%;
+      margin: 15px auto;
+      background: white;
+      border-radius: 14px;
+      padding: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    button {
+      background-color: #43a047;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background-color: #2e7d32; }
+    .danger { background-color: #d32f2f; }
+
+    #map {
+      height: 420px;
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #c8e6c9;
+      text-align: center;
+    }
+    th {
+      background-color: #a5d6a7;
+      color: #1b5e20;
+    }
+    .humedo {
+      background-color: #ffebee;
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    /* MODAL */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background: white;
+      max-width: 420px;
+      margin: 8% auto;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .modal-content label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .modal-content input {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
+    }
+  </style>
 </head>
+
 <body>
 
-<table border="1">
-<tr>
-<th>QR</th><th>Cereal</th><th>Estado</th>
-<th>Fecha confección</th><th>Grado</th><th>Factor</th>
-</tr>
-{% for r in registros %}
-<tr onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">
-<td>{{r.numero_qr}}</td>
-<td>{{r.cereal}}</td>
-<td>{{r.estado}}</td>
-<td>{{r.fecha_confeccion}}</td>
-<td>{{r.grado or "-"}}</td>
-<td>{{r.factor or "-"}}</td>
-</tr>
-{% endfor %}
-</table>
+<header>PANEL DE CONTROL · SILO BOLSAS</header>
 
-<div id="modal" style="display:none">
-<form id="f">
-<input type="hidden" name="numero_qr">
-<label>PH</label><input name="ph">
-<label>Dañados</label><input name="danados">
-<label>Quebrados</label><input name="quebrados">
-<label>Materia extraña</label><input name="me">
-<button>Guardar</button>
-</form>
-<div id="res"></div>
+<div class="container">
+
+  <!-- BOTONES -->
+  <div class="toolbar">
+    <button onclick="location.href='/form'">➕ Nuevo registro</button>
+    <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
+    <button onclick="centrarUsuario()">📍 Mi ubicación</button>
+    <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+  </div>
+
+  <!-- MAPA -->
+  <div id="map"></div>
+
+  <!-- TABLA -->
+  <table>
+    <thead>
+      <tr>
+        <th>QR</th>
+        <th>Cereal</th>
+        <th>Estado</th>
+        <th>Fecha confección</th>
+        <th>Grado</th>
+        <th>Factor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in registros %}
+      <tr onclick="abrirAnalisis('{{r.numero_qr}}','{{r.cereal}}')">
+        <td>{{ r.numero_qr }}</td>
+        <td>{{ r.cereal }}</td>
+        <td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{ r.estado }}</td>
+        <td>{{ r.fecha_confeccion }}</td>
+        <td>{{ r.grado or '-' }}</td>
+        <td>{{ r.factor or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+
+<!-- MODAL ANALISIS -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <h3 id="titulo"></h3>
+
+    <form id="formAnalisis">
+      <input type="hidden" name="numero_qr" id="qr">
+
+      <label>Humedad (%)</label>
+      <input name="humedad">
+
+      <label>Peso hectolítrico</label>
+      <input name="ph">
+
+      <label>Dañados (%)</label>
+      <input name="danados">
+
+      <label>Quebrados (%)</label>
+      <input name="quebrados">
+
+      <label>Materia extraña (%)</label>
+      <input name="me">
+
+      <br><br>
+      <button type="submit">💾 Guardar análisis</button>
+      <button type="button" onclick="cerrar()">Cancelar</button>
+    </form>
+
+    <div id="resultado"></div>
+  </div>
 </div>
 
 <script>
-let cereal=""
-function abrir(q,c){
-  cereal=c
-  f.numero_qr.value=q
-  modal.style.display="block"
-}
+  /* MAPA */
+  const map = L.map('map');
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '© Esri' }
+  ).addTo(map);
 
-f.onsubmit=async e=>{
-  e.preventDefault()
-  const d=Object.fromEntries(new FormData(f))
-  const r=await fetch("/api/analisis",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      numero_qr:d.numero_qr,
-      cereal:cereal,
-      datos:d
-    })
-  })
-  const j=await r.json()
-  res.innerHTML=`Grado: ${j.grado} | Factor: ${j.factor}`
-  setTimeout(()=>location.reload(),800)
-}
+  map.setView([-34.6, -58.4], 6);
+
+  function centrarUsuario() {
+    navigator.geolocation.getCurrentPosition(p=>{
+      map.setView([p.coords.latitude,p.coords.longitude],16);
+    });
+  }
+  function pantallaCompleta() {
+    document.getElementById("map").requestFullscreen();
+  }
+
+  /* MODAL */
+  let cerealActual = "";
+
+  function abrirAnalisis(qr,cereal){
+    cerealActual = cereal;
+    document.getElementById("qr").value = qr;
+    document.getElementById("titulo").innerText =
+      `Análisis · ${cereal} · ${qr}`;
+    document.getElementById("modal").style.display = "block";
+  }
+
+  function cerrar(){
+    document.getElementById("modal").style.display = "none";
+  }
+
+  document.getElementById("formAnalisis").onsubmit = async e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+
+    const r = await fetch("/api/analisis",{
+      method:"POST",
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        numero_qr:data.numero_qr,
+        cereal:cerealActual,
+        datos:data
+      })
+    });
+
+    const j = await r.json();
+    document.getElementById("resultado").innerHTML =
+      `<b>Grado:</b> ${j.grado} | <b>Factor:</b> ${j.factor}`;
+
+    setTimeout(()=>location.reload(),800);
+  };
 </script>
 
 </body>
