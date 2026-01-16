@@ -9,6 +9,21 @@ app = Flask(__name__)
 DB_NAME = "silos.db"
 
 # =========================
+# UTILIDADES
+# =========================
+def normalizar(texto):
+    if not texto:
+        return ""
+    return (
+        texto.lower()
+        .replace("á","a")
+        .replace("é","e")
+        .replace("í","i")
+        .replace("ó","o")
+        .replace("ú","u")
+    )
+
+# =========================
 # DB
 # =========================
 def get_db():
@@ -38,7 +53,7 @@ def init_db():
         )
     """)
 
-    # Tabla de análisis comercial (histórico)
+    # Histórico de análisis comercial
     c.execute("""
         CREATE TABLE IF NOT EXISTS analisis_comercial (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,14 +99,14 @@ def panel():
         FROM silos
         ORDER BY
             CASE WHEN estado = 'Humedo' THEN 0 ELSE 1 END,
-            fecha_registro DESC
+            fecha_registro ASC
     """).fetchall()
     conn.close()
 
     return render_template("panel.html", registros=registros)
 
 # =========================
-# API – REGISTRO SILO
+# API – REGISTRO DE SILO
 # =========================
 @app.route("/api/save", methods=["POST"])
 def save():
@@ -99,6 +114,8 @@ def save():
 
     try:
         conn = get_db()
+
+        # INSERTA solo la primera vez
         conn.execute("""
             INSERT INTO silos (
                 numero_qr, cereal, estado, metros, lat, lon,
@@ -120,17 +137,19 @@ def save():
             data.get("lat"),
             data.get("lon"),
             data.get("extraido", 0),
-            datetime.now().isoformat(),   # fecha confección
+            datetime.now().isoformat(),   # fecha confección SOLO en insert
             data.get("fecha_extraccion")
         ))
+
         conn.commit()
         conn.close()
         return jsonify({"status": "ok"})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # =========================
-# API – ANÁLISIS COMERCIAL
+# CÁLCULOS MAÍZ
 # =========================
 def calcular_factor_maiz(humedad):
     f = 1.0
@@ -151,13 +170,15 @@ def calcular_grado_maiz(ph):
     else:
         return 3
 
-
+# =========================
+# API – ANÁLISIS COMERCIAL
+# =========================
 @app.route("/api/analisis", methods=["POST"])
 def analisis():
     data = request.get_json()
 
     numero_qr = data["numero_qr"]
-    cereal = data["cereal"]
+    cereal = normalizar(data["cereal"])
     datos = data["datos"]
 
     factor = None
@@ -223,24 +244,24 @@ def delete_all():
     return jsonify({"status": "ok"})
 
 # =========================
-# EXPORT EXCEL
+# EXPORTAR EXCEL
 # =========================
 @app.route("/api/export")
 def export_excel():
     conn = get_db()
     rows = conn.execute("""
         SELECT
-            numero_qr        AS QR,
-            cereal           AS Cereal,
-            estado           AS Estado,
-            metros           AS Metros,
-            factor           AS Factor,
-            grado            AS Grado,
-            fecha_registro   AS Fecha_Confeccion
+            numero_qr      AS QR,
+            cereal         AS Cereal,
+            estado         AS Estado,
+            metros         AS Metros,
+            factor         AS Factor,
+            grado          AS Grado,
+            fecha_registro AS Fecha_Confeccion
         FROM silos
         ORDER BY
             CASE WHEN estado = 'Humedo' THEN 0 ELSE 1 END,
-            fecha_registro DESC
+            fecha_registro ASC
     """).fetchall()
     conn.close()
 
