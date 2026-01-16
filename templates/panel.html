@@ -103,6 +103,7 @@ tr:hover { background-color: #f1f8e9; cursor:pointer }
   <button onclick="exportarExcel()">📤 Exportar a Excel</button>
   <button onclick="centrarUsuario()">📍 Mi ubicación</button>
   <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+  <button class="danger" onclick="borrarTodo()">🧹 Limpiar base (pruebas)</button>
 </div>
 
 <div id="map"></div>
@@ -308,10 +309,26 @@ alert("Muestra guardada · Alerta: "+alerta);
 cerrar();
 };
 
+/* ================= BORRADOS ================= */
 async function borrar(qr){
 if(!confirm("¿Eliminar "+qr+"?"))return;
 await fetch("/api/delete",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({numero_qr:qr})});
 location.reload();
+}
+
+async function borrarTodo(){
+if(!confirm("⚠️ ATENCIÓN\nSe eliminarán TODOS los registros.\n¿Continuar?")) return;
+if(!confirm("⚠️ CONFIRMACIÓN FINAL\nEsta acción NO se puede deshacer.\n¿Seguro?")) return;
+
+const res=await fetch("/api/delete_all",{method:"POST"});
+const r=await res.json();
+
+if(r.status==="ok"){
+  alert("Base limpiada correctamente");
+  location.reload();
+}else{
+  alert("Error al limpiar la base");
+}
 }
 </script>
 
