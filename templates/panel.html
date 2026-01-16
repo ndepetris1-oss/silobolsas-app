@@ -2,31 +2,83 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Silo Bolsas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Silo Bolsas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body { margin:0; font-family:Arial; background:#e8f5e9; color:#1b5e20 }
-header { background:#2e7d32; color:white; padding:14px; text-align:center; font-size:20px }
-.container { width:95%; margin:15px auto; background:white; border-radius:14px; padding:15px }
+body {
+  font-family: Arial, sans-serif;
+  background-color: #e8f5e9;
+  margin: 0;
+  color: #2e7d32;
+}
+header {
+  background-color: #2e7d32;
+  color: white;
+  text-align: center;
+  padding: 14px;
+  font-size: 20px;
+  font-weight: bold;
+}
+.container {
+  width: 95%;
+  margin: 15px auto;
+  background: white;
+  border-radius: 14px;
+  padding: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+button {
+  background-color: #43a047;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button:hover { background-color: #2e7d32; }
+.danger { background-color: #d32f2f; }
+.danger:hover { background-color: #b71c1c; }
 
-#map { height:420px; border-radius:12px; margin-bottom:15px }
+#map {
+  height: 460px;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
 
-table { width:100%; border-collapse:collapse; font-size:14px }
-th,td { padding:8px; border-bottom:1px solid #c8e6c9; text-align:center }
-tr:hover { background:#f1f8e9; cursor:pointer }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid #c8e6c9;
+  text-align: center;
+}
+th {
+  background-color: #a5d6a7;
+  color: #1b5e20;
+}
+tr:hover { background-color: #f1f8e9; cursor:pointer }
 
 .alerta-OK { color:#2e7d32 }
 .alerta-ATENCION { color:#f9a825 }
 .alerta-ALERTA { color:#ef6c00 }
 .alerta-URGENTE { color:#c62828; font-weight:bold }
 
-button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
-.danger { background:#c62828; color:white }
-
+/* MODAL */
 .modal {
   display:none; position:fixed; inset:0;
   background:rgba(0,0,0,.5); z-index:999
@@ -41,9 +93,17 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
 </head>
 
 <body>
+
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
 
 <div class="container">
+
+<div class="toolbar">
+  <button onclick="location.href='/form'">➕ Nuevo Registro</button>
+  <button onclick="exportarExcel()">📤 Exportar a Excel</button>
+  <button onclick="centrarUsuario()">📍 Mi ubicación</button>
+  <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+</div>
 
 <div id="map"></div>
 
@@ -60,19 +120,25 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
 </thead>
 <tbody>
 {% for r in registros %}
-<tr onclick="abrirModal('{{ r.numero_qr }}','{{ r.cereal }}','{{ r.fecha_confeccion }}',{{ r.dias_desde_ultima_muestra }})">
+<tr onclick="abrirModal(
+  '{{ r.numero_qr }}',
+  '{{ r.cereal }}',
+  '{{ r.fecha_confeccion }}',
+  {{ r.dias_desde_ultima_muestra or 0 }}
+)">
 <td>{{ r.numero_qr }}</td>
 <td>{{ r.cereal }}</td>
-<td>{{ r.dias_desde_ultima_muestra }}</td>
+<td>{{ r.dias_desde_ultima_muestra or "-" }}</td>
 <td>{{ r.factor or "-" }}</td>
-<td class="alerta-{{ r.alerta }}">{{ r.alerta }}</td>
+<td class="alerta-{{ r.alerta or 'OK' }}">{{ r.alerta or "OK" }}</td>
 <td>
-<button class="danger" onclick="event.stopPropagation(); borrar('{{ r.numero_qr }}')">🗑️</button>
+  <button class="danger" onclick="event.stopPropagation(); borrar('{{ r.numero_qr }}')">🗑️</button>
 </td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
+
 </div>
 
 <!-- MODAL -->
@@ -91,8 +157,8 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
 <input name="humedad" type="number" step="0.1">
 
 <div id="campos"></div>
-
 <br>
+
 <button type="submit">💾 Guardar muestra</button>
 <button type="button" onclick="cerrar()">Cancelar</button>
 </form>
@@ -102,40 +168,65 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer }
 <script>
 /* ================= MAPA ================= */
 const map = L.map('map');
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '© Esri' }
+).addTo(map);
+
 const bounds = [];
 
 {% for r in registros %}
 {% if r.lat and r.lon %}
-L.marker([{{ r.lat }},{{ r.lon }}]).addTo(map)
+L.marker([{{ r.lat }},{{ r.lon }}])
+.addTo(map)
 .bindPopup("{{ r.numero_qr }} · {{ r.cereal }}")
 .on("click",()=>abrirModal(
   "{{ r.numero_qr }}",
   "{{ r.cereal }}",
   "{{ r.fecha_confeccion }}",
-  {{ r.dias_desde_ultima_muestra }}
+  {{ r.dias_desde_ultima_muestra or 0 }}
 ));
 bounds.push([{{ r.lat }},{{ r.lon }}]);
 {% endif %}
 {% endfor %}
 
-if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
-else map.setView([-34,-58],6);
+if (bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+else map.setView([-34.6,-58.4],6);
+
+/* ================= TOOLBAR ================= */
+function exportarExcel(){ window.location.href="/api/export"; }
+
+function centrarUsuario(){
+  if(!navigator.geolocation) return alert("Geolocalización no soportada");
+  navigator.geolocation.getCurrentPosition(p=>{
+    map.setView([p.coords.latitude,p.coords.longitude],16);
+    L.circleMarker([p.coords.latitude,p.coords.longitude],{radius:8}).addTo(map);
+  });
+}
+
+function pantallaCompleta(){
+  const el=document.getElementById("map");
+  if(el.requestFullscreen){
+    el.requestFullscreen();
+    setTimeout(()=>map.invalidateSize(),300);
+  }
+}
 
 /* ================= MODAL ================= */
-let cerealActual = "";
+let cerealActual="", diasUlt=0;
 
-function abrirModal(qr,cereal,fecha,diasUlt){
-  cerealActual = cereal.toLowerCase();
+function abrirModal(qr,cereal,fecha,dias){
+  cerealActual=cereal.toLowerCase();
+  diasUlt=dias;
   document.getElementById("modal").style.display="block";
-  document.getElementById("qr").value = qr;
-  document.getElementById("titulo").innerText = cereal+" · "+qr;
+  document.getElementById("qr").value=qr;
+  document.getElementById("titulo").innerText=cereal+" · "+qr;
 
   const d1=new Date(fecha), d2=new Date();
   document.getElementById("dias").innerText =
     Math.floor((d2-d1)/(1000*60*60*24));
 
-  document.getElementById("campos").innerHTML = camposPorCereal(cerealActual);
+  document.getElementById("campos").innerHTML=camposPorCereal(cerealActual);
 }
 
 function cerrar(){ document.getElementById("modal").style.display="none"; }
@@ -167,27 +258,15 @@ return "";
 }
 
 /* ================= TAS ================= */
-const TAS_MAIZ = {
-  40:{24:1,22:3,20:4,18:9,16:17,14:27},
-  35:{24:2,22:3,20:5,18:11,16:19,14:32},
-  30:{24:2,22:4,20:7,18:15,16:23,14:48},
-  25:{24:4,22:7,20:12,18:28,16:45,14:90},
-  20:{24:8,22:12,20:22,18:49,16:80,14:170},
-  15:{24:16,22:22,20:39,18:85,16:160,14:320},
-  10:{24:26,22:35,20:60,18:140,16:265,14:500},
-  5:{24:50,22:90,20:150,18:350,16:650,14:1000}
-};
+const TAS_MAIZ={40:{24:1,22:3,20:4,18:9,16:17,14:27},35:{24:2,22:3,20:5,18:11,16:19,14:32},
+30:{24:2,22:4,20:7,18:15,16:23,14:48},25:{24:4,22:7,20:12,18:28,16:45,14:90},
+20:{24:8,22:12,20:22,18:49,16:80,14:170},15:{24:16,22:22,20:39,18:85,16:160,14:320},
+10:{24:26,22:35,20:60,18:140,16:265,14:500},5:{24:50,22:90,20:150,18:350,16:650,14:1000}};
 
-const TAS_TRIGO = {
-  40:{24:1,22:1,20:2,18:2,16:3,14:4},
-  35:{24:1,22:4,20:10,18:13,16:17,14:25},
-  30:{24:1,22:5,20:11,18:15,16:21,14:30},
-  25:{24:1,22:7,20:12,18:18,16:35,14:40},
-  20:{24:3,22:8,20:13,18:30,16:54,14:80},
-  15:{24:8,22:10,20:20,18:41,16:56,14:105},
-  10:{24:10,22:15,20:29,18:50,16:100,14:200},
-  5:{24:13,22:20,20:36,18:73,16:180,14:250}
-};
+const TAS_TRIGO={40:{24:1,22:1,20:2,18:2,16:3,14:4},35:{24:1,22:4,20:10,18:13,16:17,14:25},
+30:{24:1,22:5,20:11,18:15,16:21,14:30},25:{24:1,22:7,20:12,18:18,16:35,14:40},
+20:{24:3,22:8,20:13,18:30,16:54,14:80},15:{24:8,22:10,20:20,18:41,16:56,14:105},
+10:{24:10,22:15,20:29,18:50,16:100,14:200},5:{24:13,22:20,20:36,18:73,16:180,14:250}};
 
 function obtenerTAS(tabla,temp,hum){
   const temps=Object.keys(tabla).map(Number).sort((a,b)=>b-a);
@@ -201,21 +280,22 @@ function obtenerTAS(tabla,temp,hum){
 document.getElementById("formCalidad").onsubmit=async e=>{
 e.preventDefault();
 const d=Object.fromEntries(new FormData(e.target));
-
 let alerta="OK";
+
 if(cerealActual=="maiz"){
   const tas=obtenerTAS(TAS_MAIZ,+d.temperatura,+d.humedad);
-  const consumo=d.dias_desde_ultima_muestra/tas;
-  if(consumo>=0.9) alerta="URGENTE";
-  else if(consumo>=0.7) alerta="ALERTA";
-  else if(consumo>=0.5) alerta="ATENCION";
+  const c=diasUlt/tas;
+  if(c>=0.9) alerta="URGENTE";
+  else if(c>=0.7) alerta="ALERTA";
+  else if(c>=0.5) alerta="ATENCION";
 }
+
 if(cerealActual=="trigo"){
   const tas=obtenerTAS(TAS_TRIGO,+d.temperatura,+d.humedad);
-  const consumo=d.dias_desde_ultima_muestra/tas;
-  if(consumo>=0.9) alerta="URGENTE";
-  else if(consumo>=0.7) alerta="ALERTA";
-  else if(consumo>=0.5) alerta="ATENCION";
+  const c=diasUlt/tas;
+  if(c>=0.9) alerta="URGENTE";
+  else if(c>=0.7) alerta="ALERTA";
+  else if(c>=0.5) alerta="ATENCION";
 }
 
 await fetch("/api/calidad",{
@@ -229,10 +309,11 @@ cerrar();
 };
 
 async function borrar(qr){
-if(!confirm("Eliminar "+qr+"?"))return;
+if(!confirm("¿Eliminar "+qr+"?"))return;
 await fetch("/api/delete",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({numero_qr:qr})});
 location.reload();
 }
 </script>
+
 </body>
 </html>
