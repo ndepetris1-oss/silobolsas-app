@@ -1,133 +1,191 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Panel Silo Bolsas</title>
-<style>
-body{font-family:Arial;background:#e8f5e9}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
-th{background:#a5d6a7}
-tr:hover{background:#f1f8e9;cursor:pointer}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)}
-.modal-content{background:#fff;margin:5% auto;padding:20px;width:400px}
-</style>
+  <meta charset="UTF-8">
+  <title>Panel de Control - Silo Bolsas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .container {
+      width: 96%;
+      margin: 12px auto;
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #43a047;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #2e7d32; }
+    .danger { background: #d32f2f; }
+    .danger:hover { background: #b71c1c; }
+
+    #map {
+      width: 100%;
+      height: 420px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #c8e6c9;
+      text-align: center;
+    }
+    th {
+      background: #a5d6a7;
+    }
+    tr:hover {
+      background: #f1f8e9;
+      cursor: pointer;
+    }
+    .humedo {
+      background: #ffebee;
+      color: #b71c1c;
+      font-weight: bold;
+    }
+
+    /* MODAL */
+    #modal-analisis {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 9999;
+    }
+    #modal-content {
+      background: white;
+      width: 420px;
+      max-width: 95%;
+      margin: 4% auto;
+      padding: 18px;
+      border-radius: 12px;
+    }
+    #modal-content label {
+      display: block;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+    #modal-content input,
+    #modal-content select {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
+    }
+  </style>
 </head>
 
 <body>
 
-<h2>Panel de Silo Bolsas</h2>
+<header>PANEL DE CONTROL · SILO BOLSAS</header>
 
-<button onclick="location.href='/form'">Nuevo Silo</button>
-<button onclick="location.href='/api/export'">Exportar</button>
+<div class="container">
 
-<table>
-<tr>
-<th>QR</th><th>Cereal</th><th>Estado</th><th>Factor total</th>
-</tr>
-{% for r in registros %}
-<tr onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">
-<td>{{r.numero_qr}}</td>
-<td>{{r.cereal}}</td>
-<td>{{r.estado}}</td>
-<td>{{r.factor or '-'}}</td>
-</tr>
-{% endfor %}
-</table>
+  <div class="toolbar">
+    <button onclick="location.href='/form'">➕ Nuevo registro</button>
+    <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
+    <button onclick="centrarUsuario()">📍 Mi ubicación</button>
+    <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+  </div>
 
-<div class="modal" id="modal">
-<div class="modal-content">
-<h3 id="titulo"></h3>
+  <div id="map"></div>
 
-<select id="seccion">
-<option value="punta">Punta</option>
-<option value="medio">Medio</option>
-<option value="final">Final</option>
-</select>
+  <table>
+    <thead>
+      <tr>
+        <th>QR</th>
+        <th>Cereal</th>
+        <th>Estado</th>
+        <th>Fecha confección</th>
+        <th>Grado</th>
+        <th>Factor</th>
+        <th>🗑️</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in registros %}
+      <tr onclick="abrirAnalisis('{{ r.numero_qr }}','{{ r.cereal }}')">
+        <td>{{ r.numero_qr }}</td>
+        <td>{{ r.cereal }}</td>
+        <td class="{% if r.estado=='Humedo' %}humedo{% endif %}">{{ r.estado }}</td>
+        <td>{{ r.fecha_confeccion }}</td>
+        <td>{{ r.grado or '-' }}</td>
+        <td>{{ r.factor or '-' }}</td>
+        <td>
+          <button class="danger" onclick="event.stopPropagation(); borrar('{{ r.numero_qr }}')">🗑️</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-<input id="temperatura" placeholder="Temperatura °C">
-<input id="humedad" placeholder="Humedad %">
-
-<input id="ph" placeholder="PH (solo maíz)">
-<input id="danados" placeholder="Dañados %">
-<input id="quebrados" placeholder="Quebrados %">
-<input id="me" placeholder="Materia extraña %">
-
-<label><input type="checkbox" id="olor"> Olor</label>
-<label><input type="checkbox" id="moho"> Moho</label>
-<label><input type="checkbox" id="insectos"> Insectos</label>
-<label><input type="checkbox" id="chamico"> Chamico</label>
-
-<br><br>
-<button onclick="guardar()">Guardar muestreo</button>
-<button onclick="cerrar()">Cerrar</button>
-
-<div id="res"></div>
-</div>
 </div>
 
-<script>
-let qr="", cereal="";
-
-function abrir(q,c){
-  qr=q; cereal=c.toLowerCase();
-  document.getElementById("titulo").innerText=`${q} - ${c}`;
-  document.getElementById("modal").style.display="block";
-}
-
-function cerrar(){
-  document.getElementById("modal").style.display="none";
-}
-
-async function guardar(){
-  const datos={
-    ph:parseFloat(ph.value)||0,
-    danados:parseFloat(danados.value)||0,
-    quebrados:parseFloat(quebrados.value)||0,
-    me:parseFloat(me.value)||0
-  };
-
-  const r=await fetch("/api/muestreo",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      numero_qr:qr,
-      cereal:cereal,
-      seccion:seccion.value,
-      temperatura:parseFloat(temperatura.value),
-      humedad:parseFloat(humedad.value),
-      datos:datos,
-      olor:olor.checked?1:0,
-      moho:moho.checked?1:0,
-      insectos:insectos.checked?1:0,
-      chamico:chamico.checked?1:0
-    })
-  });
-
-  const j=await r.json();
-  res.innerText=`Factor muestra: ${j.factor}`;
-  setTimeout(()=>location.reload(),800);
-}
-</script>
-
-</body>
-  <div id="modal-analisis" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)">
-  <div style="background:#fff;margin:5% auto;padding:20px;width:420px">
+<!-- ================= MODAL ANALISIS ================= -->
+<div id="modal-analisis">
+  <div id="modal-content">
     <h3 id="titulo-analisis"></h3>
 
+    <label>Sección</label>
     <select id="seccion">
       <option value="punta">Punta</option>
       <option value="medio">Medio</option>
       <option value="final">Final</option>
     </select>
 
-    <input id="temperatura" placeholder="Temperatura °C">
-    <input id="humedad" placeholder="Humedad %">
+    <label>Temperatura (°C)</label>
+    <input id="temperatura">
 
-    <input id="ph" placeholder="PH (solo maíz)">
-    <input id="danados" placeholder="Dañados %">
-    <input id="quebrados" placeholder="Quebrados %">
-    <input id="me" placeholder="Materia extraña %">
+    <label>Humedad (%)</label>
+    <input id="humedad">
+
+    <label>PH (solo Maíz)</label>
+    <input id="ph">
+
+    <label>Dañados (%)</label>
+    <input id="danados">
+
+    <label>Quebrados (%)</label>
+    <input id="quebrados">
+
+    <label>Materia extraña (%)</label>
+    <input id="me">
 
     <label><input type="checkbox" id="olor"> Olor</label>
     <label><input type="checkbox" id="moho"> Moho</label>
@@ -135,11 +193,95 @@ async function guardar(){
     <label><input type="checkbox" id="chamico"> Chamico</label>
 
     <br><br>
-    <button onclick="guardarAnalisis()">Guardar análisis</button>
-    <button onclick="cerrarAnalisis()">Cerrar</button>
+    <button onclick="guardarAnalisis()">💾 Guardar análisis</button>
+    <button onclick="cerrarAnalisis()">Cancelar</button>
 
-    <div id="resultado"></div>
+    <div id="resultado" style="margin-top:10px;font-weight:bold"></div>
   </div>
 </div>
+<!-- ================================================= -->
 
+<script>
+  /* MAPA */
+  const map = L.map('map');
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '© Esri' }
+  ).addTo(map);
+
+  const bounds = [];
+
+  {% for r in registros %}
+    {% if r.lat and r.lon %}
+      L.marker([{{ r.lat }}, {{ r.lon }}]).addTo(map)
+        .bindPopup("{{ r.numero_qr }} - {{ r.cereal }}");
+      bounds.push([{{ r.lat }}, {{ r.lon }}]);
+    {% endif %}
+  {% endfor %}
+
+  if (bounds.length) map.fitBounds(bounds);
+  else map.setView([-34.6,-58.4],6);
+
+  function centrarUsuario(){
+    navigator.geolocation.getCurrentPosition(p=>{
+      map.setView([p.coords.latitude,p.coords.longitude],16);
+    });
+  }
+
+  function pantallaCompleta(){
+    document.getElementById("map").requestFullscreen();
+  }
+
+  async function borrar(qr){
+    if(!confirm("¿Eliminar "+qr+"?")) return;
+    await fetch("/api/delete",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({numero_qr:qr})});
+    location.reload();
+  }
+
+  /* MODAL */
+  let qrActual="", cerealActual="";
+
+  function abrirAnalisis(qr,cereal){
+    qrActual = qr;
+    cerealActual = cereal;
+    titulo_analisis.innerText = `Análisis · ${cereal} · ${qr}`;
+    modal_analisis.style.display="block";
+  }
+
+  function cerrarAnalisis(){
+    modal_analisis.style.display="none";
+  }
+
+  async function guardarAnalisis(){
+    const datos = {
+      ph:+ph.value||0,
+      danados:+danados.value||0,
+      quebrados:+quebrados.value||0,
+      me:+me.value||0
+    };
+
+    const r = await fetch("/api/muestreo",{
+      method:"POST",
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        numero_qr:qrActual,
+        cereal:cerealActual,
+        seccion:seccion.value,
+        temperatura:+temperatura.value,
+        humedad:+humedad.value,
+        datos:datos,
+        olor:olor.checked?1:0,
+        moho:moho.checked?1:0,
+        insectos:insectos.checked?1:0,
+        chamico:chamico.checked?1:0
+      })
+    });
+
+    const j = await r.json();
+    resultado.innerText = `Factor muestra: ${j.factor}`;
+    setTimeout(()=>location.reload(),800);
+  }
+</script>
+
+</body>
 </html>
