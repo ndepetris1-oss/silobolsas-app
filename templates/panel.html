@@ -9,97 +9,29 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#e8f5e9;
-  margin:0;
-  color:#2e7d32;
-}
-header{
-  background:#2e7d32;
-  color:white;
-  text-align:center;
-  padding:14px;
-  font-size:20px;
-  font-weight:bold;
-}
-.container{
-  width:95%;
-  margin:15px auto;
-  background:white;
-  border-radius:14px;
-  padding:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,.2);
-}
-.toolbar{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
-}
-button{
-  background:#43a047;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer;
-}
-#map{
-  height:420px;
-  border-radius:12px;
-  margin-bottom:15px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-th,td{
-  padding:8px;
-  border-bottom:1px solid #c8e6c9;
-  text-align:center;
-}
-th{ background:#a5d6a7; }
-.humedo{
-  background:#ffebee;
-  color:#c62828;
-  font-weight:bold;
-}
+body{font-family:Arial;background:#e8f5e9;margin:0;color:#2e7d32}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px;font-weight:bold}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+#map{height:420px;border-radius:12px;margin-bottom:15px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th{background:#a5d6a7}
+.humedo{background:#ffebee;color:#c62828;font-weight:bold}
 
 /* MODAL */
 .modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  display:none;align-items:center;justify-content:center;z-index:9999
 }
 .modal-content{
-  background:white;
-  width:90%;
-  max-width:520px;
-  max-height:85vh;
-  overflow-y:auto;
-  padding:20px;
-  border-radius:14px;
+  background:white;width:90%;max-width:520px;
+  max-height:85vh;overflow-y:auto;padding:20px;border-radius:14px
 }
-.modal-content label{
-  display:block;
-  margin-top:10px;
-  font-weight:bold;
-}
-.modal-content input{
-  width:100%;
-  padding:6px;
-  margin-top:4px;
-}
-.modal-actions{
-  margin-top:15px;
-  display:flex;
-  gap:10px;
-}
+.modal-content label{display:block;margin-top:10px;font-weight:bold}
+.modal-content input{width:100%;padding:6px;margin-top:4px}
+.modal-actions{margin-top:15px;display:flex;gap:10px}
 </style>
 </head>
 
@@ -109,91 +41,79 @@ th{ background:#a5d6a7; }
 
 <div class="container">
 
-  <div class="toolbar">
-    <button onclick="location.href='/form'">➕ Nuevo registro</button>
-    <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
-    <button onclick="centrarUsuario()">📍 Mi ubicación</button>
-    <button onclick="document.getElementById('map').requestFullscreen()">🖥️ Pantalla completa</button>
-  </div>
+<div class="toolbar">
+  <button onclick="location.href='/form'">➕ Nuevo registro</button>
+  <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
+  <button onclick="centrarUsuario()">📍 Mi ubicación</button>
+  <button onclick="map.requestFullscreen()">🖥️ Pantalla completa</button>
+</div>
 
-  <div id="map"></div>
+<div id="map"></div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>QR</th>
-        <th>Cereal</th>
-        <th>Estado</th>
-        <th>Fecha confección</th>
-        <th>Grado</th>
-        <th>Factor</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for r in registros %}
-      <tr onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">
-        <td>{{r.numero_qr}}</td>
-        <td>{{r.cereal}}</td>
-        <td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{r.estado}}</td>
-        <td>{{r.fecha_confeccion}}</td>
-        <td>{{r.grado or '-'}}</td>
-        <td>{{r.factor or '-'}}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+<table>
+<thead>
+<tr>
+<th>QR</th><th>Cereal</th><th>Estado</th>
+<th>Fecha confección</th><th>Grado</th><th>Factor</th>
+</tr>
+</thead>
+<tbody>
+{% for r in registros %}
+<tr onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">
+<td>{{r.numero_qr}}</td>
+<td>{{r.cereal}}</td>
+<td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{r.estado}}</td>
+<td>{{r.fecha_confeccion}}</td>
+<td>{{r.grado or '-'}}</td>
+<td>{{r.factor or '-'}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
 
 </div>
 
-<!-- MODAL ANALISIS -->
+<!-- MODAL -->
 <div id="modal" class="modal">
-  <div class="modal-content">
-    <h3 id="titulo"></h3>
+<div class="modal-content">
+<h3 id="titulo"></h3>
 
-    <form id="formAnalisis">
-      <input type="hidden" id="qr">
+<form id="formAnalisis">
+<input type="hidden" id="qr">
 
-      <!-- PH (Maíz / Trigo) -->
-      <div id="grupo-ph">
-        <label>Peso hectolítrico</label>
-        <input id="ph">
-      </div>
+<div id="grupo-ph">
+<label>PH</label>
+<input id="ph">
+</div>
 
-      <!-- MAÍZ -->
-      <div id="grupo-maiz">
-        <label>Granos dañados (%)</label>
-        <input id="danados">
+<div id="grupo-maiz">
+<label>Dañados (%)</label>
+<input id="danados">
+<label>Quebrados (%)</label>
+<input id="quebrados">
+<label>Materia extraña (%)</label>
+<input id="me">
+</div>
 
-        <label>Quebrados (%)</label>
-        <input id="quebrados">
+<div id="grupo-soja">
+<label>Materia extraña (%)</label>
+<input id="me_soja">
+<label>Dañados (%)</label>
+<input id="danados_soja">
+<label>Verdes (%)</label>
+<input id="verdes_soja">
+<label>Quebrados (%)</label>
+<input id="quebrados_soja">
+</div>
 
-        <label>Materia extraña (%)</label>
-        <input id="me">
-      </div>
+<div class="modal-actions">
+<button type="submit">💾 Guardar</button>
+<button type="button" onclick="cerrar()">Cancelar</button>
+</div>
+</form>
 
-      <!-- SOJA -->
-      <div id="grupo-soja">
-        <label>Materia extraña (%)</label>
-        <input id="me_soja">
-
-        <label>Granos dañados (%)</label>
-        <input id="danados_soja">
-
-        <label>Granos verdes (%)</label>
-        <input id="verdes_soja">
-
-        <label>Granos quebrados (%)</label>
-        <input id="quebrados_soja">
-      </div>
-
-      <div class="modal-actions">
-        <button type="submit">💾 Guardar análisis</button>
-        <button type="button" onclick="cerrar()">Cancelar</button>
-      </div>
-    </form>
-
-    <div id="resultado" style="margin-top:10px;font-weight:bold"></div>
-  </div>
+<div id="resultado"></div>
+</div>
 </div>
 
 <script>
@@ -211,14 +131,17 @@ function centrarUsuario(){
   });
 }
 
-/* MODAL */
+/* ELEMENTOS */
+const grupo_ph=document.getElementById("grupo-ph");
+const grupo_maiz=document.getElementById("grupo-maiz");
+const grupo_soja=document.getElementById("grupo-soja");
+
 let cerealActual="";
 
 function abrir(qr,cereal){
   cerealActual=cereal.toLowerCase();
   document.getElementById("qr").value=qr;
-  document.getElementById("titulo").innerText=
-    `Análisis comercial · ${cereal} · ${qr}`;
+  titulo.innerText=`Análisis · ${cereal} · ${qr}`;
 
   grupo_ph.style.display="none";
   grupo_maiz.style.display="none";
@@ -236,11 +159,11 @@ function abrir(qr,cereal){
     grupo_soja.style.display="block";
   }
 
-  document.getElementById("modal").style.display="flex";
+  modal.style.display="flex";
 }
 
 function cerrar(){
-  document.getElementById("modal").style.display="none";
+  modal.style.display="none";
   resultado.innerHTML="";
 }
 
@@ -248,22 +171,10 @@ formAnalisis.onsubmit=async e=>{
   e.preventDefault();
   let datos={};
 
-  if(cerealActual==="maiz"||cerealActual==="maíz"||cerealActual==="trigo"){
-    datos={
-      ph:ph.value,
-      danados:danados.value,
-      quebrados:quebrados.value,
-      me:me.value
-    };
-  }
-
-  if(cerealActual==="soja"){
-    datos={
-      danados:danados_soja.value,
-      quebrados:quebrados_soja.value,
-      verdes:verdes_soja.value,
-      me:me_soja.value
-    };
+  if(cerealActual!=="soja"){
+    datos={ph:ph.value,danados:danados.value,quebrados:quebrados.value,me:me.value};
+  }else{
+    datos={me:me_soja.value,danados:danados_soja.value,verdes:verdes_soja.value,quebrados:quebrados_soja.value};
   }
 
   const r=await fetch("/api/analisis",{
@@ -277,11 +188,11 @@ formAnalisis.onsubmit=async e=>{
   });
 
   const j=await r.json();
-  resultado.innerText=
-    j.grado ? `Grado: ${j.grado} | Factor: ${j.factor}` :
-              `Factor: ${j.factor}`;
+  resultado.innerText = j.grado ?
+    `Grado: ${j.grado} | Factor: ${j.factor}` :
+    `Factor: ${j.factor}`;
 
-  setTimeout(()=>location.reload(),900);
+  setTimeout(()=>location.reload(),800);
 };
 </script>
 
