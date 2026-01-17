@@ -2,198 +2,112 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel de Silo Bolsas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<title>Panel Silo Bolsas</title>
 <style>
-body{font-family:Arial;background:#e8f5e9;margin:0;color:#2e7d32}
-header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px;font-weight:bold}
-.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
-#map{height:420px;border-radius:12px;margin-bottom:15px}
+body{font-family:Arial;background:#e8f5e9}
 table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
 th{background:#a5d6a7}
-.humedo{background:#ffebee;color:#c62828;font-weight:bold}
-
-/* MODAL */
-.modal{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  display:none;align-items:center;justify-content:center;z-index:9999
-}
-.modal-content{
-  background:white;width:90%;max-width:520px;
-  max-height:85vh;overflow-y:auto;padding:20px;border-radius:14px
-}
-.modal-content label{display:block;margin-top:10px;font-weight:bold}
-.modal-content input{width:100%;padding:6px;margin-top:4px}
-.modal-actions{margin-top:15px;display:flex;gap:10px}
+tr:hover{background:#f1f8e9;cursor:pointer}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)}
+.modal-content{background:#fff;margin:5% auto;padding:20px;width:400px}
 </style>
 </head>
 
 <body>
 
-<header>PANEL DE CONTROL · SILO BOLSAS</header>
+<h2>Panel de Silo Bolsas</h2>
 
-<div class="container">
-
-<div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo registro</button>
-  <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
-  <button onclick="centrarUsuario()">📍 Mi ubicación</button>
-  <button onclick="map.requestFullscreen()">🖥️ Pantalla completa</button>
-</div>
-
-<div id="map"></div>
+<button onclick="location.href='/form'">Nuevo Silo</button>
+<button onclick="location.href='/api/export'">Exportar</button>
 
 <table>
-<thead>
 <tr>
-<th>QR</th><th>Cereal</th><th>Estado</th>
-<th>Fecha confección</th><th>Grado</th><th>Factor</th>
+<th>QR</th><th>Cereal</th><th>Estado</th><th>Factor total</th>
 </tr>
-</thead>
-<tbody>
 {% for r in registros %}
 <tr onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">
 <td>{{r.numero_qr}}</td>
 <td>{{r.cereal}}</td>
-<td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{r.estado}}</td>
-<td>{{r.fecha_confeccion}}</td>
-<td>{{r.grado or '-'}}</td>
+<td>{{r.estado}}</td>
 <td>{{r.factor or '-'}}</td>
 </tr>
 {% endfor %}
-</tbody>
 </table>
 
-</div>
-
-<!-- MODAL -->
-<div id="modal" class="modal">
+<div class="modal" id="modal">
 <div class="modal-content">
 <h3 id="titulo"></h3>
 
-<form id="formAnalisis">
-<input type="hidden" id="qr">
+<select id="seccion">
+<option value="punta">Punta</option>
+<option value="medio">Medio</option>
+<option value="final">Final</option>
+</select>
 
-<div id="grupo-ph">
-<label>PH</label>
-<input id="ph">
-</div>
+<input id="temperatura" placeholder="Temperatura °C">
+<input id="humedad" placeholder="Humedad %">
 
-<div id="grupo-maiz">
-<label>Dañados (%)</label>
-<input id="danados">
-<label>Quebrados (%)</label>
-<input id="quebrados">
-<label>Materia extraña (%)</label>
-<input id="me">
-</div>
+<input id="ph" placeholder="PH (solo maíz)">
+<input id="danados" placeholder="Dañados %">
+<input id="quebrados" placeholder="Quebrados %">
+<input id="me" placeholder="Materia extraña %">
 
-<div id="grupo-soja">
-<label>Materia extraña (%)</label>
-<input id="me_soja">
-<label>Dañados (%)</label>
-<input id="danados_soja">
-<label>Verdes (%)</label>
-<input id="verdes_soja">
-<label>Quebrados (%)</label>
-<input id="quebrados_soja">
-</div>
+<label><input type="checkbox" id="olor"> Olor</label>
+<label><input type="checkbox" id="moho"> Moho</label>
+<label><input type="checkbox" id="insectos"> Insectos</label>
+<label><input type="checkbox" id="chamico"> Chamico</label>
 
-<div class="modal-actions">
-<button type="submit">💾 Guardar</button>
-<button type="button" onclick="cerrar()">Cancelar</button>
-</div>
-</form>
+<br><br>
+<button onclick="guardar()">Guardar muestreo</button>
+<button onclick="cerrar()">Cerrar</button>
 
-<div id="resultado"></div>
+<div id="res"></div>
 </div>
 </div>
 
 <script>
-/* MAPA */
-const map=L.map('map');
-L.tileLayer(
- 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
- {attribution:'© Esri'}
-).addTo(map);
-map.setView([-34.6,-58.4],6);
+let qr="", cereal="";
 
-function centrarUsuario(){
-  navigator.geolocation.getCurrentPosition(p=>{
-    map.setView([p.coords.latitude,p.coords.longitude],16);
-  });
-}
-
-/* ELEMENTOS */
-const grupo_ph=document.getElementById("grupo-ph");
-const grupo_maiz=document.getElementById("grupo-maiz");
-const grupo_soja=document.getElementById("grupo-soja");
-
-let cerealActual="";
-
-function abrir(qr,cereal){
-  cerealActual=cereal.toLowerCase();
-  document.getElementById("qr").value=qr;
-  titulo.innerText=`Análisis · ${cereal} · ${qr}`;
-
-  grupo_ph.style.display="none";
-  grupo_maiz.style.display="none";
-  grupo_soja.style.display="none";
-
-  if(cerealActual==="maiz"||cerealActual==="maíz"){
-    grupo_ph.style.display="block";
-    grupo_maiz.style.display="block";
-  }
-  if(cerealActual==="trigo"){
-    grupo_ph.style.display="block";
-    grupo_maiz.style.display="block";
-  }
-  if(cerealActual==="soja"){
-    grupo_soja.style.display="block";
-  }
-
-  modal.style.display="flex";
+function abrir(q,c){
+  qr=q; cereal=c.toLowerCase();
+  document.getElementById("titulo").innerText=`${q} - ${c}`;
+  document.getElementById("modal").style.display="block";
 }
 
 function cerrar(){
-  modal.style.display="none";
-  resultado.innerHTML="";
+  document.getElementById("modal").style.display="none";
 }
 
-formAnalisis.onsubmit=async e=>{
-  e.preventDefault();
-  let datos={};
+async function guardar(){
+  const datos={
+    ph:parseFloat(ph.value)||0,
+    danados:parseFloat(danados.value)||0,
+    quebrados:parseFloat(quebrados.value)||0,
+    me:parseFloat(me.value)||0
+  };
 
-  if(cerealActual!=="soja"){
-    datos={ph:ph.value,danados:danados.value,quebrados:quebrados.value,me:me.value};
-  }else{
-    datos={me:me_soja.value,danados:danados_soja.value,verdes:verdes_soja.value,quebrados:quebrados_soja.value};
-  }
-
-  const r=await fetch("/api/analisis",{
+  const r=await fetch("/api/muestreo",{
     method:"POST",
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      numero_qr:qr.value,
-      cereal:cerealActual,
-      datos:datos
+      numero_qr:qr,
+      cereal:cereal,
+      seccion:seccion.value,
+      temperatura:parseFloat(temperatura.value),
+      humedad:parseFloat(humedad.value),
+      datos:datos,
+      olor:olor.checked?1:0,
+      moho:moho.checked?1:0,
+      insectos:insectos.checked?1:0,
+      chamico:chamico.checked?1:0
     })
   });
 
   const j=await r.json();
-  resultado.innerText = j.grado ?
-    `Grado: ${j.grado} | Factor: ${j.factor}` :
-    `Factor: ${j.factor}`;
-
+  res.innerText=`Factor muestra: ${j.factor}`;
   setTimeout(()=>location.reload(),800);
-};
+}
 </script>
 
 </body>
