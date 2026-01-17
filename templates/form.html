@@ -1,20 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Registro de Silo Bolsa</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Registro de Silo Bolsa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body { background:#e6f4ea; font-family:Arial; padding:20px }
-    h2 { text-align:center; color:#1e4620 }
-    label { margin-top:12px; display:block; font-weight:bold }
-    input, select, button {
-      width:100%; padding:10px; margin-top:6px;
-      border-radius:8px; border:1px solid #5cb85c;
-    }
-    button { background:#5cb85c; color:white; margin-top:20px }
-  </style>
+<style>
+body{
+  background:#e6f4ea;
+  font-family:Arial;
+  padding:20px;
+  color:#2d5a27;
+}
+h2{text-align:center}
+label{display:block;margin-top:12px;font-weight:bold}
+input,select,button{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  border:1px solid #5cb85c;
+}
+button{
+  background:#5cb85c;
+  color:white;
+  margin-top:20px;
+  font-weight:bold;
+}
+</style>
 </head>
 
 <body>
@@ -47,31 +60,29 @@
 
 <script>
 const params = new URLSearchParams(location.search);
-document.getElementById("numero_qr").value = params.get("id") || "";
+numero_qr.value = params.get("id") || "";
 
-// 🔑 Fecha REAL de confección (campo)
-document.getElementById("fecha_confeccion").value =
- const now = new Date();
-const localISO = new Date(now.getTime() - now.getTimezoneOffset()*60000)
-  .toISOString()
-  .slice(0,19);
+/* 🔑 FECHA LOCAL REAL */
+const now = new Date();
+const localISO = new Date(
+  now.getTime() - now.getTimezoneOffset()*60000
+).toISOString().slice(0,19);
 
-document.getElementById("fecha_confeccion").value = localISO;
-
+fecha_confeccion.value = localISO;
 
 async function enviar(){
   const pos = await new Promise((ok,err)=>
     navigator.geolocation.getCurrentPosition(ok,err)
   );
 
-  const data = {
-    numero_qr: numero_qr.value,
-    cereal: cereal.value,
-    estado: estado.value,
-    metros: metros.value,
-    lat: pos.coords.latitude,
-    lon: pos.coords.longitude,
-    fecha_confeccion: fecha_confeccion.value
+  const data={
+    numero_qr:numero_qr.value,
+    cereal:cereal.value,
+    estado:estado.value,
+    metros:metros.value,
+    lat:pos.coords.latitude,
+    lon:pos.coords.longitude,
+    fecha_confeccion:fecha_confeccion.value
   };
 
   await fetch("/api/save",{
