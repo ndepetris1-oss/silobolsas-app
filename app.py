@@ -1,16 +1,14 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3
 from datetime import datetime
-import io
-import csv
+import csv, io
 
 app = Flask(__name__)
 DB_NAME = "silos.db"
 
-
-# =========================
+# ======================
 # DB
-# =========================
+# ======================
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
@@ -23,37 +21,45 @@ def init_db():
 
     # SILOS
     c.execute("""
-        CREATE TABLE IF NOT EXISTS silos (
-            numero_qr TEXT PRIMARY KEY,
-            cereal TEXT,
-            estado TEXT,
-            metros INTEGER,
-            lat REAL,
-            lon REAL,
-            fecha_confeccion TEXT
-        )
+    CREATE TABLE IF NOT EXISTS silos (
+        numero_qr TEXT PRIMARY KEY,
+        cereal TEXT,
+        estado TEXT,
+        metros INTEGER,
+        lat REAL,
+        lon REAL,
+        fecha_confeccion TEXT
+    )
+    """)
+
+    # MUESTREOS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS muestreos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_qr TEXT,
+        fecha_muestreo TEXT
+    )
     """)
 
     # ANALISIS
     c.execute("""
-        CREATE TABLE IF NOT EXISTS analisis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            numero_qr TEXT,
-            seccion TEXT,
-            temperatura REAL,
-            humedad REAL,
-            ph REAL,
-            danados REAL,
-            quebrados REAL,
-            materia_extrana REAL,
-            olor REAL,
-            moho REAL,
-            insectos INTEGER,
-            chamico INTEGER,
-            grado INTEGER,
-            factor REAL,
-            fecha TEXT
-        )
+    CREATE TABLE IF NOT EXISTS analisis (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_muestreo INTEGER,
+        seccion TEXT,
+        temperatura REAL,
+        humedad REAL,
+        ph REAL,
+        danados REAL,
+        quebrados REAL,
+        materia_extrana REAL,
+        olor REAL,
+        moho REAL,
+        insectos INTEGER,
+        chamico INTEGER,
+        grado INTEGER,
+        factor REAL
+    )
     """)
 
     conn.commit()
@@ -62,25 +68,57 @@ def init_db():
 
 init_db()
 
-
-# =========================
+# ======================
 # VISTAS
-# =========================
+# ======================
 @app.route("/")
 @app.route("/panel")
 def panel():
     conn = get_db()
+
     silos = conn.execute("""
-        SELECT s.*, 
-               MAX(a.factor) as factor,
-               MAX(a.grado) as grado
-        FROM silos s
-        LEFT JOIN analisis a ON a.numero_qr = s.numero_qr
-        GROUP BY s.numero_qr
-        ORDER BY fecha_confeccion DESC
+    SELECT s.*,
+           (
+             SELECT m.id FROM muestreos m
+             WHERE m.numero_qr = s.numero_qr
+             ORDER BY m.fecha_muestreo DESC
+             LIMIT 1
+           ) as ultimo_muestreo
+    FROM silos s
+    ORDER BY fecha_confeccion DESC
     """).fetchall()
+
+    resultado = []
+    for s in silos:
+        factor = None
+        grado = None
+
+        if s["ultimo_muestreo"]:
+            a = conn.execute("""
+            SELECT seccion, factor, grado
+            FROM analisis
+            WHERE id_muestreo = ?
+            """, (s["ultimo_muestreo"],)).fetchall()
+
+            pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
+            total = 0
+            g = 1
+
+            for r in a:
+                total += r["factor"] * pesos.get(r["seccion"], 0)
+                g = max(g, r["grado"])
+
+            factor = round(total, 3)
+            grado = g
+
+        resultado.append({
+            **dict(s),
+            "factor": factor,
+            "grado": grado
+        })
+
     conn.close()
-    return render_template("panel.html", registros=silos)
+    return render_template("panel.html", registros=resultado)
 
 
 @app.route("/form")
@@ -88,53 +126,46 @@ def form():
     return render_template("form.html")
 
 
-# =========================
-# API – REGISTRO SILO
-# =========================
+# ======================
+# API – REGISTRAR SILO
+# ======================
 @app.route("/api/save", methods=["POST"])
 def save_silo():
-    data = request.get_json()
-
+    d = request.get_json()
     conn = get_db()
     conn.execute("""
-        INSERT INTO silos (
-            numero_qr, cereal, estado, metros, lat, lon, fecha_confeccion
-        ) VALUES (?,?,?,?,?,?,?)
-        ON CONFLICT(numero_qr) DO UPDATE SET
-            cereal=excluded.cereal,
-            estado=excluded.estado,
-            metros=excluded.metros,
-            lat=excluded.lat,
-            lon=excluded.lon
+    INSERT INTO silos VALUES (?,?,?,?,?,?,?)
+    ON CONFLICT(numero_qr) DO UPDATE SET
+      cereal=excluded.cereal,
+      estado=excluded.estado,
+      metros=excluded.metros,
+      lat=excluded.lat,
+      lon=excluded.lon
     """, (
-        data["numero_qr"],
-        data["cereal"],
-        data["estado"],
-        data["metros"],
-        data.get("lat"),
-        data.get("lon"),
+        d["numero_qr"],
+        d["cereal"],
+        d["estado"],
+        d["metros"],
+        d.get("lat"),
+        d.get("lon"),
         datetime.now().isoformat()
     ))
     conn.commit()
     conn.close()
-
     return jsonify(ok=True)
 
 
-# =========================
-# CALCULO MAÍZ
-# =========================
-def calcular_maiz(d):
+# ======================
+# CÁLCULO MAÍZ / TRIGO
+# ======================
+def calcular_grado_factor_maiz(d):
     grado = 1
-
     if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
         grado = 2
     if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
         grado = 3
 
     factor = 1.0
-
-    # castigos SOLO si supera grado 3
     if d["danados"] > 8:
         factor -= (d["danados"] - 8) * 0.01
     if d["quebrados"] > 5:
@@ -142,36 +173,40 @@ def calcular_maiz(d):
     if d["materia_extrana"] > 2:
         factor -= (d["materia_extrana"] - 2) * 0.01
 
-    factor = max(factor, 0.7)
-
-    return grado, round(factor, 3)
+    return grado, max(round(factor, 3), 0.7)
 
 
-# =========================
+# ======================
+# API – NUEVO MUESTREO
+# ======================
+@app.route("/api/nuevo_muestreo", methods=["POST"])
+def nuevo_muestreo():
+    qr = request.json["qr"]
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+    INSERT INTO muestreos (numero_qr, fecha_muestreo)
+    VALUES (?,?)
+    """, (qr, datetime.now().isoformat()))
+    conn.commit()
+    mid = cur.lastrowid
+    conn.close()
+    return jsonify(id_muestreo=mid)
+
+
+# ======================
 # API – GUARDAR ANALISIS
-# =========================
+# ======================
 @app.route("/api/analisis", methods=["POST"])
 def guardar_analisis():
-    d = request.get_json()
-
-    cereal = d["cereal"]
-
-    grado = None
-    factor = 1.0
-
-    if cereal == "Maíz":
-        grado, factor = calcular_maiz(d)
+    d = request.json
+    grado, factor = calcular_grado_factor_maiz(d)
 
     conn = get_db()
     conn.execute("""
-        INSERT INTO analisis (
-            numero_qr, seccion, temperatura, humedad, ph,
-            danados, quebrados, materia_extrana,
-            olor, moho, insectos, chamico,
-            grado, factor, fecha
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO analisis VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
-        d["qr"],
+        d["id_muestreo"],
         d["seccion"],
         d.get("temperatura"),
         d.get("humedad"),
@@ -184,39 +219,38 @@ def guardar_analisis():
         int(d.get("insectos", False)),
         int(d.get("chamico", False)),
         grado,
-        factor,
-        datetime.now().isoformat()
+        factor
     ))
-
     conn.commit()
     conn.close()
 
     return jsonify(ok=True, grado=grado, factor=factor)
 
 
-# =========================
-# EXPORTAR EXCEL
-# =========================
+# ======================
+# EXPORTAR CSV
+# ======================
 @app.route("/api/export")
-def export_excel():
+def exportar():
     conn = get_db()
     rows = conn.execute("""
-        SELECT s.numero_qr, s.cereal, s.estado, s.fecha_confeccion,
-               a.seccion, a.grado, a.factor, a.fecha
-        FROM silos s
-        LEFT JOIN analisis a ON a.numero_qr = s.numero_qr
+    SELECT s.numero_qr, s.cereal, s.estado,
+           m.fecha_muestreo, a.seccion,
+           a.grado, a.factor
+    FROM silos s
+    LEFT JOIN muestreos m ON m.numero_qr = s.numero_qr
+    LEFT JOIN analisis a ON a.id_muestreo = m.id
     """).fetchall()
     conn.close()
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(rows[0].keys() if rows else [])
-
     for r in rows:
         writer.writerow(list(r))
 
     mem = io.BytesIO()
-    mem.write(output.getvalue().encode("utf-8"))
+    mem.write(output.getvalue().encode())
     mem.seek(0)
 
     return send_file(mem, mimetype="text/csv",
@@ -224,22 +258,5 @@ def export_excel():
                      download_name="silos.csv")
 
 
-# =========================
-# BORRAR SILO
-# =========================
-@app.route("/api/delete", methods=["POST"])
-def delete_silo():
-    qr = request.json["numero_qr"]
-    conn = get_db()
-    conn.execute("DELETE FROM analisis WHERE numero_qr = ?", (qr,))
-    conn.execute("DELETE FROM silos WHERE numero_qr = ?", (qr,))
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
-
-
-# =========================
-# MAIN
-# =========================
 if __name__ == "__main__":
     app.run(debug=True)
