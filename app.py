@@ -73,6 +73,30 @@ def factor_maiz(d):
 
 # ---------------- VISTAS ----------------
 @app.route("/")
+@app.route("/api/export")
+def export_excel():
+    conn = db()
+    rows = conn.execute("""
+        SELECT s.numero_qr, s.cereal, s.estado, s.metros,
+               s.fecha_confeccion,
+               m.seccion, m.humedad, m.temperatura, m.grado, m.factor
+        FROM silos s
+        LEFT JOIN muestreos m ON s.numero_qr = m.numero_qr
+    """).fetchall()
+    conn.close()
+
+    import pandas as pd
+    df = pd.DataFrame([dict(r) for r in rows])
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name="silo_bolsas.xlsx",
+        as_attachment=True
+    )
 @app.route("/panel")
 def panel():
     c = db()
