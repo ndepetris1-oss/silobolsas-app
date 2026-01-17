@@ -129,7 +129,7 @@ async function enviar(){
     });
 
     const r = await res.json();
-    if(r.status === "ok"){
+    if (r.ok) {
       alert("Registro guardado correctamente");
     }else{
       alert("Error al guardar");
