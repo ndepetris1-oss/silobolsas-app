@@ -111,4 +111,35 @@ async function guardar(){
 </script>
 
 </body>
+  <div id="modal-analisis" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)">
+  <div style="background:#fff;margin:5% auto;padding:20px;width:420px">
+    <h3 id="titulo-analisis"></h3>
+
+    <select id="seccion">
+      <option value="punta">Punta</option>
+      <option value="medio">Medio</option>
+      <option value="final">Final</option>
+    </select>
+
+    <input id="temperatura" placeholder="Temperatura °C">
+    <input id="humedad" placeholder="Humedad %">
+
+    <input id="ph" placeholder="PH (solo maíz)">
+    <input id="danados" placeholder="Dañados %">
+    <input id="quebrados" placeholder="Quebrados %">
+    <input id="me" placeholder="Materia extraña %">
+
+    <label><input type="checkbox" id="olor"> Olor</label>
+    <label><input type="checkbox" id="moho"> Moho</label>
+    <label><input type="checkbox" id="insectos"> Insectos</label>
+    <label><input type="checkbox" id="chamico"> Chamico</label>
+
+    <br><br>
+    <button onclick="guardarAnalisis()">Guardar análisis</button>
+    <button onclick="cerrarAnalisis()">Cerrar</button>
+
+    <div id="resultado"></div>
+  </div>
+</div>
+
 </html>
