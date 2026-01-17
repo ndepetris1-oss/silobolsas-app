@@ -148,7 +148,14 @@
         <td>{{ r.grado or '-' }}</td>
         <td>{{ r.factor or '-' }}</td>
         <td>
-          <button class="danger" onclick="event.stopPropagation(); borrar('{{ r.numero_qr }}')">🗑️</button>
+          <td>
+  <button onclick="abrirAnalisis('{{ r.numero_qr }}','{{ r.cereal }}')">
+    🧪 Analizar
+  </button>
+  <button class="danger" onclick="borrar('{{ r.numero_qr }}')">
+    🗑️
+  </button>
+</td>
         </td>
       </tr>
       {% endfor %}
