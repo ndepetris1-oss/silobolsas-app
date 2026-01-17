@@ -2,24 +2,30 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Silo Bolsas</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Panel de Control - Silo Bolsas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 body{font-family:Arial;background:#e8f5e9;margin:0}
-header{background:#2e7d32;color:white;text-align:center;padding:12px;font-weight:bold}
-.container{width:96%;margin:12px auto;background:white;padding:12px;border-radius:12px}
-button{background:#43a047;color:white;border:none;border-radius:8px;padding:6px 12px}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px;font-weight:bold}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px}
+button:hover{background:#2e7d32}
 .danger{background:#d32f2f}
-#map{height:420px;margin-bottom:12px}
+.danger:hover{background:#b71c1c}
+#map{height:420px;border-radius:12px;margin-bottom:15px}
 table{width:100%;border-collapse:collapse}
-th,td{border-bottom:1px solid #c8e6c9;padding:6px;text-align:center}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
-#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)}
-#modal-content{background:white;width:420px;margin:4% auto;padding:16px;border-radius:12px}
-label{display:block;margin-top:6px}
-input,select{width:100%;padding:5px}
+tr:hover{background:#f1f8e9}
+.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+.modal-content{background:white;padding:20px;border-radius:10px;width:420px;max-height:90vh;overflow:auto}
+input,select{width:100%;padding:6px;margin-bottom:8px}
 </style>
 </head>
 
@@ -28,108 +34,137 @@ input,select{width:100%;padding:5px}
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
 
 <div class="container">
-  <button onclick="location.href='/form'">➕ Nuevo</button>
-  <button onclick="location.href='/api/export'">📤 Excel</button>
 
-  <div id="map"></div>
-
-  <table>
-    <tr><th>QR</th><th>Cereal</th><th>Acciones</th></tr>
-    {% for r in registros %}
-    <tr>
-      <td>{{r.numero_qr}}</td>
-      <td>{{r.cereal}}</td>
-      <td>
-        <button onclick="abrir('{{r.numero_qr}}','{{r.cereal}}')">🧪 Analizar</button>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
+<div class="toolbar">
+  <button onclick="location.href='/form'">➕ Nuevo registro</button>
+  <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
+  <button onclick="centrar()">📍 Mi ubicación</button>
+  <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
 </div>
 
-<div id="modal">
-  <div id="modal-content">
-    <h3 id="titulo"></h3>
+<div id="map"></div>
 
-    <label>Sección</label>
-    <select id="seccion">
-      <option value="punta">Punta</option>
-      <option value="medio">Medio</option>
-      <option value="final">Final</option>
-    </select>
+<table>
+<thead>
+<tr>
+<th>QR</th><th>Cereal</th><th>Estado</th><th>Fecha confección</th>
+<th>Grado</th><th>Factor</th><th>Acciones</th>
+</tr>
+</thead>
+<tbody>
+{% for r in registros %}
+<tr>
+<td>{{ r.numero_qr }}</td>
+<td>{{ r.cereal }}</td>
+<td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{ r.estado }}</td>
+<td>{{ r.fecha_confeccion }}</td>
+<td>{{ r.grado or '-' }}</td>
+<td>{{ r.factor or '-' }}</td>
+<td>
+<button onclick="abrirAnalisis('{{ r.numero_qr }}','{{ r.cereal }}')">🧪 Analizar</button>
+<button class="danger" onclick="borrar('{{ r.numero_qr }}')">🗑️</button>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
 
-    <label>Temperatura</label><input id="temperatura">
-    <label>Humedad</label><input id="humedad">
-    <label>PH</label><input id="ph">
-    <label>Dañados</label><input id="danados">
-    <label>Quebrados</label><input id="quebrados">
-    <label>Materia extraña</label><input id="me">
+</div>
 
-    <label>Olor (%)</label>
-    <select id="olor">
-      <option value="0">0</option>
-      <option value="0.5">0.5</option>
-      <option value="1">1</option>
-      <option value="1.5">1.5</option>
-      <option value="2">2</option>
-    </select>
+<!-- MODAL -->
+<div id="modal" class="modal">
+<div class="modal-content">
+<h3 id="titulo"></h3>
 
-    <label>Moho (%)</label>
-    <select id="moho">
-      <option value="0">0</option>
-      <option value="0.5">0.5</option>
-      <option value="1">1</option>
-      <option value="1.5">1.5</option>
-      <option value="2">2</option>
-    </select>
+<select id="seccion">
+<option value="punta">Punta</option>
+<option value="medio">Medio</option>
+<option value="final">Final</option>
+</select>
 
-    <label><input type="checkbox" id="insectos"> Insectos</label>
-    <label><input type="checkbox" id="chamico"> Chamico</label>
+<input id="temperatura" placeholder="Temperatura">
+<input id="humedad" placeholder="Humedad">
+<input id="ph" placeholder="PH">
+<input id="danados" placeholder="Dañados">
+<input id="quebrados" placeholder="Quebrados">
+<input id="materia_extrana" placeholder="Materia extraña">
 
-    <br>
-    <button onclick="guardar()">Guardar</button>
-    <button onclick="cerrar()">Cancelar</button>
-    <div id="res"></div>
-  </div>
+<label>Olor (%)</label>
+<select id="olor">
+<option value="0">0</option><option value="0.5">0.5</option>
+<option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option>
+</select>
+
+<label>Moho (%)</label>
+<select id="moho">
+<option value="0">0</option><option value="0.5">0.5</option>
+<option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option>
+</select>
+
+<label><input type="checkbox" id="insectos"> Insectos</label><br>
+<label><input type="checkbox" id="chamico"> Chamico</label><br><br>
+
+<button onclick="guardar()">💾 Guardar</button>
+<button onclick="cerrar()">Cancelar</button>
+</div>
 </div>
 
 <script>
-let qr="", cereal="";
+const registros = {{ registros|tojson }};
+let map = L.map('map');
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
-function abrir(q,c){
-  qr=q; cereal=c;
-  titulo.innerText=`Análisis · ${c} · ${q}`;
-  modal.style.display="block";
+let bounds=[];
+registros.forEach(r=>{
+  if(r.lat && r.lon){
+    L.marker([r.lat,r.lon]).addTo(map).bindPopup(r.numero_qr);
+    bounds.push([r.lat,r.lon]);
+  }
+});
+bounds.length ? map.fitBounds(bounds) : map.setView([-34.6,-58.4],6);
+
+function pantallaCompleta(){document.getElementById("map").requestFullscreen();}
+function centrar(){
+  navigator.geolocation.getCurrentPosition(p=>{
+    map.setView([p.coords.latitude,p.coords.longitude],16);
+  });
 }
 
-function cerrar(){ modal.style.display="none"; }
+let qrActual=null,idMuestreo=null;
 
-async function guardar(){
-  const r = await fetch("/api/muestreo",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      numero_qr:qr,
-      cereal:cereal,
-      seccion:seccion.value,
-      temperatura:+temperatura.value,
-      humedad:+humedad.value,
-      datos:{
-        ph:+ph.value||0,
-        danados:+danados.value||0,
-        quebrados:+quebrados.value||0,
-        me:+me.value||0
-      },
-      olor:+olor.value,
-      moho:+moho.value,
-      insectos:insectos.checked?1:0,
-      chamico:chamico.checked?1:0
-    })
-  });
+function abrirAnalisis(qr,cereal){
+  qrActual=qr;
+  document.getElementById("titulo").innerText="Análisis - "+cereal+" - "+qr;
+  fetch("/api/nuevo_muestreo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({qr})})
+    .then(r=>r.json()).then(d=>idMuestreo=d.id_muestreo);
+  document.getElementById("modal").style.display="flex";
+}
 
-  const j=await r.json();
-  res.innerText=`Factor muestra: ${j.factor}`;
-  setTimeout(()=>location.reload(),800);
+function cerrar(){document.getElementById("modal").style.display="none";}
+
+function guardar(){
+  fetch("/api/analisis",{method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({
+    id_muestreo:idMuestreo,
+    seccion:seccion.value,
+    temperatura:temperatura.value,
+    humedad:humedad.value,
+    ph:ph.value,
+    danados:danados.value,
+    quebrados:quebrados.value,
+    materia_extrana:materia_extrana.value,
+    olor:olor.value,
+    moho:moho.value,
+    insectos:insectos.checked,
+    chamico:chamico.checked
+  })}).then(()=>location.reload());
+}
+
+function borrar(qr){
+  if(!confirm("⚠️ Eliminar silo "+qr+"?")) return;
+  if(!confirm("❗ Confirmación final. Esta acción es irreversible")) return;
+  fetch("/api/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({numero_qr:qr})})
+    .then(()=>location.reload());
 }
 </script>
 
