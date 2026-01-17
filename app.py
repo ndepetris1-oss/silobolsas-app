@@ -8,9 +8,9 @@ DB = "silos.db"
 
 # ---------------- DB ----------------
 def db():
-    c = sqlite3.connect(DB)
-    c.row_factory = sqlite3.Row
-    return c
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     c = db()
@@ -50,7 +50,7 @@ def init_db():
 
 init_db()
 
-# ---------------- CÁLCULOS ----------------
+# ---------------- CALCULOS ----------------
 def grado_maiz(d):
     return max(
         1 if d["ph"] >= 75 else 2 if d["ph"] >= 72 else 3,
@@ -60,47 +60,23 @@ def grado_maiz(d):
     )
 
 def factor_maiz(d):
-    f = 100.0
+    factor = 100.0
     if d["danados"] > 8:
-        f -= (d["danados"] - 8) * 1.0
+        factor -= (d["danados"] - 8) * 1.0
     if d["quebrados"] > 5:
-        f -= (d["quebrados"] - 5) * 0.25
+        factor -= (d["quebrados"] - 5) * 0.25
     if d["me"] > 2:
-        f -= (d["me"] - 2)
+        factor -= (d["me"] - 2)
     if d["ph"] < 69:
-        f -= (69 - d["ph"])
-    return round(max(f, 0), 2)
+        factor -= (69 - d["ph"])
+    return round(max(factor, 0), 2)
 
 # ---------------- VISTAS ----------------
 @app.route("/")
-@app.route("/api/export")
-def export_excel():
-    conn = db()
-    rows = conn.execute("""
-        SELECT s.numero_qr, s.cereal, s.estado, s.metros,
-               s.fecha_confeccion,
-               m.seccion, m.humedad, m.temperatura, m.grado, m.factor
-        FROM silos s
-        LEFT JOIN muestreos m ON s.numero_qr = m.numero_qr
-    """).fetchall()
-    conn.close()
-
-    import pandas as pd
-    df = pd.DataFrame([dict(r) for r in rows])
-
-    output = io.BytesIO()
-    df.to_excel(output, index=False)
-    output.seek(0)
-
-    return send_file(
-        output,
-        download_name="silo_bolsas.xlsx",
-        as_attachment=True
-    )
 @app.route("/panel")
 def panel():
     c = db()
-    silos = c.execute("SELECT * FROM silos").fetchall()
+    silos = c.execute("SELECT * FROM silos ORDER BY fecha_confeccion DESC").fetchall()
     c.close()
     return render_template("panel.html", registros=silos)
 
@@ -111,56 +87,90 @@ def form():
 # ---------------- API ----------------
 @app.route("/api/save", methods=["POST"])
 def save_silo():
-    try:
-        d = request.json
-        c = db()
-        c.execute("""
+    d = request.json
+    c = db()
+    c.execute("""
         INSERT OR REPLACE INTO silos
         (numero_qr, cereal, estado, metros, lat, lon, fecha_confeccion)
         VALUES (?,?,?,?,?,?,?)
-        """, (
-            d["numero_qr"],
-            d["cereal"],
-            d["estado"],
-            d["metros"],
-            d.get("lat"),
-            d.get("lon"),
-            d.get("fecha_confeccion", datetime.now().isoformat())
-        ))
-        c.commit()
-        c.close()
-        return jsonify(ok=True)
-    except Exception as e:
-        return jsonify(ok=False, error=str(e)), 500
+    """, (
+        d["numero_qr"],
+        d["cereal"],
+        d["estado"],
+        d["metros"],
+        d.get("lat"),
+        d.get("lon"),
+        d.get("fecha_confeccion", datetime.now().isoformat())
+    ))
+    c.commit()
+    c.close()
+    return jsonify(ok=True)
 
 @app.route("/api/muestreo", methods=["POST"])
 def muestreo():
     d = request.json
     datos = d["datos"]
 
-    grado = factor = None
+    grado = None
+    factor = 100.0
+
     if d["cereal"].lower() == "maíz":
         grado = grado_maiz(datos)
         factor = factor_maiz(datos)
-    else:
-        factor = 100.0
 
     c = db()
     c.execute("""
-    INSERT INTO muestreos
-    (numero_qr, seccion, fecha, temperatura, humedad,
-     datos, grado, factor, olor, moho, insectos, chamico)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO muestreos
+        (numero_qr, seccion, fecha, temperatura, humedad,
+         datos, grado, factor, olor, moho, insectos, chamico)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
-        d["numero_qr"], d["seccion"], datetime.now().isoformat(),
-        d["temperatura"], d["humedad"],
-        json.dumps(datos), grado, factor,
-        d["olor"], d["moho"], d["insectos"], d["chamico"]
+        d["numero_qr"],
+        d["seccion"],
+        datetime.now().isoformat(),
+        d["temperatura"],
+        d["humedad"],
+        json.dumps(datos),
+        grado,
+        factor,
+        d["olor"],
+        d["moho"],
+        d["insectos"],
+        d["chamico"]
     ))
     c.commit()
     c.close()
 
     return jsonify(grado=grado, factor=factor)
+
+@app.route("/api/delete", methods=["POST"])
+def delete():
+    qr = request.json["numero_qr"]
+    c = db()
+    c.execute("DELETE FROM silos WHERE numero_qr=?", (qr,))
+    c.execute("DELETE FROM muestreos WHERE numero_qr=?", (qr,))
+    c.commit()
+    c.close()
+    return jsonify(ok=True)
+
+@app.route("/api/export")
+def export_excel():
+    c = db()
+    rows = c.execute("""
+        SELECT s.numero_qr, s.cereal, s.estado, s.metros,
+               s.fecha_confeccion,
+               m.seccion, m.humedad, m.temperatura, m.grado, m.factor
+        FROM silos s
+        LEFT JOIN muestreos m ON s.numero_qr = m.numero_qr
+    """).fetchall()
+    c.close()
+
+    df = pd.DataFrame([dict(r) for r in rows])
+    output = io.BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    return send_file(output, download_name="silo_bolsas.xlsx", as_attachment=True)
 
 if __name__ == "__main__":
     app.run(debug=True)
