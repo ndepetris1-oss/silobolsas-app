@@ -102,8 +102,12 @@
 
   let qr="", cereal="";
 
-  function abrir(q,c){ qr=q; cereal=c; titulo.innerText=`Análisis · ${c} · ${q}`; modal.style.display="block"; }
-  function cerrar(){ modal.style.display="none"; }
+  function abrir(q,c){
+  qr = q;
+  cereal = c;
+  document.getElementById("titulo").innerText = `Análisis · ${c} · ${q}`;
+  document.getElementById("modal").style.display = "block";
+}  function cerrar(){ modal.style.display="none"; }
 
   async function guardar(){
     const r = await fetch("/api/muestreo",{method:"POST",headers:{'Content-Type':'application/json'},
