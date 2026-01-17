@@ -7,25 +7,43 @@
 
 <style>
 body{
-  background:#e6f4ea;
-  font-family:Arial;
+  background-color:#e6f4ea;
+  font-family:Arial,sans-serif;
   padding:20px;
   color:#2d5a27;
 }
-h2{text-align:center}
-label{display:block;margin-top:12px;font-weight:bold}
+h2{
+  text-align:center;
+  color:#1e4620;
+}
+label{
+  display:block;
+  margin-top:12px;
+  font-weight:bold;
+}
 input,select,button{
   width:100%;
   padding:10px;
   margin-top:6px;
   border-radius:8px;
   border:1px solid #5cb85c;
+  box-sizing:border-box;
+  font-size:15px;
+}
+input[readonly]{
+  background:#f0f0f0;
 }
 button{
-  background:#5cb85c;
+  background-color:#5cb85c;
   color:white;
+  border:none;
   margin-top:20px;
+  font-size:16px;
   font-weight:bold;
+  cursor:pointer;
+}
+button:hover{
+  background-color:#4cae4c;
 }
 </style>
 </head>
@@ -34,64 +52,91 @@ button{
 
 <h2>Registro de Silo Bolsa</h2>
 
-<label>QR</label>
-<input id="numero_qr" readonly>
+<label>Número de QR</label>
+<input type="text" id="numero_qr" readonly>
 
 <label>Cereal</label>
 <select id="cereal">
-  <option>Maíz</option>
-  <option>Trigo</option>
-  <option>Soja</option>
-  <option>Girasol</option>
+  <option value="">Seleccione…</option>
+  <option value="Maíz">Maíz</option>
+  <option value="Trigo">Trigo</option>
+  <option value="Soja">Soja</option>
+  <option value="Girasol">Girasol</option>
 </select>
 
-<label>Estado</label>
+<label>Estado del grano</label>
 <select id="estado">
-  <option>Seco</option>
-  <option>Humedo</option>
+  <option value="">Seleccione…</option>
+  <option value="Seco">Seco</option>
+  <option value="Humedo">Húmedo</option>
 </select>
 
-<label>Metros</label>
-<input type="number" id="metros">
+<label>Metros lineales</label>
+<input type="number" id="metros" placeholder="Ej: 75">
 
+<!-- FECHA LOCAL -->
 <input type="hidden" id="fecha_confeccion">
 
 <button onclick="enviar()">Registrar</button>
 
 <script>
-const params = new URLSearchParams(location.search);
-numero_qr.value = params.get("id") || "";
+// Obtener QR desde la URL
+const params = new URLSearchParams(window.location.search);
+const qrInput = document.getElementById("numero_qr");
+qrInput.value = params.get("id") || "";
 
-/* 🔑 FECHA LOCAL REAL */
+// Fecha y hora LOCAL real (Argentina)
 const now = new Date();
 const localISO = new Date(
-  now.getTime() - now.getTimezoneOffset()*60000
+  now.getTime() - now.getTimezoneOffset() * 60000
 ).toISOString().slice(0,19);
-
-fecha_confeccion.value = localISO;
+document.getElementById("fecha_confeccion").value = localISO;
 
 async function enviar(){
-  const pos = await new Promise((ok,err)=>
-    navigator.geolocation.getCurrentPosition(ok,err)
-  );
+  if(!qrInput.value){
+    alert("QR no válido");
+    return;
+  }
 
-  const data={
-    numero_qr:numero_qr.value,
-    cereal:cereal.value,
-    estado:estado.value,
-    metros:metros.value,
-    lat:pos.coords.latitude,
-    lon:pos.coords.longitude,
-    fecha_confeccion:fecha_confeccion.value
-  };
+  const cereal = document.getElementById("cereal").value;
+  const estado = document.getElementById("estado").value;
+  const metros = document.getElementById("metros").value;
 
-  await fetch("/api/save",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(data)
-  });
+  if(!cereal || !estado || !metros){
+    alert("Complete todos los campos");
+    return;
+  }
 
-  alert("Registro guardado");
+  try{
+    const pos = await new Promise((ok,err)=>
+      navigator.geolocation.getCurrentPosition(ok,err)
+    );
+
+    const data = {
+      numero_qr: qrInput.value,
+      cereal: cereal,
+      estado: estado,
+      metros: metros,
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude,
+      fecha_confeccion: document.getElementById("fecha_confeccion").value
+    };
+
+    const res = await fetch("/api/save",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const r = await res.json();
+    if(r.status === "ok"){
+      alert("Registro guardado correctamente");
+    }else{
+      alert("Error al guardar");
+    }
+  }catch(e){
+    alert("Error de geolocalización o conexión");
+  }
 }
 </script>
 
