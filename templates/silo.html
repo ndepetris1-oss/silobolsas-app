@@ -2,21 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Silo {{ silo.numero_qr }}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detalle del Silo - {{ silo.numero_qr }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:Arial;background:#f1f8e9;margin:0}
+body{font-family:Arial;background:#eef5ee;margin:0}
 header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
-.container{width:90%;margin:20px auto;background:white;border-radius:12px;padding:20px}
-h2{margin-top:0}
-.info span{display:inline-block;margin-right:20px;font-weight:bold}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
-th{background:#a5d6a7}
-button{background:#43a047;color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer}
+.container{width:90%;margin:20px auto;background:white;padding:20px;border-radius:12px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
 button:hover{background:#2e7d32}
-.back{margin-bottom:15px}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:center}
+th{background:#c8e6c9}
+.alerta{background:#fff3cd;padding:10px;border-radius:8px;margin:10px 0}
 </style>
 </head>
 
@@ -26,55 +24,61 @@ button:hover{background:#2e7d32}
 
 <div class="container">
 
-<div class="back">
-  <button onclick="location.href='/panel'">⬅ Volver al panel</button>
-</div>
+<button onclick="location.href='/panel'">⬅ Volver al panel</button>
 
-<h2>Información general</h2>
-<div class="info">
-  <span>Cereal: {{ silo.cereal }}</span>
-  <span>Estado: {{ silo.estado }}</span>
-  <span>Metros: {{ silo.metros }}</span>
-  <span>Fecha confección: {{ silo.fecha_confeccion }}</span>
-</div>
+<h3>Información general</h3>
+<p>
+<b>Cereal:</b> {{ silo.cereal }} |
+<b>Estado:</b> {{ silo.estado }} |
+<b>Metros:</b> {{ silo.metros }} |
+<b>Fecha confección:</b> {{ silo.fecha_confeccion }}
+</p>
 
-<h2>Muestreos</h2>
+<hr>
 
-{% if muestreos %}
+<h3>Muestreos</h3>
+
+{% if not muestreos %}
+<div class="alerta">⚠️ Este silo aún no tiene muestreos cargados.</div>
+{% endif %}
+
+<button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
+
 <table>
 <thead>
 <tr>
-  <th>Muestreo</th>
-  <th>Fecha</th>
-  <th>Grado</th>
-  <th>Factor</th>
+<th>Fecha</th>
+<th>Acciones</th>
 </tr>
 </thead>
 <tbody>
 {% for m in muestreos %}
 <tr>
-  <td>#{{ loop.index }}</td>
-  <td>{{ m.fecha_muestreo }}</td>
-  <td>
-    {% if silo.cereal in ['Maíz','Trigo'] %}
-      {{ m.grado_total or '-' }}
-    {% else %}
-      -
-    {% endif %}
-  </td>
-  <td>{{ m.factor_total or '-' }}</td>
+<td>{{ m.fecha_muestreo }}</td>
+<td>
+<button onclick="verMuestreo({{ m.id }})">📊 Ver / Cargar análisis</button>
+</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
-{% else %}
-<p>⚠️ Este silo aún no tiene muestreos cargados.</p>
-{% endif %}
-
-<br>
-<button onclick="location.href='/panel'">➕ Nuevo muestreo (desde panel)</button>
 
 </div>
+
+<script>
+function nuevoMuestreo(){
+  fetch("/api/nuevo_muestreo",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({qr:"{{ silo.numero_qr }}"})
+  })
+  .then(()=>location.reload());
+}
+
+function verMuestreo(id){
+  location.href="/muestreo/"+id;
+}
+</script>
 
 </body>
 </html>
