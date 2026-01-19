@@ -323,8 +323,8 @@ def ver_muestreo(id):
     muestreo = conn.execute("""
         SELECT m.*, s.numero_qr, s.cereal
         FROM muestreos m
-        JOIN silos s ON s.numero_qr=m.numero_qr
-        WHERE m.id=?
+        JOIN silos s ON s.numero_qr = m.numero_qr
+        WHERE m.id = ?
     """, (id,)).fetchone()
 
     if not muestreo:
@@ -332,18 +332,62 @@ def ver_muestreo(id):
         return "Muestreo no encontrado", 404
 
     analisis = conn.execute("""
-        SELECT * FROM analisis
-        WHERE id_muestreo=?
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo = ?
         ORDER BY seccion
     """, (id,)).fetchall()
 
     conn.close()
-    return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
+
+    return render_template(
+        "muestreo.html",
+        muestreo=muestreo,
+        analisis=analisis
+    )
 
 
 # ======================
-# EXPORTAR CSV
+# GUARDAR ANALISIS POR SECCION
 # ======================
+@app.route("/api/analisis_seccion", methods=["POST"])
+def guardar_analisis_seccion():
+    d = request.get_json()
+
+    grado = None
+    factor = None
+
+    if d["cereal"] in ("Maíz", "Trigo"):
+        grado, factor = calcular_maiz_trigo(d)
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO analisis (
+            id_muestreo, seccion, temperatura, humedad, ph,
+            danados, quebrados, materia_extrana,
+            olor, moho, insectos, chamico, grado, factor
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        d["id_muestreo"],
+        d["seccion"],
+        d.get("temperatura"),
+        d.get("humedad"),
+        d.get("ph"),
+        d.get("danados"),
+        d.get("quebrados"),
+        d.get("materia_extrana"),
+        d.get("olor"),
+        d.get("moho"),
+        int(d.get("insectos", False)),
+        int(d.get("chamico", False)),
+        grado,
+        factor
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True, grado=grado, factor=factor)
+
 @app.route("/api/export")
 def exportar():
     conn = get_db()
