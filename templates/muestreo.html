@@ -106,6 +106,43 @@ function guardar(){
   });
 }
 </script>
+<!-- MODAL ANALISIS -->
+<div id="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);">
+  <div style="background:#fff; width:420px; margin:40px auto; padding:20px; border-radius:10px">
+    <h3 id="titulo"></h3>
+
+    <input id="temperatura" placeholder="Temperatura">
+    <input id="humedad" placeholder="Humedad">
+    <input id="ph" placeholder="PH">
+    <input id="danados" placeholder="Dañados">
+    <input id="quebrados" placeholder="Quebrados">
+    <input id="materia_extrana" placeholder="Materia extraña">
+
+    <label>Olor (%)</label>
+    <select id="olor">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label>Moho (%)</label>
+    <select id="moho">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label><input type="checkbox" id="insectos"> Insectos</label><br>
+    <label><input type="checkbox" id="chamico"> Chamico</label><br><br>
+
+    <button onclick="guardarAnalisis()">💾 Guardar</button>
+    <button onclick="cerrar()">Cancelar</button>
+  </div>
+</div>
 
 </body>
 </html>
