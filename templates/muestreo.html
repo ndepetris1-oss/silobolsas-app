@@ -52,48 +52,48 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
 <h3>Secciones del muestreo</h3>
 
+<!-- ================= PUNTA ================= -->
 <div class="section">
   <h4>Punta</h4>
   {% for a in analisis if a.seccion == "punta" %}
-<p>
-  Temp: {{ a.temperatura }} °C |
-  Hum: {{ a.humedad }} % <br>
-  Factor: {{ (a.factor * 100) | round(0) }} %
-</p>
-{% endfor %}
-
+  <p>
+    Temp: {{ a.temperatura }} °C |
+    Hum: {{ a.humedad }} % <br>
+    Factor: {{ (a.factor * 100) | round(0) }} %
+  </p>
+  {% endfor %}
   <button onclick="abrirAnalisis('punta')">➕ Cargar / Editar análisis</button>
 </div>
 
+<!-- ================= MEDIO ================= -->
 <div class="section">
   <h4>Medio</h4>
-  {% for a in analisis if a.seccion == "punta" %}
-<p>
-  Temp: {{ a.temperatura }} °C |
-  Hum: {{ a.humedad }} % <br>
-  Factor: {{ (a.factor * 100) | round(0) }} %
-</p>
-{% endfor %}
-
+  {% for a in analisis if a.seccion == "medio" %}
+  <p>
+    Temp: {{ a.temperatura }} °C |
+    Hum: {{ a.humedad }} % <br>
+    Factor: {{ (a.factor * 100) | round(0) }} %
+  </p>
+  {% endfor %}
   <button onclick="abrirAnalisis('medio')">➕ Cargar / Editar análisis</button>
 </div>
 
+<!-- ================= FINAL ================= -->
 <div class="section">
   <h4>Final</h4>
-  {% for a in analisis if a.seccion == "punta" %}
-<p>
-  Temp: {{ a.temperatura }} °C |
-  Hum: {{ a.humedad }} % <br>
-  Factor: {{ (a.factor * 100) | round(0) }} %
-</p>
-{% endfor %}
-
+  {% for a in analisis if a.seccion == "final" %}
+  <p>
+    Temp: {{ a.temperatura }} °C |
+    Hum: {{ a.humedad }} % <br>
+    Factor: {{ (a.factor * 100) | round(0) }} %
+  </p>
+  {% endfor %}
   <button onclick="abrirAnalisis('final')">➕ Cargar / Editar análisis</button>
 </div>
 
 </div>
 
-<!-- MODAL -->
+<!-- ================= MODAL ================= -->
 <div id="modal" class="modal">
   <div class="modal-content">
 
@@ -146,16 +146,17 @@ function abrirAnalisis(seccion){
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
 
-  // limpiar inputs
   ["temperatura","humedad","ph","danados","quebrados","materia_extrana"]
-    .forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ""; });
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.value = "";
+    });
 
   olor.value = "0";
   moho.value = "0";
   insectos.checked = false;
   chamico.checked = false;
 
-  // cargar datos si existen
   fetch(`/api/analisis_seccion/{{ muestreo.id }}/${seccion}`)
     .then(r => r.json())
     .then(d => {
@@ -190,7 +191,7 @@ function guardarAnalisis(){
       seccion: seccionActual,
       temperatura: temperatura.value,
       humedad: humedad.value,
-      ph: ph ? ph.value : null,
+      ph: typeof ph !== "undefined" ? ph.value : null,
       danados: danados.value,
       quebrados: quebrados.value,
       materia_extrana: materia_extrana.value,
