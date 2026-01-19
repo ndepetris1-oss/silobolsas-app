@@ -256,6 +256,49 @@ def exportar():
     return send_file(mem, mimetype="text/csv",
                      as_attachment=True,
                      download_name="silos.csv")
+@app.route("/silo/<qr>")
+def ver_silo(qr):
+    conn = get_db()
+
+    silo = conn.execute("""
+        SELECT * FROM silos WHERE numero_qr = ?
+    """, (qr,)).fetchone()
+
+    if not silo:
+        conn.close()
+        return "Silo no encontrado", 404
+
+    muestreos = conn.execute("""
+        SELECT m.id, m.fecha_muestreo,
+               (
+                 SELECT ROUND(
+                   SUM(a.factor *
+                     CASE a.seccion
+                       WHEN 'punta' THEN 0.2
+                       WHEN 'medio' THEN 0.6
+                       WHEN 'final' THEN 0.2
+                     END
+                   ), 3)
+                 FROM analisis a
+                 WHERE a.id_muestreo = m.id
+               ) as factor_total,
+               (
+                 SELECT MAX(a.grado)
+                 FROM analisis a
+                 WHERE a.id_muestreo = m.id
+               ) as grado_total
+        FROM muestreos m
+        WHERE m.numero_qr = ?
+        ORDER BY m.fecha_muestreo DESC
+    """, (qr,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "silo.html",
+        silo=silo,
+        muestreos=muestreos
+    )
 
 
 if __name__ == "__main__":
