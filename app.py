@@ -258,6 +258,34 @@ def exportar():
                      download_name="silos.csv")
 @app.route("/silo/<qr>")
 def ver_silo(qr):
+    @app.route("/muestreo/<int:id>")
+def ver_muestreo(id):
+    conn = get_db()
+
+    muestreo = conn.execute("""
+        SELECT m.*, s.numero_qr, s.cereal
+        FROM muestreos m
+        JOIN silos s ON s.numero_qr = m.numero_qr
+        WHERE m.id = ?
+    """, (id,)).fetchone()
+
+    if not muestreo:
+        conn.close()
+        return "Muestreo no encontrado", 404
+
+    analisis = conn.execute("""
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo = ?
+    """, (id,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "muestreo.html",
+        muestreo=muestreo,
+        analisis=analisis
+    )
     qr = qr.strip()
 
     conn = get_db()
