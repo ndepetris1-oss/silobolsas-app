@@ -347,9 +347,6 @@ def ver_muestreo(id):
     )
 
 
-# ======================
-# GUARDAR ANALISIS POR SECCION
-# ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
     d = request.get_json()
@@ -359,61 +356,63 @@ def guardar_analisis_seccion():
 
     if d["cereal"] in ("Maíz", "Trigo"):
         grado, factor = calcular_maiz_trigo(d)
+    else:
+        factor = calcular_soja_girasol(d)
 
     conn = get_db()
-    conn.execute("""
-        INSERT INTO analisis (
-            id_muestreo, seccion, temperatura, humedad, ph,
-            danados, quebrados, materia_extrana,
-            olor, moho, insectos, chamico, grado, factor
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        d["id_muestreo"],
-        d["seccion"],
-        d.get("temperatura"),
-        d.get("humedad"),
-        d.get("ph"),
-        d.get("danados"),
-        d.get("quebrados"),
-        d.get("materia_extrana"),
-        d.get("olor"),
-        d.get("moho"),
-        int(d.get("insectos", False)),
-        int(d.get("chamico", False)),
-        grado,
-        factor
-    ))
+
+    existe = conn.execute("""
+        SELECT id FROM analisis
+        WHERE id_muestreo=? AND seccion=?
+    """, (d["id_muestreo"], d["seccion"])).fetchone()
+
+    if existe:
+        conn.execute("""
+            UPDATE analisis SET
+                temperatura=?, humedad=?, ph=?,
+                danados=?, quebrados=?, materia_extrana=?,
+                olor=?, moho=?, insectos=?, chamico=?,
+                grado=?, factor=?
+            WHERE id=?
+        """, (
+            d.get("temperatura"),
+            d.get("humedad"),
+            d.get("ph"),
+            d.get("danados"),
+            d.get("quebrados"),
+            d.get("materia_extrana"),
+            d.get("olor"),
+            d.get("moho"),
+            int(d.get("insectos", False)),
+            int(d.get("chamico", False)),
+            grado,
+            factor,
+            existe["id"]
+        ))
+    else:
+        conn.execute("""
+            INSERT INTO analisis (
+                id_muestreo, seccion, temperatura, humedad, ph,
+                danados, quebrados, materia_extrana,
+                olor, moho, insectos, chamico, grado, factor
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            d["id_muestreo"],
+            d["seccion"],
+            d.get("temperatura"),
+            d.get("humedad"),
+            d.get("ph"),
+            d.get("danados"),
+            d.get("quebrados"),
+            d.get("materia_extrana"),
+            d.get("olor"),
+            d.get("moho"),
+            int(d.get("insectos", False)),
+            int(d.get("chamico", False)),
+            grado,
+            factor
+        ))
+
     conn.commit()
     conn.close()
-
-    return jsonify(ok=True, grado=grado, factor=factor)
-
-@app.route("/api/export")
-def exportar():
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT s.numero_qr, s.cereal, s.estado,
-               m.fecha_muestreo, a.seccion, a.grado, a.factor
-        FROM silos s
-        LEFT JOIN muestreos m ON s.numero_qr=m.numero_qr
-        LEFT JOIN analisis a ON a.id_muestreo=m.id
-    """).fetchall()
-    conn.close()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    if rows:
-        writer.writerow(rows[0].keys())
-        for r in rows:
-            writer.writerow(list(r))
-
-    mem = io.BytesIO(output.getvalue().encode())
-    mem.seek(0)
-
-    return send_file(mem, as_attachment=True,
-                     download_name="silos.csv",
-                     mimetype="text/csv")
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify(ok=True)
