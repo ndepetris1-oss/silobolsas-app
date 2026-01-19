@@ -66,6 +66,42 @@ def init_db():
 init_db()
 
 # ======================
+# CÁLCULOS
+# ======================
+def calcular_maiz_trigo(d):
+    grado = 1
+
+    if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
+        grado = 2
+    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
+        grado = 3
+
+    factor = 1.0
+    if d["danados"] > 8:
+        factor -= (d["danados"] - 8) * 0.01
+    if d["quebrados"] > 5:
+        factor -= (d["quebrados"] - 5) * 0.01
+    if d["materia_extrana"] > 2:
+        factor -= (d["materia_extrana"] - 2) * 0.01
+
+    return grado, round(max(factor, 0), 3)
+
+
+def calcular_soja_girasol(d):
+    factor = 1.0
+
+    if d.get("humedad") and float(d["humedad"]) > 14:
+        factor -= (float(d["humedad"]) - 14) * 0.01
+
+    if d.get("materia_extrana") and float(d["materia_extrana"]) > 1:
+        factor -= (float(d["materia_extrana"]) - 1) * 0.01
+
+    if d.get("danados") and float(d["danados"]) > 5:
+        factor -= (float(d["danados"]) - 5) * 0.01
+
+    return round(max(factor, 0), 3)
+
+# ======================
 # PANEL
 # ======================
 @app.route("/")
@@ -98,21 +134,17 @@ def panel():
                 WHERE id_muestreo = ?
             """, (s["ultimo_muestreo"],)).fetchall()
 
+            pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
+
             if s["cereal"] in ("Maíz", "Trigo"):
-                pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
                 total = 0
                 g = 1
-
                 for d in datos:
                     total += (d["factor"] or 0) * pesos.get(d["seccion"], 0)
                     g = max(g, d["grado"] or 1)
-
                 grado = g
                 factor = round(total, 3)
-
             else:
-                # Soja / Girasol → solo factor ponderado
-                pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
                 factor = round(
                     sum((d["factor"] or 0) * pesos.get(d["seccion"], 0) for d in datos),
                     3
@@ -127,7 +159,6 @@ def panel():
 @app.route("/form")
 def form():
     return render_template("form.html")
-
 
 # ======================
 # REGISTRAR SILO
@@ -157,43 +188,6 @@ def save_silo():
     conn.close()
     return jsonify(ok=True)
 
-
-# ======================
-# CÁLCULOS
-# ======================
-def calcular_maiz_trigo(d):
-    grado = 1
-    if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
-        grado = 2
-    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
-        grado = 3
-
-    factor = 1.0
-    if d["danados"] > 8:
-        factor -= (d["danados"] - 8) * 0.01
-    if d["quebrados"] > 5:
-        factor -= (d["quebrados"] - 5) * 0.01
-    if d["materia_extrana"] > 2:
-        factor -= (d["materia_extrana"] - 2) * 0.01
-
-    return grado, round(max(factor, 0), 3)
-
-
-def calcular_soja_girasol(d):
-    factor = 1.0
-
-    if d.get("humedad") and float(d["humedad"]) > 14:
-        factor -= (float(d["humedad"]) - 14) * 0.01
-
-    if d.get("materia_extrana") and float(d["materia_extrana"]) > 1:
-        factor -= (float(d["materia_extrana"]) - 1) * 0.01
-
-    if d.get("danados") and float(d["danados"]) > 5:
-        factor -= (float(d["danados"]) - 5) * 0.01
-
-    return round(max(factor, 0), 3)
-
-
 # ======================
 # NUEVO MUESTREO
 # ======================
@@ -211,9 +205,8 @@ def nuevo_muestreo():
     conn.close()
     return jsonify(id_muestreo=mid)
 
-
 # ======================
-# GUARDAR / EDITAR ANÁLISIS
+# GUARDAR / EDITAR ANALISIS (ÚNICA RUTA)
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
@@ -284,7 +277,6 @@ def guardar_analisis_seccion():
     conn.commit()
     conn.close()
     return jsonify(ok=True)
-
 
 # ======================
 # VISTA SILO
@@ -312,7 +304,6 @@ def ver_silo(qr):
     conn.close()
     return render_template("silo.html", silo=silo, muestreos=muestreos)
 
-
 # ======================
 # VISTA MUESTREO
 # ======================
@@ -339,80 +330,37 @@ def ver_muestreo(id):
     """, (id,)).fetchall()
 
     conn.close()
+    return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
 
-    return render_template(
-        "muestreo.html",
-        muestreo=muestreo,
-        analisis=analisis
-    )
-
-
-@app.route("/api/analisis_seccion", methods=["POST"])
-def guardar_analisis_seccion():
-    d = request.get_json()
-
-    grado = None
-    factor = None
-
-    if d["cereal"] in ("Maíz", "Trigo"):
-        grado, factor = calcular_maiz_trigo(d)
-    else:
-        factor = calcular_soja_girasol(d)
-
+# ======================
+# EXPORTAR CSV
+# ======================
+@app.route("/api/export")
+def exportar():
     conn = get_db()
-
-    existe = conn.execute("""
-        SELECT id FROM analisis
-        WHERE id_muestreo=? AND seccion=?
-    """, (d["id_muestreo"], d["seccion"])).fetchone()
-
-    if existe:
-        conn.execute("""
-            UPDATE analisis SET
-                temperatura=?, humedad=?, ph=?,
-                danados=?, quebrados=?, materia_extrana=?,
-                olor=?, moho=?, insectos=?, chamico=?,
-                grado=?, factor=?
-            WHERE id=?
-        """, (
-            d.get("temperatura"),
-            d.get("humedad"),
-            d.get("ph"),
-            d.get("danados"),
-            d.get("quebrados"),
-            d.get("materia_extrana"),
-            d.get("olor"),
-            d.get("moho"),
-            int(d.get("insectos", False)),
-            int(d.get("chamico", False)),
-            grado,
-            factor,
-            existe["id"]
-        ))
-    else:
-        conn.execute("""
-            INSERT INTO analisis (
-                id_muestreo, seccion, temperatura, humedad, ph,
-                danados, quebrados, materia_extrana,
-                olor, moho, insectos, chamico, grado, factor
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            d["id_muestreo"],
-            d["seccion"],
-            d.get("temperatura"),
-            d.get("humedad"),
-            d.get("ph"),
-            d.get("danados"),
-            d.get("quebrados"),
-            d.get("materia_extrana"),
-            d.get("olor"),
-            d.get("moho"),
-            int(d.get("insectos", False)),
-            int(d.get("chamico", False)),
-            grado,
-            factor
-        ))
-
-    conn.commit()
+    rows = conn.execute("""
+        SELECT s.numero_qr, s.cereal, s.estado,
+               m.fecha_muestreo, a.seccion, a.grado, a.factor
+        FROM silos s
+        LEFT JOIN muestreos m ON s.numero_qr=m.numero_qr
+        LEFT JOIN analisis a ON a.id_muestreo=m.id
+    """).fetchall()
     conn.close()
-    return jsonify(ok=True)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        writer.writerow(rows[0].keys())
+        for r in rows:
+            writer.writerow(list(r))
+
+    mem = io.BytesIO(output.getvalue().encode())
+    mem.seek(0)
+
+    return send_file(mem, as_attachment=True,
+                     download_name="silos.csv",
+                     mimetype="text/csv")
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
