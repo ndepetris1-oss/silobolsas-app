@@ -212,7 +212,10 @@ def nuevo_muestreo():
 def guardar_analisis_seccion():
     d = request.get_json()
 
-    # Normalizar números
+    # seguridad
+    if not d.get("id_muestreo"):
+        return jsonify(ok=False, error="id_muestreo faltante"), 400
+
     def num(v):
         try:
             return float(v)
@@ -222,7 +225,7 @@ def guardar_analisis_seccion():
     datos = {
         "temperatura": num(d.get("temperatura")),
         "humedad": num(d.get("humedad")),
-        "ph": num(d.get("ph")) if d.get("ph") not in (None, "") else None,
+        "ph": num(d.get("ph")) if d.get("ph") not in ("", None) else None,
         "danados": num(d.get("danados")),
         "quebrados": num(d.get("quebrados")),
         "materia_extrana": num(d.get("materia_extrana")),
