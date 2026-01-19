@@ -252,6 +252,43 @@ def ver_silo(qr):
 # ======================
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
+    @app.route("/api/analisis_seccion", methods=["POST"])
+def guardar_analisis_seccion():
+    d = request.get_json()
+
+    grado = None
+    factor = None
+
+    if d["cereal"] in ("Maíz", "Trigo"):
+        grado, factor = calcular_maiz_trigo(d)
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO analisis (
+            id_muestreo, seccion, temperatura, humedad, ph,
+            danados, quebrados, materia_extrana,
+            olor, moho, insectos, chamico, grado, factor
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        d["id_muestreo"],
+        d["seccion"],
+        d.get("temperatura"),
+        d.get("humedad"),
+        d.get("ph"),
+        d.get("danados"),
+        d.get("quebrados"),
+        d.get("materia_extrana"),
+        d.get("olor"),
+        d.get("moho"),
+        int(d.get("insectos", False)),
+        int(d.get("chamico", False)),
+        grado,
+        factor
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
     conn = get_db()
 
     muestreo = conn.execute("""
