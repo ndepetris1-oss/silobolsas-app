@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Silo {{ silo.numero_qr }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{font-family:Arial;background:#f1f8e9;margin:0}
+header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
+.container{width:90%;margin:20px auto;background:white;border-radius:12px;padding:20px}
+h2{margin-top:0}
+.info span{display:inline-block;margin-right:20px;font-weight:bold}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th{background:#a5d6a7}
+button{background:#43a047;color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{background:#2e7d32}
+.back{margin-bottom:15px}
+</style>
+</head>
+
+<body>
+
+<header>Detalle del Silo · {{ silo.numero_qr }}</header>
+
+<div class="container">
+
+<div class="back">
+  <button onclick="location.href='/panel'">⬅ Volver al panel</button>
+</div>
+
+<h2>Información general</h2>
+<div class="info">
+  <span>Cereal: {{ silo.cereal }}</span>
+  <span>Estado: {{ silo.estado }}</span>
+  <span>Metros: {{ silo.metros }}</span>
+  <span>Fecha confección: {{ silo.fecha_confeccion }}</span>
+</div>
+
+<h2>Muestreos</h2>
+
+{% if muestreos %}
+<table>
+<thead>
+<tr>
+  <th>Muestreo</th>
+  <th>Fecha</th>
+  <th>Grado</th>
+  <th>Factor</th>
+</tr>
+</thead>
+<tbody>
+{% for m in muestreos %}
+<tr>
+  <td>#{{ loop.index }}</td>
+  <td>{{ m.fecha_muestreo }}</td>
+  <td>
+    {% if silo.cereal in ['Maíz','Trigo'] %}
+      {{ m.grado_total or '-' }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td>{{ m.factor_total or '-' }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p>⚠️ Este silo aún no tiene muestreos cargados.</p>
+{% endif %}
+
+<br>
+<button onclick="location.href='/panel'">➕ Nuevo muestreo (desde panel)</button>
+
+</div>
+
+</body>
+</html>
