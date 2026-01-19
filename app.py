@@ -212,13 +212,33 @@ def nuevo_muestreo():
 def guardar_analisis_seccion():
     d = request.get_json()
 
+    # Normalizar números
+    def num(v):
+        try:
+            return float(v)
+        except:
+            return 0
+
+    datos = {
+        "temperatura": num(d.get("temperatura")),
+        "humedad": num(d.get("humedad")),
+        "ph": num(d.get("ph")) if d.get("ph") not in (None, "") else None,
+        "danados": num(d.get("danados")),
+        "quebrados": num(d.get("quebrados")),
+        "materia_extrana": num(d.get("materia_extrana")),
+        "olor": num(d.get("olor")),
+        "moho": num(d.get("moho")),
+        "insectos": int(d.get("insectos", False)),
+        "chamico": int(d.get("chamico", False))
+    }
+
     grado = None
     factor = None
 
     if d["cereal"] in ("Maíz", "Trigo"):
-        grado, factor = calcular_maiz_trigo(d)
+        grado, factor = calcular_maiz_trigo(datos)
     else:
-        factor = calcular_soja_girasol(d)
+        factor = calcular_soja_girasol(datos)
 
     conn = get_db()
 
@@ -236,19 +256,10 @@ def guardar_analisis_seccion():
                 grado=?, factor=?
             WHERE id=?
         """, (
-            d.get("temperatura"),
-            d.get("humedad"),
-            d.get("ph"),
-            d.get("danados"),
-            d.get("quebrados"),
-            d.get("materia_extrana"),
-            d.get("olor"),
-            d.get("moho"),
-            int(d.get("insectos", False)),
-            int(d.get("chamico", False)),
-            grado,
-            factor,
-            existe["id"]
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor, existe["id"]
         ))
     else:
         conn.execute("""
@@ -258,25 +269,17 @@ def guardar_analisis_seccion():
                 olor, moho, insectos, chamico, grado, factor
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
-            d["id_muestreo"],
-            d["seccion"],
-            d.get("temperatura"),
-            d.get("humedad"),
-            d.get("ph"),
-            d.get("danados"),
-            d.get("quebrados"),
-            d.get("materia_extrana"),
-            d.get("olor"),
-            d.get("moho"),
-            int(d.get("insectos", False)),
-            int(d.get("chamico", False)),
-            grado,
-            factor
+            d["id_muestreo"], d["seccion"],
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor
         ))
 
     conn.commit()
     conn.close()
-    return jsonify(ok=True)
+
+    return jsonify(ok=True, grado=grado, factor=factor)
 
 # ======================
 # VISTA SILO
