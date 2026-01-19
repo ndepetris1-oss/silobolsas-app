@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Muestreo - {{ muestreo.numero_qr }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#eef5ee;margin:0}
+header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
+.container{width:90%;margin:20px auto;background:white;padding:20px;border-radius:12px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{background:#2e7d32}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:center}
+th{background:#c8e6c9}
+.card{border:1px solid #c8e6c9;padding:12px;border-radius:10px;margin-bottom:15px}
+</style>
+</head>
+
+<body>
+
+<header>
+Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
+</header>
+
+<div class="container">
+
+<button onclick="history.back()">⬅ Volver</button>
+
+<p>
+<b>Fecha muestreo:</b> {{ muestreo.fecha_muestreo }}
+</p>
+
+<hr>
+
+<h3>Secciones del muestreo</h3>
+
+{% set secciones = ['punta','medio','final'] %}
+
+{% for s in secciones %}
+<div class="card">
+<h4>{{ s | capitalize }}</h4>
+
+{% set a = analisis | selectattr("seccion","equalto",s) | list %}
+
+{% if a %}
+<p>
+<b>Temperatura:</b> {{ a[0].temperatura }} °C |
+<b>Humedad:</b> {{ a[0].humedad }} %
+</p>
+
+{% if muestreo.cereal != 'Soja' %}
+<p>
+<b>Grado:</b> {{ a[0].grado }} |
+<b>Factor:</b> {{ a[0].factor }}
+</p>
+{% else %}
+<p>
+<b>Factor:</b> {{ a[0].factor }}
+</p>
+{% endif %}
+
+{% else %}
+<button onclick="cargar('{{ s }}')">➕ Cargar análisis</button>
+{% endif %}
+
+</div>
+{% endfor %}
+
+</div>
+
+<script>
+function cargar(seccion){
+  location.href="/analizar/{{ muestreo.id }}/"+seccion;
+}
+</script>
+
+</body>
+</html>
