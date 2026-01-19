@@ -66,6 +66,27 @@ def init_db():
 init_db()
 
 # ======================
+# CÁLCULO MAÍZ / TRIGO
+# ======================
+def calcular_maiz_trigo(d):
+    grado = 1
+
+    if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
+        grado = 2
+    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
+        grado = 3
+
+    factor = 1.0
+    if d["danados"] > 8:
+        factor -= (d["danados"] - 8) * 0.01
+    if d["quebrados"] > 5:
+        factor -= (d["quebrados"] - 5) * 0.01
+    if d["materia_extrana"] > 2:
+        factor -= (d["materia_extrana"] - 2) * 0.01
+
+    return grado, round(max(factor, 0), 3)
+
+# ======================
 # PANEL
 # ======================
 @app.route("/")
@@ -114,7 +135,9 @@ def panel():
     conn.close()
     return render_template("panel.html", registros=resultado)
 
-
+# ======================
+# FORM
+# ======================
 @app.route("/form")
 def form():
     return render_template("form.html")
@@ -148,27 +171,6 @@ def save_silo():
     return jsonify(ok=True)
 
 # ======================
-# CÁLCULO MAÍZ / TRIGO
-# ======================
-def calcular_maiz_trigo(d):
-    grado = 1
-
-    if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
-        grado = 2
-    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
-        grado = 3
-
-    factor = 1.0
-    if d["danados"] > 8:
-        factor -= (d["danados"] - 8) * 0.01
-    if d["quebrados"] > 5:
-        factor -= (d["quebrados"] - 5) * 0.01
-    if d["materia_extrana"] > 2:
-        factor -= (d["materia_extrana"] - 2) * 0.01
-
-    return grado, round(max(factor, 0), 3)
-
-# ======================
 # NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
@@ -186,21 +188,24 @@ def nuevo_muestreo():
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR ANALISIS
+# GUARDAR ANALISIS SECCIÓN
 # ======================
-@app.route("/api/analisis", methods=["POST"])
-def guardar_analisis():
-    d = request.json
+@app.route("/api/analisis_seccion", methods=["POST"])
+def guardar_analisis_seccion():
+    d = request.get_json()
 
     grado = None
     factor = None
-
     if d["cereal"] in ("Maíz", "Trigo"):
         grado, factor = calcular_maiz_trigo(d)
 
     conn = get_db()
     conn.execute("""
-        INSERT INTO analisis VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO analisis (
+            id_muestreo, seccion, temperatura, humedad, ph,
+            danados, quebrados, materia_extrana,
+            olor, moho, insectos, chamico, grado, factor
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         d["id_muestreo"],
         d["seccion"],
@@ -219,6 +224,7 @@ def guardar_analisis():
     ))
     conn.commit()
     conn.close()
+
     return jsonify(ok=True)
 
 # ======================
@@ -252,43 +258,6 @@ def ver_silo(qr):
 # ======================
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
-@app.route("/api/analisis_seccion", methods=["POST"])
-def guardar_analisis_seccion():
-    d = request.get_json()
-
-    grado = None
-    factor = None
-
-    if d["cereal"] in ("Maíz", "Trigo"):
-        grado, factor = calcular_maiz_trigo(d)
-
-    conn = get_db()
-    conn.execute("""
-        INSERT INTO analisis (
-            id_muestreo, seccion, temperatura, humedad, ph,
-            danados, quebrados, materia_extrana,
-            olor, moho, insectos, chamico, grado, factor
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        d["id_muestreo"],
-        d["seccion"],
-        d.get("temperatura"),
-        d.get("humedad"),
-        d.get("ph"),
-        d.get("danados"),
-        d.get("quebrados"),
-        d.get("materia_extrana"),
-        d.get("olor"),
-        d.get("moho"),
-        int(d.get("insectos", False)),
-        int(d.get("chamico", False)),
-        grado,
-        factor
-    ))
-    conn.commit()
-    conn.close()
-
-    return jsonify(ok=True)
     conn = get_db()
 
     muestreo = conn.execute("""
@@ -303,7 +272,8 @@ def guardar_analisis_seccion():
         return "Muestreo no encontrado", 404
 
     analisis = conn.execute("""
-        SELECT * FROM analisis
+        SELECT *
+        FROM analisis
         WHERE id_muestreo=?
         ORDER BY seccion
     """, (id,)).fetchall()
