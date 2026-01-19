@@ -257,9 +257,11 @@ def exportar():
                      as_attachment=True,
                      download_name="silos.csv")
 @app.route("/silo/<qr>")
+@app.route("/silo/<qr>")
 def ver_silo(qr):
-    conn = get_db()
+    qr = qr.strip()
 
+    conn = get_db()
     silo = conn.execute("""
         SELECT * FROM silos WHERE numero_qr = ?
     """, (qr,)).fetchone()
