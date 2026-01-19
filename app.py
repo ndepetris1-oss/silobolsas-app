@@ -257,7 +257,6 @@ def exportar():
                      as_attachment=True,
                      download_name="silos.csv")
 @app.route("/silo/<qr>")
-@app.route("/silo/<qr>")
 def ver_silo(qr):
     qr = qr.strip()
 
