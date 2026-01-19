@@ -116,30 +116,27 @@ function cerrarModal(){
   document.getElementById("modal").style.display = "none";
 }
 
-function guardarAnalisis(){
-  fetch("/api/analisis_seccion",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      id_muestreo: {{ muestreo.id }},
-      cereal: "{{ muestreo.cereal }}",
-      seccion: seccionActual,
-      temperatura: temperatura.value,
-      humedad: humedad.value,
-      ph: typeof ph !== "undefined" ? ph.value : null,
-      danados: danados.value,
-      quebrados: quebrados.value,
-      materia_extrana: materia_extrana.value,
-      olor: olor.value,
-      moho: moho.value,
-      insectos: insectos.checked,
-      chamico: chamico.checked
-    })
+fetch("/api/analisis_seccion", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    id_muestreo: {{ muestreo.id }},
+    cereal: "{{ muestreo.cereal }}",
+    seccion: seccionActual,
+    temperatura: temperatura.value,
+    humedad: humedad.value,
+    ph: ph ? ph.value : null,
+    danados: danados.value,
+    quebrados: quebrados.value,
+    materia_extrana: materia_extrana.value,
+    olor: olor.value,
+    moho: moho.value,
+    insectos: insectos.checked,
+    chamico: chamico.checked
   })
-  .then(r=>r.json())
-  .then(()=>{
-    cerrarModal();
-    location.reload();
+})
+.then(r => r.json())
+.then(() => location.reload());
   });
 }
 </script>
