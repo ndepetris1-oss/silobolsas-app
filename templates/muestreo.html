@@ -54,16 +54,40 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
 <div class="section">
   <h4>Punta</h4>
+  {% for a in analisis if a.seccion == "punta" %}
+<p>
+  Temp: {{ a.temperatura }} °C |
+  Hum: {{ a.humedad }} % <br>
+  Factor: {{ (a.factor * 100) | round(0) }} %
+</p>
+{% endfor %}
+
   <button onclick="abrirAnalisis('punta')">➕ Cargar / Editar análisis</button>
 </div>
 
 <div class="section">
   <h4>Medio</h4>
+  {% for a in analisis if a.seccion == "punta" %}
+<p>
+  Temp: {{ a.temperatura }} °C |
+  Hum: {{ a.humedad }} % <br>
+  Factor: {{ (a.factor * 100) | round(0) }} %
+</p>
+{% endfor %}
+
   <button onclick="abrirAnalisis('medio')">➕ Cargar / Editar análisis</button>
 </div>
 
 <div class="section">
   <h4>Final</h4>
+  {% for a in analisis if a.seccion == "punta" %}
+<p>
+  Temp: {{ a.temperatura }} °C |
+  Hum: {{ a.humedad }} % <br>
+  Factor: {{ (a.factor * 100) | round(0) }} %
+</p>
+{% endfor %}
+
   <button onclick="abrirAnalisis('final')">➕ Cargar / Editar análisis</button>
 </div>
 
