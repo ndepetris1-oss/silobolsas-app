@@ -90,16 +90,17 @@ def calcular_maiz_trigo(d):
 def calcular_soja_girasol(d):
     factor = 1.0
 
-    if d.get("humedad") and float(d["humedad"]) > 14:
-        factor -= (float(d["humedad"]) - 14) * 0.01
+    if d["humedad"] > 14:
+        factor -= (d["humedad"] - 14) * 0.01
 
-    if d.get("materia_extrana") and float(d["materia_extrana"]) > 1:
-        factor -= (float(d["materia_extrana"]) - 1) * 0.01
+    if d["materia_extrana"] > 1:
+        factor -= (d["materia_extrana"] - 1) * 0.01
 
-    if d.get("danados") and float(d["danados"]) > 5:
-        factor -= (float(d["danados"]) - 5) * 0.01
+    if d["danados"] > 5:
+        factor -= (d["danados"] - 5) * 0.01
 
     return round(max(factor, 0), 3)
+
 
 # ======================
 # PANEL
@@ -122,6 +123,7 @@ def panel():
     """).fetchall()
 
     resultado = []
+    pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
 
     for s in silos:
         grado = None
@@ -131,24 +133,24 @@ def panel():
             datos = conn.execute("""
                 SELECT seccion, grado, factor
                 FROM analisis
-                WHERE id_muestreo = ?
+                WHERE id_muestreo=?
             """, (s["ultimo_muestreo"],)).fetchall()
 
-            pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
-
-            if s["cereal"] in ("Maíz", "Trigo"):
-                total = 0
-                g = 1
-                for d in datos:
-                    total += (d["factor"] or 0) * pesos.get(d["seccion"], 0)
-                    g = max(g, d["grado"] or 1)
-                grado = g
-                factor = round(total, 3)
-            else:
-                factor = round(
-                    sum((d["factor"] or 0) * pesos.get(d["seccion"], 0) for d in datos),
-                    3
-                )
+            if datos:
+                if s["cereal"] in ("Maíz", "Trigo"):
+                    total = 0
+                    g = 1
+                    for d in datos:
+                        total += (d["factor"] or 0) * pesos.get(d["seccion"], 0)
+                        g = max(g, d["grado"] or 1)
+                    grado = g
+                    factor = round(total * 100)  # %
+                else:
+                    total = sum(
+                        (d["factor"] or 0) * pesos.get(d["seccion"], 0)
+                        for d in datos
+                    )
+                    factor = round(total * 100)
 
         resultado.append({**dict(s), "grado": grado, "factor": factor})
 
@@ -159,6 +161,7 @@ def panel():
 @app.route("/form")
 def form():
     return render_template("form.html")
+
 
 # ======================
 # REGISTRAR SILO
@@ -188,6 +191,7 @@ def save_silo():
     conn.close()
     return jsonify(ok=True)
 
+
 # ======================
 # NUEVO MUESTREO
 # ======================
@@ -205,16 +209,28 @@ def nuevo_muestreo():
     conn.close()
     return jsonify(id_muestreo=mid)
 
+
 # ======================
-# GUARDAR / EDITAR ANALISIS (ÚNICA RUTA)
+# OBTENER ANALISIS POR SECCIÓN
+# ======================
+@app.route("/api/analisis_seccion/<int:id_muestreo>/<seccion>")
+def obtener_analisis_seccion(id_muestreo, seccion):
+    conn = get_db()
+    a = conn.execute("""
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo=? AND seccion=?
+    """, (id_muestreo, seccion)).fetchone()
+    conn.close()
+    return jsonify(dict(a) if a else {})
+
+
+# ======================
+# GUARDAR / EDITAR ANALISIS
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
     d = request.get_json()
-
-    # seguridad
-    if not d.get("id_muestreo"):
-        return jsonify(ok=False, error="id_muestreo faltante"), 400
 
     def num(v):
         try:
@@ -281,8 +297,8 @@ def guardar_analisis_seccion():
 
     conn.commit()
     conn.close()
+    return jsonify(ok=True)
 
-    return jsonify(ok=True, grado=grado, factor=factor)
 
 # ======================
 # VISTA SILO
@@ -310,6 +326,7 @@ def ver_silo(qr):
     conn.close()
     return render_template("silo.html", silo=silo, muestreos=muestreos)
 
+
 # ======================
 # VISTA MUESTREO
 # ======================
@@ -320,8 +337,8 @@ def ver_muestreo(id):
     muestreo = conn.execute("""
         SELECT m.*, s.numero_qr, s.cereal
         FROM muestreos m
-        JOIN silos s ON s.numero_qr = m.numero_qr
-        WHERE m.id = ?
+        JOIN silos s ON s.numero_qr=m.numero_qr
+        WHERE m.id=?
     """, (id,)).fetchone()
 
     if not muestreo:
@@ -331,12 +348,13 @@ def ver_muestreo(id):
     analisis = conn.execute("""
         SELECT *
         FROM analisis
-        WHERE id_muestreo = ?
+        WHERE id_muestreo=?
         ORDER BY seccion
     """, (id,)).fetchall()
 
     conn.close()
     return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
+
 
 # ======================
 # EXPORTAR CSV
@@ -363,9 +381,12 @@ def exportar():
     mem = io.BytesIO(output.getvalue().encode())
     mem.seek(0)
 
-    return send_file(mem, as_attachment=True,
-                     download_name="silos.csv",
-                     mimetype="text/csv")
+    return send_file(
+        mem,
+        as_attachment=True,
+        download_name="silos.csv",
+        mimetype="text/csv"
+    )
 
 
 if __name__ == "__main__":
