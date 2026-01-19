@@ -252,7 +252,7 @@ def ver_silo(qr):
 # ======================
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
-    @app.route("/api/analisis_seccion", methods=["POST"])
+@app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
     d = request.get_json()
 
