@@ -142,8 +142,37 @@ let seccionActual = null;
 
 function abrirAnalisis(seccion){
   seccionActual = seccion;
+
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
+
+  // limpiar inputs
+  ["temperatura","humedad","ph","danados","quebrados","materia_extrana"]
+    .forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ""; });
+
+  olor.value = "0";
+  moho.value = "0";
+  insectos.checked = false;
+  chamico.checked = false;
+
+  // cargar datos si existen
+  fetch(`/api/analisis_seccion/{{ muestreo.id }}/${seccion}`)
+    .then(r => r.json())
+    .then(d => {
+      if(d.id){
+        temperatura.value = d.temperatura ?? "";
+        humedad.value = d.humedad ?? "";
+        if(ph) ph.value = d.ph ?? "";
+        danados.value = d.danados ?? "";
+        quebrados.value = d.quebrados ?? "";
+        materia_extrana.value = d.materia_extrana ?? "";
+        olor.value = d.olor ?? "0";
+        moho.value = d.moho ?? "0";
+        insectos.checked = d.insectos == 1;
+        chamico.checked = d.chamico == 1;
+      }
+    });
+
   document.getElementById("modal").style.display = "flex";
 }
 
@@ -161,7 +190,7 @@ function guardarAnalisis(){
       seccion: seccionActual,
       temperatura: temperatura.value,
       humedad: humedad.value,
-      ph: typeof ph !== "undefined" ? ph.value : null,
+      ph: ph ? ph.value : null,
       danados: danados.value,
       quebrados: quebrados.value,
       materia_extrana: materia_extrana.value,
@@ -171,7 +200,6 @@ function guardarAnalisis(){
       chamico: chamico.checked
     })
   })
-  .then(r => r.json())
   .then(() => location.reload());
 }
 </script>
