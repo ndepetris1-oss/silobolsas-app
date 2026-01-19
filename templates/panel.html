@@ -101,7 +101,9 @@ input,select{width:100%;padding:6px;margin-bottom:8px}
 <td>{{ r.grado or '-' }}</td>
 <td>{{ r.factor or '-' }}</td>
 <td>
-<button onclick="abrirAnalisis('{{ r.numero_qr }}','{{ r.cereal }}')">🧪 Analizar</button>
+<button onclick="location.href='/silo/{{ r.numero_qr }}'">
+  📊 Ver silo
+</button>
 <button class="danger" onclick="borrar('{{ r.numero_qr }}')">🗑️</button>
 </td>
 </tr>
