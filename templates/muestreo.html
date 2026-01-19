@@ -1,3 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Muestreo - {{ muestreo.numero_qr }} - {{ muestreo.cereal }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#eef5ee;margin:0}
+header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
+.container{width:90%;margin:20px auto;background:white;padding:20px;border-radius:12px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{background:#2e7d32}
+.section{border:1px solid #c8e6c9;border-radius:10px;padding:15px;margin-bottom:15px}
+.modal{
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.modal-content{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  width:420px;
+  max-height:90vh;
+  overflow:auto
+}
+input,select{width:100%;padding:6px;margin-bottom:8px}
+</style>
+</head>
+
+<body>
+
+<header>
+Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
+</header>
+
+<div class="container">
+
+<button onclick="location.href='/silo/{{ muestreo.numero_qr }}'">
+⬅ Volver al silo
+</button>
+
+<p><b>Fecha muestreo:</b> {{ muestreo.fecha_muestreo }}</p>
+
+<hr>
+
+<h3>Secciones del muestreo</h3>
+
+<div class="section">
+  <h4>Punta</h4>
+  <button onclick="abrirAnalisis('punta')">➕ Cargar / Editar análisis</button>
+</div>
+
+<div class="section">
+  <h4>Medio</h4>
+  <button onclick="abrirAnalisis('medio')">➕ Cargar / Editar análisis</button>
+</div>
+
+<div class="section">
+  <h4>Final</h4>
+  <button onclick="abrirAnalisis('final')">➕ Cargar / Editar análisis</button>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+
+    <h3 id="tituloModal"></h3>
+
+    <input id="temperatura" placeholder="Temperatura">
+    <input id="humedad" placeholder="Humedad">
+
+    {% if muestreo.cereal not in ("Soja", "Girasol") %}
+    <input id="ph" placeholder="PH">
+    {% endif %}
+
+    <input id="danados" placeholder="Dañados">
+    <input id="quebrados" placeholder="Quebrados">
+    <input id="materia_extrana" placeholder="Materia extraña">
+
+    <label>Olor (%)</label>
+    <select id="olor">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label>Moho (%)</label>
+    <select id="moho">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label><input type="checkbox" id="insectos"> Insectos</label><br>
+    <label><input type="checkbox" id="chamico"> Chamico</label><br><br>
+
+    <button onclick="guardarAnalisis()">💾 Guardar</button>
+    <button onclick="cerrarModal()">Cancelar</button>
+
+  </div>
+</div>
+
 <script>
 let seccionActual = null;
 
@@ -20,25 +135,22 @@ function guardarAnalisis(){
       id_muestreo: {{ muestreo.id }},
       cereal: "{{ muestreo.cereal }}",
       seccion: seccionActual,
-      temperatura: document.getElementById("temperatura").value,
-      humedad: document.getElementById("humedad").value,
-      ph: document.getElementById("ph") ? document.getElementById("ph").value : null,
-      danados: document.getElementById("danados").value,
-      quebrados: document.getElementById("quebrados").value,
-      materia_extrana: document.getElementById("materia_extrana").value,
-      olor: document.getElementById("olor").value,
-      moho: document.getElementById("moho").value,
-      insectos: document.getElementById("insectos").checked,
-      chamico: document.getElementById("chamico").checked
+      temperatura: temperatura.value,
+      humedad: humedad.value,
+      ph: typeof ph !== "undefined" ? ph.value : null,
+      danados: danados.value,
+      quebrados: quebrados.value,
+      materia_extrana: materia_extrana.value,
+      olor: olor.value,
+      moho: moho.value,
+      insectos: insectos.checked,
+      chamico: chamico.checked
     })
   })
   .then(r => r.json())
-  .then(res => {
-    if(res.ok){
-      location.reload();
-    } else {
-      alert("Error al guardar análisis");
-    }
-  });
+  .then(() => location.reload());
 }
 </script>
+
+</body>
+</html>
