@@ -9,63 +9,70 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{font-family:Arial;background:#e8f5e9;margin:0}
-header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px;font-weight:bold}
-
+body{
+  font-family:Arial;
+  background:#e8f5e9;
+  margin:0;
+}
+header{
+  background:#2e7d32;
+  color:white;
+  text-align:center;
+  padding:14px;
+  font-size:20px;
+  font-weight:bold;
+}
 .container{
   width:95%;
   margin:15px auto;
   background:white;
   border-radius:14px;
   padding:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,.2)
+  box-shadow:0 4px 10px rgba(0,0,0,.2);
 }
-
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
 button{
-  background:#43a047;color:white;border:none;border-radius:8px;
-  padding:8px 14px;cursor:pointer;font-size:14px
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer;
+  font-size:14px;
 }
 button:hover{background:#2e7d32}
-.danger{background:#d32f2f}
-.danger:hover{background:#b71c1c}
 
 #map{
   height:420px;
   border-radius:12px;
   margin-bottom:15px;
-  z-index:1;
 }
 
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
-th{background:#a5d6a7}
-tr:hover{background:#f1f8e9}
-.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
-
-/* MODAL */
-.modal{
-  display:none;
-  position:fixed;
-  top:0;left:0;
+table{
   width:100%;
-  height:100%;
-  background:rgba(0,0,0,.6);
-  z-index:9999;
-  align-items:center;
-  justify-content:center;
+  border-collapse:collapse;
 }
-
-.modal-content{
-  background:white;
-  padding:20px;
-  border-radius:12px;
-  width:420px;
-  max-height:90vh;
-  overflow-y:auto;
+th,td{
+  padding:8px;
+  border-bottom:1px solid #c8e6c9;
+  text-align:center;
 }
-
-input,select{width:100%;padding:6px;margin-bottom:8px}
+th{
+  background:#a5d6a7;
+}
+tr:hover{
+  background:#f1f8e9;
+}
+.humedo{
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -87,25 +94,37 @@ input,select{width:100%;padding:6px;margin-bottom:8px}
 <table>
 <thead>
 <tr>
-<th>QR</th><th>Cereal</th><th>Estado</th><th>Fecha confección</th>
-<th>Grado</th><th>Factor</th><th>Acciones</th>
+  <th>QR</th>
+  <th>Cereal</th>
+  <th>Estado</th>
+  <th>Fecha confección</th>
+  <th>Grado</th>
+  <th>Factor</th>
+  <th>Acción</th>
 </tr>
 </thead>
 <tbody>
 {% for r in registros %}
 <tr>
-<td>{{ r.numero_qr }}</td>
-<td>{{ r.cereal }}</td>
-<td class="{{ 'humedo' if r.estado=='Humedo' else '' }}">{{ r.estado }}</td>
-<td>{{ r.fecha_confeccion }}</td>
-<td>{{ r.grado or '-' }}</td>
-<td>{{ r.factor or '-' }}</td>
-<td>
-<button onclick="location.href='/silo/{{ r.numero_qr }}'">
-  📊 Ver silo
-</button>
-<button class="danger" onclick="borrar('{{ r.numero_qr }}')">🗑️</button>
-</td>
+  <td>{{ r.numero_qr }}</td>
+  <td>{{ r.cereal }}</td>
+  <td class="{{ 'humedo' if r.estado == 'Humedo' else '' }}">
+    {{ r.estado }}
+  </td>
+  <td>{{ r.fecha_confeccion }}</td>
+  <td>{{ r.grado if r.grado is not none else '-' }}</td>
+  <td>
+    {% if r.factor is not none %}
+      {{ (r.factor * 100) | round(0) }} %
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td>
+    <button onclick="location.href='/silo/{{ r.numero_qr }}'">
+      📊 Ver silo
+    </button>
+  </td>
 </tr>
 {% endfor %}
 </tbody>
@@ -113,120 +132,44 @@ input,select{width:100%;padding:6px;margin-bottom:8px}
 
 </div>
 
-<!-- MODAL ANALISIS -->
-<div id="modal" class="modal">
-<div class="modal-content">
-<h3 id="titulo"></h3>
-
-<label>Sección</label>
-<select id="seccion">
-<option value="punta">Punta</option>
-<option value="medio">Medio</option>
-<option value="final">Final</option>
-</select>
-
-<input id="temperatura" placeholder="Temperatura">
-<input id="humedad" placeholder="Humedad">
-<input id="ph" placeholder="PH">
-<input id="danados" placeholder="Dañados">
-<input id="quebrados" placeholder="Quebrados">
-<input id="materia_extrana" placeholder="Materia extraña">
-
-<label>Olor (%)</label>
-<select id="olor">
-<option value="0">0</option><option value="0.5">0.5</option>
-<option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option>
-</select>
-
-<label>Moho (%)</label>
-<select id="moho">
-<option value="0">0</option><option value="0.5">0.5</option>
-<option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option>
-</select>
-
-<label><input type="checkbox" id="insectos"> Insectos</label><br>
-<label><input type="checkbox" id="chamico"> Chamico</label><br><br>
-
-<button onclick="guardar()">💾 Guardar</button>
-<button onclick="cerrar()">Cancelar</button>
-</div>
-</div>
-
 <script>
-const registros = {{ registros|tojson }};
-let map = L.map('map');
+const registros = {{ registros | tojson }};
+const map = L.map('map');
 
 L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '© Esri' }
 ).addTo(map);
 
-let bounds=[];
-registros.forEach(r=>{
-  if(r.lat && r.lon){
-    L.marker([r.lat,r.lon]).addTo(map).bindPopup(r.numero_qr);
-    bounds.push([r.lat,r.lon]);
+let bounds = [];
+
+registros.forEach(r => {
+  if (r.lat && r.lon) {
+    L.marker([r.lat, r.lon])
+      .addTo(map)
+      .bindPopup(
+        `<b>${r.numero_qr}</b><br>${r.cereal}<br>${r.estado}`
+      );
+    bounds.push([r.lat, r.lon]);
   }
 });
-bounds.length ? map.fitBounds(bounds) : map.setView([-34.6,-58.4],6);
 
-function pantallaCompleta(){
-  const el=document.getElementById("map");
-  if(el.requestFullscreen) el.requestFullscreen();
+if (bounds.length) {
+  map.fitBounds(bounds, { padding:[30,30] });
+} else {
+  map.setView([-34.6, -58.4], 6);
 }
 
 function centrar(){
-  navigator.geolocation.getCurrentPosition(p=>{
-    map.setView([p.coords.latitude,p.coords.longitude],16);
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos=>{
+    map.setView([pos.coords.latitude, pos.coords.longitude],16);
   });
 }
 
-let idMuestreo=null;
-
-function abrirAnalisis(qr,cereal){
-  document.getElementById("titulo").innerText="Análisis - "+cereal+" - "+qr;
-  fetch("/api/nuevo_muestreo",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({qr})
-  }).then(r=>r.json()).then(d=>{
-    idMuestreo=d.id_muestreo;
-    document.getElementById("modal").style.display="flex";
-  });
-}
-
-function cerrar(){
-  document.getElementById("modal").style.display="none";
-}
-
-function guardar(){
-  fetch("/api/analisis",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      id_muestreo:idMuestreo,
-      seccion:seccion.value,
-      temperatura:temperatura.value,
-      humedad:humedad.value,
-      ph:ph.value,
-      danados:danados.value,
-      quebrados:quebrados.value,
-      materia_extrana:materia_extrana.value,
-      olor:olor.value,
-      moho:moho.value,
-      insectos:insectos.checked,
-      chamico:chamico.checked
-    })
-  }).then(()=>location.reload());
-}
-
-function borrar(qr){
-  if(!confirm("⚠️ Eliminar silo "+qr+"?")) return;
-  if(!confirm("❗ Confirmación final. Esta acción es irreversible")) return;
-  fetch("/api/delete",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({numero_qr:qr})
-  }).then(()=>location.reload());
+function pantallaCompleta(){
+  const el = document.getElementById("map");
+  if(el.requestFullscreen) el.requestFullscreen();
 }
 </script>
 
