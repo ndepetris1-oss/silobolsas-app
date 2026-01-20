@@ -4,6 +4,15 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import csv, io
 
+# ======================
+# IMPORTAR CALCULOS
+# ======================
+from calculos import (
+    grado_maiz, factor_maiz,
+    grado_trigo, factor_trigo,
+    factor_soja, factor_girasol
+)
+
 app = Flask(__name__)
 DB_NAME = "silos.db"
 
@@ -71,48 +80,6 @@ def init_db():
 init_db()
 
 # ======================
-# CÁLCULOS
-# ======================
-def calcular_maiz_trigo(d):
-    # -------- GRADO --------
-    grado = 1
-    if d["danados"] >= 6 or d["quebrados"] >= 4 or d["materia_extrana"] >= 2:
-        grado = 3
-    elif d["danados"] >= 3 or d["quebrados"] >= 2 or d["materia_extrana"] >= 1:
-        grado = 2
-
-    # -------- FACTOR --------
-    factor = 1.0
-
-    if d["danados"] > 3:
-        factor -= (d["danados"] - 3) / 100
-    if d["quebrados"] > 2:
-        factor -= (d["quebrados"] - 2) / 100
-    if d["materia_extrana"] > 1:
-        factor -= (d["materia_extrana"] - 1) / 100
-
-    # Castigos directos
-    factor -= d.get("olor", 0) / 100
-    factor -= d.get("moho", 0) / 100
-
-    return grado, round(max(factor, 0.70), 4)
-
-def calcular_soja_girasol(d):
-    factor = 1.0
-
-    if d["humedad"] > 14:
-        factor -= (d["humedad"] - 14) / 100
-    if d["materia_extrana"] > 1:
-        factor -= (d["materia_extrana"] - 1) / 100
-    if d["danados"] > 5:
-        factor -= (d["danados"] - 5) / 100
-
-    factor -= d.get("olor", 0) / 100
-    factor -= d.get("moho", 0) / 100
-
-    return round(max(factor, 0), 4)
-
-# ======================
 # PANEL
 # ======================
 @app.route("/")
@@ -148,18 +115,16 @@ def panel():
 
             if datos:
                 total = 0
-                g = 1
+                g = None
 
                 for d in datos:
                     peso = pesos.get(d["seccion"], 0)
                     total += (d["factor"] or 0) * peso
-                    if d["grado"]:
-                        g = max(g, d["grado"])
+                    if d["grado"] is not None:
+                        g = d["grado"] if g is None else max(g, d["grado"])
 
-                factor = round(total * 100)  # porcentaje entero
-
-                if s["cereal"] in ("Maíz", "Trigo"):
-                    grado = g
+                factor = round(total * 100, 1)
+                grado = g
 
         resultado.append({**dict(s), "grado": grado, "factor": factor})
 
@@ -219,7 +184,7 @@ def nuevo_muestreo():
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR / EDITAR ANÁLISIS
+# GUARDAR / EDITAR ANALISIS
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
@@ -241,14 +206,26 @@ def guardar_analisis_seccion():
         "olor": f(d.get("olor")),
         "moho": f(d.get("moho")),
         "insectos": int(d.get("insectos", False)),
-        "chamico": int(d.get("chamico", False))
+        "chamico": int(d.get("chamico", 0))
     }
 
-    if d["cereal"] in ("Maíz", "Trigo"):
-        grado, factor = calcular_maiz_trigo(datos)
-    else:
+    cereal = d["cereal"]
+
+    if cereal == "Maíz":
+        grado = grado_maiz(datos)
+        factor = factor_maiz(datos)
+
+    elif cereal == "Trigo":
+        grado = grado_trigo(datos)
+        factor = factor_trigo(datos)
+
+    elif cereal == "Soja":
         grado = None
-        factor = calcular_soja_girasol(datos)
+        factor = factor_soja(datos)
+
+    elif cereal == "Girasol":
+        grado = None
+        factor = factor_girasol(datos)
 
     conn = get_db()
     existe = conn.execute("""
