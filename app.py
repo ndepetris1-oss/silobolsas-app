@@ -1,25 +1,27 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3
 from datetime import datetime
-from zoneinfo import ZoneInfo   # 👈 IMPORTANTE
+from zoneinfo import ZoneInfo
 import csv, io
-
 
 app = Flask(__name__)
 DB_NAME = "silos.db"
 
 # ======================
-# DB
+# UTILIDADES
 # ======================
+def ahora_argentina():
+    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
+
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
-
+# ======================
+# DB INIT
+# ======================
 def init_db():
-    def ahora_argentina():
-    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
     conn = get_db()
     c = conn.cursor()
 
@@ -66,70 +68,50 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 init_db()
 
 # ======================
 # CÁLCULOS
 # ======================
 def calcular_maiz_trigo(d):
-    """
-    d = diccionario con valores ya convertidos a float
-    """
-
-    # -----------------
     # GRADO (peor rubro)
-    # -----------------
     grado = 1
-
     if d["danados"] >= 6 or d["quebrados"] >= 4 or d["materia_extrana"] >= 2:
         grado = 3
     elif d["danados"] >= 3 or d["quebrados"] >= 2 or d["materia_extrana"] >= 1:
         grado = 2
 
-    # -----------------
     # FACTOR
-    # -----------------
     factor = 1.0
 
-    # Dañados
     if d["danados"] > 3:
         factor -= (d["danados"] - 3) / 100
-
-    # Quebrados
     if d["quebrados"] > 2:
         factor -= (d["quebrados"] - 2) / 100
-
-    # Materia extraña
     if d["materia_extrana"] > 1:
         factor -= (d["materia_extrana"] - 1) / 100
 
-    # Olor y Moho (DECIMALES REALES)
+    # Olor y Moho (decimales reales)
     factor -= d.get("olor", 0) / 100
     factor -= d.get("moho", 0) / 100
 
-    # Piso de seguridad
     factor = max(factor, 0.70)
-
     return grado, round(factor, 4)
-
-
 
 def calcular_soja_girasol(d):
     factor = 1.0
 
     if d["humedad"] > 14:
-        factor -= (d["humedad"] - 14) * 0.01
+        factor -= (d["humedad"] - 14) / 100
     if d["materia_extrana"] > 1:
-        factor -= (d["materia_extrana"] - 1) * 0.01
+        factor -= (d["materia_extrana"] - 1) / 100
     if d["danados"] > 5:
-        factor -= (d["danados"] - 5) * 0.01
+        factor -= (d["danados"] - 5) / 100
 
-    # Castigos por OLOR y MOHO
     factor -= d.get("olor", 0) / 100
     factor -= d.get("moho", 0) / 100
 
-    return round(max(factor, 0), 3)
+    return round(max(factor, 0), 4)
 
 # ======================
 # PANEL
@@ -151,9 +133,8 @@ def panel():
         ORDER BY fecha_confeccion DESC
     """).fetchall()
 
-    resultado = []
-
     pesos = {"punta": 0.2, "medio": 0.6, "final": 0.2}
+    resultado = []
 
     for s in silos:
         grado = None
@@ -163,29 +144,31 @@ def panel():
             datos = conn.execute("""
                 SELECT seccion, grado, factor
                 FROM analisis
-                WHERE id_muestreo = ?
+                WHERE id_muestreo=?
             """, (s["ultimo_muestreo"],)).fetchall()
 
-            if s["cereal"] in ("Maíz", "Trigo"):
-                total = 0
-                g = 1
-                for d in datos:
-                    total += (d["factor"] or 0) * pesos[d["seccion"]]
-                    g = max(g, d["grado"] or 1)
-                grado = g
-                factor = round(total, 3)
-            else:
-                factor = round(
-                    sum((d["factor"] or 0) * pesos[d["seccion"]] for d in datos),
-                    3
-                )
+            if datos:
+                if s["cereal"] in ("Maíz", "Trigo"):
+                    g = 1
+                    total = 0
+                    for d in datos:
+                        total += (d["factor"] or 0) * pesos[d["seccion"]]
+                        g = max(g, d["grado"] or 1)
+                    grado = g
+                    factor = round(total * 100)
+                else:
+                    factor = round(sum(
+                        (d["factor"] or 0) * pesos[d["seccion"]] for d in datos
+                    ) * 100)
 
         resultado.append({**dict(s), "grado": grado, "factor": factor})
 
     conn.close()
     return render_template("panel.html", registros=resultado)
 
-
+# ======================
+# FORM
+# ======================
 @app.route("/form")
 def form():
     return render_template("form.html")
@@ -200,11 +183,11 @@ def save_silo():
     conn.execute("""
         INSERT INTO silos VALUES (?,?,?,?,?,?,?)
         ON CONFLICT(numero_qr) DO UPDATE SET
-        cereal=excluded.cereal,
-        estado=excluded.estado,
-        metros=excluded.metros,
-        lat=excluded.lat,
-        lon=excluded.lon
+            cereal=excluded.cereal,
+            estado=excluded.estado,
+            metros=excluded.metros,
+            lat=excluded.lat,
+            lon=excluded.lon
     """, (
         d["numero_qr"],
         d["cereal"],
@@ -212,24 +195,7 @@ def save_silo():
         d["metros"],
         d.get("lat"),
         d.get("lon"),
-        conn.execute("""
-    INSERT INTO silos VALUES (?,?,?,?,?,?,?)
-    ON CONFLICT(numero_qr) DO UPDATE SET
-    cereal=excluded.cereal,
-    estado=excluded.estado,
-    metros=excluded.metros,
-    lat=excluded.lat,
-    lon=excluded.lon
-""", (
-    d["numero_qr"],
-    d["cereal"],
-    d["estado"],
-    d["metros"],
-    d.get("lat"),
-    d.get("lon"),
-    ahora_argentina().strftime("%Y-%m-%d %H:%M")
-))
-
+        ahora_argentina().strftime("%Y-%m-%d %H:%M")
     ))
     conn.commit()
     conn.close()
@@ -246,39 +212,25 @@ def nuevo_muestreo():
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
-    conn.execute("""
-    INSERT INTO silos VALUES (?,?,?,?,?,?,?)
-    ON CONFLICT(numero_qr) DO UPDATE SET
-    cereal=excluded.cereal,
-    estado=excluded.estado,
-    metros=excluded.metros,
-    lat=excluded.lat,
-    lon=excluded.lon
-""", (
-    d["numero_qr"],
-    d["cereal"],
-    d["estado"],
-    d["metros"],
-    d.get("lat"),
-    d.get("lon"),
-    ahora_argentina().strftime("%Y-%m-%d %H:%M")
-))
-
+    """, (
+        qr,
+        ahora_argentina().strftime("%Y-%m-%d %H:%M")
+    ))
     conn.commit()
     mid = cur.lastrowid
     conn.close()
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR / EDITAR ANALISIS
+# GUARDAR / EDITAR ANÁLISIS
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
     d = request.get_json()
 
-    def f(v):
+    def f(x):
         try:
-            return float(v)
+            return float(x)
         except:
             return 0.0
 
@@ -302,7 +254,6 @@ def guardar_analisis_seccion():
         factor = calcular_soja_girasol(datos)
 
     conn = get_db()
-
     existe = conn.execute("""
         SELECT id FROM analisis
         WHERE id_muestreo=? AND seccion=?
@@ -342,14 +293,12 @@ def guardar_analisis_seccion():
     return jsonify(ok=True)
 
 # ======================
-# VISTAS
+# VISTAS SILO / MUESTREO
 # ======================
 @app.route("/silo/<qr>")
 def ver_silo(qr):
     conn = get_db()
-    silo = conn.execute(
-        "SELECT * FROM silos WHERE numero_qr=?", (qr,)
-    ).fetchone()
+    silo = conn.execute("SELECT * FROM silos WHERE numero_qr=?", (qr,)).fetchone()
     muestreos = conn.execute("""
         SELECT id, fecha_muestreo
         FROM muestreos
@@ -358,7 +307,6 @@ def ver_silo(qr):
     """, (qr,)).fetchall()
     conn.close()
     return render_template("silo.html", silo=silo, muestreos=muestreos)
-
 
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
@@ -407,7 +355,6 @@ def exportar():
     return send_file(mem, as_attachment=True,
                      download_name="silos.csv",
                      mimetype="text/csv")
-
 
 if __name__ == "__main__":
     app.run(debug=True)
