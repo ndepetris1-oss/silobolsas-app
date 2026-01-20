@@ -88,8 +88,8 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <th>Dañados</th>
       <th>Quebrados</th>
       <th>M.Ext</th>
-      <th>Olor</th>
-      <th>Moho</th>
+      <th>Olor %</th>
+      <th>Moho %</th>
       <th>Insectos</th>
       <th>Chamico</th>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
@@ -108,9 +108,9 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <td>{{ "Sí" if a.insectos else "No" }}</td>
       <td>{{ "Sí" if a.chamico else "No" }}</td>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
-      <td>{{ a.grado }}</td>
+      <td><b>{{ a.grado }}</b></td>
       {% endif %}
-      <td><b>{{ (a.factor * 100) | round(0) }} %</b></td>
+      <td><b>{{ (a.factor * 100) | round(1) }} %</b></td>
     </tr>
   </table>
   {% else %}
@@ -175,6 +175,18 @@ function abrirAnalisis(seccion){
   seccionActual = seccion;
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
+
+  // limpiar campos
+  ["temperatura","humedad","danados","quebrados","materia_extrana"]
+    .forEach(id => document.getElementById(id).value = "");
+
+  if(document.getElementById("ph")) document.getElementById("ph").value = "";
+
+  olor.value = "0";
+  moho.value = "0";
+  insectos.checked = false;
+  chamico.checked = false;
+
   document.getElementById("modal").style.display = "flex";
 }
 
@@ -192,7 +204,7 @@ function guardarAnalisis(){
       seccion: seccionActual,
       temperatura: temperatura.value,
       humedad: humedad.value,
-      ph: (typeof ph !== "undefined") ? ph.value : null,
+      ph: document.getElementById("ph") ? ph.value : null,
       danados: danados.value,
       quebrados: quebrados.value,
       materia_extrana: materia_extrana.value,
@@ -201,7 +213,7 @@ function guardarAnalisis(){
       insectos: insectos.checked,
       chamico: chamico.checked
     })
-  }).then(()=>location.reload());
+  }).then(() => location.reload());
 }
 </script>
 
