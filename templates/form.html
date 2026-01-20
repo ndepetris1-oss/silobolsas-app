@@ -74,9 +74,6 @@ button:hover{
 <label>Metros lineales</label>
 <input type="number" id="metros" placeholder="Ej: 75">
 
-<!-- FECHA LOCAL -->
-<input type="hidden" id="fecha_confeccion">
-
 <button onclick="enviar()">Registrar</button>
 
 <script>
@@ -84,13 +81,6 @@ button:hover{
 const params = new URLSearchParams(window.location.search);
 const qrInput = document.getElementById("numero_qr");
 qrInput.value = params.get("id") || "";
-
-// Fecha y hora LOCAL real (Argentina)
-const now = new Date();
-const localISO = new Date(
-  now.getTime() - now.getTimezoneOffset() * 60000
-).toISOString().slice(0,19);
-document.getElementById("fecha_confeccion").value = localISO;
 
 async function enviar(){
   if(!qrInput.value){
@@ -107,35 +97,39 @@ async function enviar(){
     return;
   }
 
+  let lat = null;
+  let lon = null;
+
   try{
     const pos = await new Promise((ok,err)=>
-      navigator.geolocation.getCurrentPosition(ok,err)
+      navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
     );
-
-    const data = {
-      numero_qr: qrInput.value,
-      cereal: cereal,
-      estado: estado,
-      metros: metros,
-      lat: pos.coords.latitude,
-      lon: pos.coords.longitude,
-      fecha_confeccion: document.getElementById("fecha_confeccion").value
-    };
-
-    const res = await fetch("/api/save",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(data)
-    });
-
-    const r = await res.json();
-    if (r.ok) {
-      alert("Registro guardado correctamente");
-    }else{
-      alert("Error al guardar");
-    }
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
   }catch(e){
-    alert("Error de geolocalización o conexión");
+    console.warn("GPS no disponible, se guarda sin ubicación");
+  }
+
+  const data = {
+    numero_qr: qrInput.value,
+    cereal: cereal,
+    estado: estado,
+    metros: metros,
+    lat: lat,
+    lon: lon
+  };
+
+  const res = await fetch("/api/save",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
+
+  const r = await res.json();
+  if (r.ok) {
+    alert("Registro guardado correctamente");
+  }else{
+    alert("Error al guardar");
   }
 }
 </script>
