@@ -65,6 +65,7 @@ th{background:#c8e6c9}
 .verde{background:#c8e6c9;color:#1b5e20}
 .amarillo{background:#fff9c4;color:#f57f17}
 .rojo{background:#ffcdd2;color:#b71c1c}
+.gris{background:#e0e0e0;color:#555}
 </style>
 </head>
 
@@ -80,9 +81,16 @@ th{background:#c8e6c9}
   <b>Cereal:</b> {{ silo.cereal }} |
   <b>Estado:</b> {{ silo.estado }} |
   <b>Metros:</b> {{ silo.metros }} <br><br>
+
   <b>Fecha confección:</b>
-  {{ silo.fecha_confeccion }}
-  ({{ silo.dias_confeccion }} días)
+  {% if silo.fecha_confeccion %}
+    {{ silo.fecha_confeccion }}
+    {% if silo.dias_confeccion is not none %}
+      ({{ silo.dias_confeccion }} días)
+    {% endif %}
+  {% else %}
+    -
+  {% endif %}
 </div>
 
 <hr>
@@ -113,7 +121,9 @@ th{background:#c8e6c9}
   <td>{{ m.fecha_muestreo }}</td>
 
   <td>
-    {% if m.dias_desde_muestreo <= 7 %}
+    {% if m.dias_desde_muestreo is none %}
+      <span class="badge gris">-</span>
+    {% elif m.dias_desde_muestreo <= 7 %}
       <span class="badge verde">{{ m.dias_desde_muestreo }} días</span>
     {% elif m.dias_desde_muestreo <= 20 %}
       <span class="badge amarillo">{{ m.dias_desde_muestreo }} días</span>
@@ -123,7 +133,9 @@ th{background:#c8e6c9}
   </td>
 
   <td>
-    {% if m.dias_desde_muestreo <= 7 %}
+    {% if m.dias_desde_muestreo is none %}
+      -
+    {% elif m.dias_desde_muestreo <= 7 %}
       🟢 Reciente
     {% elif m.dias_desde_muestreo <= 20 %}
       🟡 Remuestrear
