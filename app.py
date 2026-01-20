@@ -73,27 +73,46 @@ init_db()
 # CÁLCULOS
 # ======================
 def calcular_maiz_trigo(d):
+    """
+    d = diccionario con valores ya convertidos a float
+    """
+
+    # -----------------
+    # GRADO (peor rubro)
+    # -----------------
     grado = 1
 
-    if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1:
-        grado = 2
-    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
+    if d["danados"] >= 6 or d["quebrados"] >= 4 or d["materia_extrana"] >= 2:
         grado = 3
+    elif d["danados"] >= 3 or d["quebrados"] >= 2 or d["materia_extrana"] >= 1:
+        grado = 2
 
+    # -----------------
+    # FACTOR
+    # -----------------
     factor = 1.0
 
-    if d["danados"] > 8:
-        factor -= (d["danados"] - 8) * 0.01
-    if d["quebrados"] > 5:
-        factor -= (d["quebrados"] - 5) * 0.01
-    if d["materia_extrana"] > 2:
-        factor -= (d["materia_extrana"] - 2) * 0.01
+    # Dañados
+    if d["danados"] > 3:
+        factor -= (d["danados"] - 3) / 100
 
-    # Castigos por OLOR y MOHO
-    factor -= d["olor"] * 0.01
-    factor -= d["moho"] * 0.01
+    # Quebrados
+    if d["quebrados"] > 2:
+        factor -= (d["quebrados"] - 2) / 100
 
-    return grado, round(max(factor, 0), 3)
+    # Materia extraña
+    if d["materia_extrana"] > 1:
+        factor -= (d["materia_extrana"] - 1) / 100
+
+    # Olor y Moho (DECIMALES REALES)
+    factor -= d.get("olor", 0) / 100
+    factor -= d.get("moho", 0) / 100
+
+    # Piso de seguridad
+    factor = max(factor, 0.70)
+
+    return grado, round(factor, 4)
+
 
 
 def calcular_soja_girasol(d):
@@ -107,8 +126,8 @@ def calcular_soja_girasol(d):
         factor -= (d["danados"] - 5) * 0.01
 
     # Castigos por OLOR y MOHO
-    factor -= d["olor"] * 0.01
-    factor -= d["moho"] * 0.01
+    factor -= d.get("olor", 0) / 100
+    factor -= d.get("moho", 0) / 100
 
     return round(max(factor, 0), 3)
 
