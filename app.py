@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3
 from datetime import datetime
+from zoneinfo import ZoneInfo   # 👈 IMPORTANTE
 import csv, io
+
 
 app = Flask(__name__)
 DB_NAME = "silos.db"
@@ -16,6 +18,8 @@ def get_db():
 
 
 def init_db():
+    def ahora_argentina():
+    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
     conn = get_db()
     c = conn.cursor()
 
@@ -206,7 +210,24 @@ def nuevo_muestreo():
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
-    """, (qr, datetime.now().isoformat()))
+    conn.execute("""
+    INSERT INTO silos VALUES (?,?,?,?,?,?,?)
+    ON CONFLICT(numero_qr) DO UPDATE SET
+    cereal=excluded.cereal,
+    estado=excluded.estado,
+    metros=excluded.metros,
+    lat=excluded.lat,
+    lon=excluded.lon
+""", (
+    d["numero_qr"],
+    d["cereal"],
+    d["estado"],
+    d["metros"],
+    d.get("lat"),
+    d.get("lon"),
+    ahora_argentina().strftime("%Y-%m-%d %H:%M")
+))
+
     conn.commit()
     mid = cur.lastrowid
     conn.close()
