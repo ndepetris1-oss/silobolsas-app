@@ -74,14 +74,14 @@ init_db()
 # CÁLCULOS
 # ======================
 def calcular_maiz_trigo(d):
-    # GRADO (peor rubro)
+    # -------- GRADO --------
     grado = 1
     if d["danados"] >= 6 or d["quebrados"] >= 4 or d["materia_extrana"] >= 2:
         grado = 3
     elif d["danados"] >= 3 or d["quebrados"] >= 2 or d["materia_extrana"] >= 1:
         grado = 2
 
-    # FACTOR
+    # -------- FACTOR --------
     factor = 1.0
 
     if d["danados"] > 3:
@@ -91,12 +91,11 @@ def calcular_maiz_trigo(d):
     if d["materia_extrana"] > 1:
         factor -= (d["materia_extrana"] - 1) / 100
 
-    # Olor y Moho (decimales reales)
+    # Castigos directos
     factor -= d.get("olor", 0) / 100
     factor -= d.get("moho", 0) / 100
 
-    factor = max(factor, 0.70)
-    return grado, round(factor, 4)
+    return grado, round(max(factor, 0.70), 4)
 
 def calcular_soja_girasol(d):
     factor = 1.0
@@ -148,18 +147,19 @@ def panel():
             """, (s["ultimo_muestreo"],)).fetchall()
 
             if datos:
+                total = 0
+                g = 1
+
+                for d in datos:
+                    peso = pesos.get(d["seccion"], 0)
+                    total += (d["factor"] or 0) * peso
+                    if d["grado"]:
+                        g = max(g, d["grado"])
+
+                factor = round(total * 100)  # porcentaje entero
+
                 if s["cereal"] in ("Maíz", "Trigo"):
-                    g = 1
-                    total = 0
-                    for d in datos:
-                        total += (d["factor"] or 0) * pesos[d["seccion"]]
-                        g = max(g, d["grado"] or 1)
                     grado = g
-                    factor = round(total * 100)
-                else:
-                    factor = round(sum(
-                        (d["factor"] or 0) * pesos[d["seccion"]] for d in datos
-                    ) * 100)
 
         resultado.append({**dict(s), "grado": grado, "factor": factor})
 
@@ -212,10 +212,7 @@ def nuevo_muestreo():
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
-    """, (
-        qr,
-        ahora_argentina().strftime("%Y-%m-%d %H:%M")
-    ))
+    """, (qr, ahora_argentina().strftime("%Y-%m-%d %H:%M")))
     conn.commit()
     mid = cur.lastrowid
     conn.close()
@@ -293,7 +290,7 @@ def guardar_analisis_seccion():
     return jsonify(ok=True)
 
 # ======================
-# VISTAS SILO / MUESTREO
+# VISTAS
 # ======================
 @app.route("/silo/<qr>")
 def ver_silo(qr):
