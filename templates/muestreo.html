@@ -9,9 +9,33 @@
 body{font-family:Arial;background:#eef5ee;margin:0}
 header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
 .container{width:90%;margin:20px auto;background:white;padding:20px;border-radius:12px}
-button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+
+button{
+  background:#43a047;color:white;border:none;border-radius:8px;
+  padding:8px 14px;cursor:pointer
+}
 button:hover{background:#2e7d32}
-.section{border:1px solid #c8e6c9;border-radius:10px;padding:15px;margin-bottom:15px}
+
+.section{
+  border:1px solid #c8e6c9;
+  border-radius:10px;
+  padding:15px;
+  margin-bottom:15px
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin:10px 0
+}
+th,td{
+  border:1px solid #c8e6c9;
+  padding:6px;
+  font-size:13px;
+  text-align:center
+}
+th{background:#e8f5e9}
+
 .modal{
   display:none;
   position:fixed;
@@ -20,7 +44,7 @@ button:hover{background:#2e7d32}
   background:rgba(0,0,0,.6);
   align-items:center;
   justify-content:center;
-  z-index:9999;
+  z-index:9999
 }
 .modal-content{
   background:white;
@@ -30,6 +54,7 @@ button:hover{background:#2e7d32}
   max-height:90vh;
   overflow:auto
 }
+
 input,select{width:100%;padding:6px;margin-bottom:8px}
 </style>
 </head>
@@ -42,58 +67,64 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
 <div class="container">
 
-<button onclick="location.href='/silo/{{ muestreo.numero_qr }}'">
-⬅ Volver al silo
-</button>
+<button onclick="location.href='/silo/{{ muestreo.numero_qr }}'">⬅ Volver al silo</button>
 
 <p><b>Fecha muestreo:</b> {{ muestreo.fecha_muestreo }}</p>
 
 <hr>
-
 <h3>Secciones del muestreo</h3>
 
-<!-- ================= PUNTA ================= -->
+{% for sec in ["punta","medio","final"] %}
+{% set a = (analisis | selectattr("seccion","equalto",sec) | list | first) %}
+
 <div class="section">
-  <h4>Punta</h4>
-  {% for a in analisis if a.seccion == "punta" %}
-  <p>
-    Temp: {{ a.temperatura }} °C |
-    Hum: {{ a.humedad }} % <br>
-    Factor: {{ (a.factor * 100) | round(0) }} %
-  </p>
-  {% endfor %}
-  <button onclick="abrirAnalisis('punta')">➕ Cargar / Editar análisis</button>
+  <h4>{{ sec|capitalize }}</h4>
+
+  {% if a %}
+  <table>
+    <tr>
+      <th>Temp °C</th>
+      <th>Hum %</th>
+      <th>Dañados</th>
+      <th>Quebrados</th>
+      <th>M.Ext</th>
+      <th>Olor</th>
+      <th>Moho</th>
+      <th>Insectos</th>
+      <th>Chamico</th>
+      {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <th>Grado</th>
+      {% endif %}
+      <th>Factor</th>
+    </tr>
+    <tr>
+      <td>{{ a.temperatura }}</td>
+      <td>{{ a.humedad }}</td>
+      <td>{{ a.danados }}</td>
+      <td>{{ a.quebrados }}</td>
+      <td>{{ a.materia_extrana }}</td>
+      <td>{{ a.olor }}</td>
+      <td>{{ a.moho }}</td>
+      <td>{{ "Sí" if a.insectos else "No" }}</td>
+      <td>{{ "Sí" if a.chamico else "No" }}</td>
+      {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <td>{{ a.grado }}</td>
+      {% endif %}
+      <td><b>{{ (a.factor * 100) | round(0) }} %</b></td>
+    </tr>
+  </table>
+  {% else %}
+    <p><i>Sin análisis cargado</i></p>
+  {% endif %}
+
+  <button onclick="abrirAnalisis('{{ sec }}')">➕ Cargar / Editar análisis</button>
 </div>
 
-<!-- ================= MEDIO ================= -->
-<div class="section">
-  <h4>Medio</h4>
-  {% for a in analisis if a.seccion == "medio" %}
-  <p>
-    Temp: {{ a.temperatura }} °C |
-    Hum: {{ a.humedad }} % <br>
-    Factor: {{ (a.factor * 100) | round(0) }} %
-  </p>
-  {% endfor %}
-  <button onclick="abrirAnalisis('medio')">➕ Cargar / Editar análisis</button>
-</div>
-
-<!-- ================= FINAL ================= -->
-<div class="section">
-  <h4>Final</h4>
-  {% for a in analisis if a.seccion == "final" %}
-  <p>
-    Temp: {{ a.temperatura }} °C |
-    Hum: {{ a.humedad }} % <br>
-    Factor: {{ (a.factor * 100) | round(0) }} %
-  </p>
-  {% endfor %}
-  <button onclick="abrirAnalisis('final')">➕ Cargar / Editar análisis</button>
-</div>
+{% endfor %}
 
 </div>
 
-<!-- ================= MODAL ================= -->
+<!-- MODAL -->
 <div id="modal" class="modal">
   <div class="modal-content">
 
@@ -102,7 +133,7 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <input id="temperatura" placeholder="Temperatura">
     <input id="humedad" placeholder="Humedad">
 
-    {% if muestreo.cereal not in ("Soja", "Girasol") %}
+    {% if muestreo.cereal not in ("Soja","Girasol") %}
     <input id="ph" placeholder="PH">
     {% endif %}
 
@@ -142,38 +173,8 @@ let seccionActual = null;
 
 function abrirAnalisis(seccion){
   seccionActual = seccion;
-
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
-
-  ["temperatura","humedad","ph","danados","quebrados","materia_extrana"]
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.value = "";
-    });
-
-  olor.value = "0";
-  moho.value = "0";
-  insectos.checked = false;
-  chamico.checked = false;
-
-  fetch(`/api/analisis_seccion/{{ muestreo.id }}/${seccion}`)
-    .then(r => r.json())
-    .then(d => {
-      if(d.id){
-        temperatura.value = d.temperatura ?? "";
-        humedad.value = d.humedad ?? "";
-        if(ph) ph.value = d.ph ?? "";
-        danados.value = d.danados ?? "";
-        quebrados.value = d.quebrados ?? "";
-        materia_extrana.value = d.materia_extrana ?? "";
-        olor.value = d.olor ?? "0";
-        moho.value = d.moho ?? "0";
-        insectos.checked = d.insectos == 1;
-        chamico.checked = d.chamico == 1;
-      }
-    });
-
   document.getElementById("modal").style.display = "flex";
 }
 
@@ -184,14 +185,14 @@ function cerrarModal(){
 function guardarAnalisis(){
   fetch("/api/analisis_seccion", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({
       id_muestreo: {{ muestreo.id }},
       cereal: "{{ muestreo.cereal }}",
       seccion: seccionActual,
       temperatura: temperatura.value,
       humedad: humedad.value,
-      ph: typeof ph !== "undefined" ? ph.value : null,
+      ph: (typeof ph !== "undefined") ? ph.value : null,
       danados: danados.value,
       quebrados: quebrados.value,
       materia_extrana: materia_extrana.value,
@@ -200,8 +201,7 @@ function guardarAnalisis(){
       insectos: insectos.checked,
       chamico: chamico.checked
     })
-  })
-  .then(() => location.reload());
+  }).then(()=>location.reload());
 }
 </script>
 
