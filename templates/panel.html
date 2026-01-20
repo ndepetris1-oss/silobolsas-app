@@ -13,13 +13,21 @@ body{font-family:Arial;background:#e8f5e9;margin:0}
 header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
 .container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+button,select{
+  background:#43a047;color:white;border:none;border-radius:8px;
+  padding:8px 14px;cursor:pointer
+}
+select{color:black;background:#c8e6c9}
 button:hover{background:#2e7d32}
 #map{height:420px;border-radius:12px;margin-bottom:15px}
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
 .humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.badge{padding:4px 10px;border-radius:12px;font-size:12px}
+.normal{background:#c8e6c9}
+.remuestrear{background:#fff3cd}
+.extraer{background:#f8d7da}
 </style>
 </head>
 
@@ -32,48 +40,54 @@ th{background:#a5d6a7}
 <div class="toolbar">
   <button onclick="location.href='/form'">➕ Nuevo registro</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
+
+  <select id="filtroCereal">
+    <option value="">Cereal</option>
+    <option>Maíz</option>
+    <option>Soja</option>
+    <option>Trigo</option>
+    <option>Girasol</option>
+  </select>
+
+  <select id="filtroEstado">
+    <option value="">Estado</option>
+    <option>Seco</option>
+    <option>Humedo</option>
+  </select>
+
+  <select id="filtroRec">
+    <option value="">Recomendación</option>
+    <option>Normal</option>
+    <option>Remuestrear</option>
+    <option>Extraer</option>
+  </select>
+
   <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+  <button onclick="resetFiltros()">♻ Reset</button>
 </div>
 
 <div id="map"></div>
 
-<table>
+<table id="tabla">
 <thead>
 <tr>
-  <th>QR</th>
-  <th>Cereal</th>
-  <th>Estado</th>
-  <th>Confección</th>
-  <th>Grado</th>
-  <th>Factor</th>
-  <th>TAS mín</th>
-  <th>Extracción estimada</th>
-  <th>Acción</th>
+  <th>QR</th><th>Cereal</th><th>Estado</th>
+  <th>Confección</th><th>Grado</th><th>Factor</th>
+  <th>TAS mín</th><th>Extracción estimada</th><th>Acción</th>
 </tr>
 </thead>
-<tbody>
-{% for r in registros %}
-<tr>
-  <td>{{ r.numero_qr }}</td>
-  <td>{{ r.cereal }}</td>
-  <td class="{{ 'humedo' if r.estado == 'Humedo' else '' }}">{{ r.estado }}</td>
-  <td>{{ r.fecha_confeccion }}{% if r.dias_confeccion is not none %} ({{ r.dias_confeccion }} d){% endif %}</td>
-  <td>{{ r.grado if r.grado is not none else '-' }}</td>
-  <td>{{ r.factor if r.factor is not none else '-' }}%</td>
-  <td>{{ r.tas_min if r.tas_min is not none else '-' }}</td>
-  <td>{{ r.fecha_extraccion_estimada if r.fecha_extraccion_estimada else '-' }}</td>
-  <td><button onclick="location.href='/silo/{{ r.numero_qr }}'">📊 Ver</button></td>
-</tr>
-{% endfor %}
-</tbody>
+<tbody></tbody>
 </table>
 
 </div>
 
 <script>
 const registros = {{ registros | tojson }};
-const map = L.map('map');
+let registrosFiltrados = [...registros];
 
+const tbody = document.querySelector("#tabla tbody");
+
+const map = L.map('map');
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { attribution: '© Esri' }
@@ -81,39 +95,76 @@ L.tileLayer(
 
 let markers = [];
 
-function iconoPorCereal(cereal){
-  let color = "blue";
-  if(cereal === "Maíz") color = "orange";
-  if(cereal === "Soja") color = "yellow";
-  if(cereal === "Trigo") color = "#bdbdbd";
-  if(cereal === "Girasol") color = "black";
-
+function icono(cereal){
+  let color="blue";
+  if(cereal==="Maíz") color="orange";
+  if(cereal==="Soja") color="yellow";
+  if(cereal==="Trigo") color="#bdbdbd";
+  if(cereal==="Girasol") color="black";
   return L.divIcon({
     html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
   });
 }
 
-let bounds = [];
-registros.forEach(r=>{
-  if(r.lat && r.lon){
-    const m = L.marker([r.lat, r.lon], {icon: iconoPorCereal(r.cereal)})
-      .addTo(map)
-      .bindPopup(`<b>${r.numero_qr}</b><br>${r.cereal}`);
-    markers.push(m);
-    bounds.push([r.lat, r.lon]);
-  }
-});
+function render(){
+  tbody.innerHTML="";
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
 
-if(bounds.length){
-  map.fitBounds(bounds,{padding:[30,30]});
-}else{
-  map.setView([-34.6,-58.4],6);
+  let bounds=[];
+
+  registrosFiltrados.forEach(r=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${r.numero_qr}</td>
+        <td>${r.cereal}</td>
+        <td class="${r.estado==='Humedo'?'humedo':''}">${r.estado}</td>
+        <td>${r.fecha_confeccion}${r.dias_confeccion!=null?` (${r.dias_confeccion} d)`:``}</td>
+        <td>${r.grado??'-'}</td>
+        <td>${r.factor??'-'}%</td>
+        <td>${r.tas_min??'-'}</td>
+        <td>${r.fecha_extraccion_estimada??'-'}</td>
+        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
+      </tr>`;
+
+    if(r.lat && r.lon){
+      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
+      markers.push(m); bounds.push([r.lat,r.lon]);
+    }
+  });
+
+  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 }
+
+function aplicarFiltros(){
+  const c=document.getElementById("filtroCereal").value;
+  const e=document.getElementById("filtroEstado").value;
+  const r=document.getElementById("filtroRec").value;
+
+  registrosFiltrados = registros.filter(x =>
+    (!c || x.cereal===c) &&
+    (!e || x.estado===e) &&
+    (!r || x.recomendacion===r)
+  );
+  render();
+}
+
+function resetFiltros(){
+  document.getElementById("filtroCereal").value="";
+  document.getElementById("filtroEstado").value="";
+  document.getElementById("filtroRec").value="";
+  registrosFiltrados=[...registros];
+  render();
+}
+
+document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
 
 function pantallaCompleta(){
-  const el = document.getElementById("map");
+  const el=document.getElementById("map");
   if(el.requestFullscreen) el.requestFullscreen();
 }
+
+render();
 </script>
 
 </body>
