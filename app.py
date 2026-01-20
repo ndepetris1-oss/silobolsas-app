@@ -122,11 +122,18 @@ def panel():
         factor = None
         tas_min = None
 
-        fecha_conf = datetime.strptime(
-            s["fecha_confeccion"], "%Y-%m-%d %H:%M"
-        )
-        dias_confeccion = (ahora - fecha_conf).days
+        # ---- días desde confección (ROBUSTO) ----
+        dias_confeccion = None
+        if s["fecha_confeccion"]:
+            try:
+                fecha_conf = datetime.strptime(
+                    s["fecha_confeccion"], "%Y-%m-%d %H:%M"
+                )
+                dias_confeccion = (ahora - fecha_conf).days
+            except:
+                dias_confeccion = None
 
+        # ---- último muestreo ----
         if s["ultimo_muestreo"]:
             datos = conn.execute("""
                 SELECT seccion, grado, factor, tas
@@ -141,6 +148,7 @@ def panel():
 
                 for d in datos:
                     peso = pesos.get(d["seccion"], 0)
+
                     if d["factor"] is not None:
                         total_factor += d["factor"] * peso
                     if d["grado"] is not None:
@@ -187,6 +195,7 @@ def form():
 def save_silo():
     d = request.get_json()
     conn = get_db()
+
     conn.execute("""
         INSERT INTO silos VALUES (?,?,?,?,?,?,?)
         ON CONFLICT(numero_qr) DO UPDATE SET
@@ -204,6 +213,7 @@ def save_silo():
         d.get("lon"),
         ahora_argentina().strftime("%Y-%m-%d %H:%M")
     ))
+
     conn.commit()
     conn.close()
     return jsonify(ok=True)
@@ -218,10 +228,12 @@ def nuevo_muestreo():
     qr = request.json["qr"]
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
     """, (qr, ahora_argentina().strftime("%Y-%m-%d %H:%M")))
+
     conn.commit()
     mid = cur.lastrowid
     conn.close()
@@ -312,7 +324,7 @@ def guardar_analisis_seccion():
 
 
 # ======================================================
-# VISTAS
+# SILO
 # ======================================================
 
 @app.route("/silo/<qr>")
@@ -324,10 +336,15 @@ def ver_silo(qr):
         "SELECT * FROM silos WHERE numero_qr=?", (qr,)
     ).fetchone()
 
-    fecha_conf = datetime.strptime(
-        silo["fecha_confeccion"], "%Y-%m-%d %H:%M"
-    )
-    dias_confeccion = (ahora - fecha_conf).days
+    dias_confeccion = None
+    if silo["fecha_confeccion"]:
+        try:
+            fecha_conf = datetime.strptime(
+                silo["fecha_confeccion"], "%Y-%m-%d %H:%M"
+            )
+            dias_confeccion = (ahora - fecha_conf).days
+        except:
+            dias_confeccion = None
 
     muestreos_db = conn.execute("""
         SELECT id, fecha_muestreo
@@ -338,10 +355,15 @@ def ver_silo(qr):
 
     muestreos = []
     for m in muestreos_db:
-        fecha_m = datetime.strptime(
-            m["fecha_muestreo"], "%Y-%m-%d %H:%M"
-        )
-        dias_desde = (ahora - fecha_m).days
+        dias_desde = None
+        try:
+            fecha_m = datetime.strptime(
+                m["fecha_muestreo"], "%Y-%m-%d %H:%M"
+            )
+            dias_desde = (ahora - fecha_m).days
+        except:
+            dias_desde = None
+
         muestreos.append({
             "id": m["id"],
             "fecha_muestreo": m["fecha_muestreo"],
@@ -360,9 +382,14 @@ def ver_silo(qr):
     )
 
 
+# ======================================================
+# MUESTREO
+# ======================================================
+
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
     conn = get_db()
+
     muestreo = conn.execute("""
         SELECT m.*, s.numero_qr, s.cereal
         FROM muestreos m
