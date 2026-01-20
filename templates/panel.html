@@ -9,70 +9,17 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{
-  font-family:Arial;
-  background:#e8f5e9;
-  margin:0;
-}
-header{
-  background:#2e7d32;
-  color:white;
-  text-align:center;
-  padding:14px;
-  font-size:20px;
-  font-weight:bold;
-}
-.container{
-  width:95%;
-  margin:15px auto;
-  background:white;
-  border-radius:14px;
-  padding:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,.2);
-}
-.toolbar{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
-}
-button{
-  background:#43a047;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer;
-  font-size:14px;
-}
+body{font-family:Arial;background:#e8f5e9;margin:0}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
 button:hover{background:#2e7d32}
-
-#map{
-  height:420px;
-  border-radius:12px;
-  margin-bottom:15px;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-th,td{
-  padding:8px;
-  border-bottom:1px solid #c8e6c9;
-  text-align:center;
-}
-th{
-  background:#a5d6a7;
-}
-tr:hover{
-  background:#f1f8e9;
-}
-.humedo{
-  background:#ffebee;
-  color:#b71c1c;
-  font-weight:bold;
-}
+#map{height:420px;border-radius:12px;margin-bottom:15px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th{background:#a5d6a7}
+.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
 </style>
 </head>
 
@@ -85,7 +32,6 @@ tr:hover{
 <div class="toolbar">
   <button onclick="location.href='/form'">➕ Nuevo registro</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-  <button onclick="centrar()">📍 Mi ubicación</button>
   <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
 </div>
 
@@ -101,6 +47,7 @@ tr:hover{
   <th>Grado</th>
   <th>Factor</th>
   <th>TAS mín</th>
+  <th>Extracción estimada</th>
   <th>Acción</th>
 </tr>
 </thead>
@@ -109,23 +56,13 @@ tr:hover{
 <tr>
   <td>{{ r.numero_qr }}</td>
   <td>{{ r.cereal }}</td>
-  <td class="{{ 'humedo' if r.estado == 'Humedo' else '' }}">
-    {{ r.estado }}
-  </td>
-  <td>
-    {{ r.fecha_confeccion }}
-    {% if r.dias_confeccion is not none %}
-      ({{ r.dias_confeccion }} d)
-    {% endif %}
-  </td>
+  <td class="{{ 'humedo' if r.estado == 'Humedo' else '' }}">{{ r.estado }}</td>
+  <td>{{ r.fecha_confeccion }}{% if r.dias_confeccion is not none %} ({{ r.dias_confeccion }} d){% endif %}</td>
   <td>{{ r.grado if r.grado is not none else '-' }}</td>
-  <td>{{ r.factor if r.factor is not none else '-' }} %</td>
+  <td>{{ r.factor if r.factor is not none else '-' }}%</td>
   <td>{{ r.tas_min if r.tas_min is not none else '-' }}</td>
-  <td>
-    <button onclick="location.href='/silo/{{ r.numero_qr }}'">
-      📊 Ver
-    </button>
-  </td>
+  <td>{{ r.fecha_extraccion_estimada if r.fecha_extraccion_estimada else '-' }}</td>
+  <td><button onclick="location.href='/silo/{{ r.numero_qr }}'">📊 Ver</button></td>
 </tr>
 {% endfor %}
 </tbody>
@@ -145,60 +82,32 @@ L.tileLayer(
 let markers = [];
 
 function iconoPorCereal(cereal){
-  let color = "#1976d2";
-
+  let color = "blue";
   if(cereal === "Maíz") color = "orange";
   if(cereal === "Soja") color = "yellow";
   if(cereal === "Trigo") color = "#bdbdbd";
   if(cereal === "Girasol") color = "black";
 
   return L.divIcon({
-    html: `<div style="
-      background:${color};
-      width:14px;
-      height:14px;
-      border-radius:50%;
-      border:2px solid white"></div>`
+    html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
   });
 }
 
-function dibujarMapa(data){
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-
-  let bounds = [];
-
-  data.forEach(r => {
-    if(r.lat && r.lon){
-      const marker = L.marker([r.lat, r.lon], {
-        icon: iconoPorCereal(r.cereal)
-      })
+let bounds = [];
+registros.forEach(r=>{
+  if(r.lat && r.lon){
+    const m = L.marker([r.lat, r.lon], {icon: iconoPorCereal(r.cereal)})
       .addTo(map)
-      .bindPopup(`
-        <b>${r.numero_qr}</b><br>
-        ${r.cereal}<br>
-        Estado: ${r.estado}
-      `);
-
-      markers.push(marker);
-      bounds.push([r.lat, r.lon]);
-    }
-  });
-
-  if(bounds.length){
-    map.fitBounds(bounds, { padding:[30,30] });
-  }else{
-    map.setView([-34.6, -58.4], 6);
+      .bindPopup(`<b>${r.numero_qr}</b><br>${r.cereal}`);
+    markers.push(m);
+    bounds.push([r.lat, r.lon]);
   }
-}
+});
 
-dibujarMapa(registros);
-
-function centrar(){
-  if(!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(pos=>{
-    map.setView([pos.coords.latitude, pos.coords.longitude],16);
-  });
+if(bounds.length){
+  map.fitBounds(bounds,{padding:[30,30]});
+}else{
+  map.setView([-34.6,-58.4],6);
 }
 
 function pantallaCompleta(){
