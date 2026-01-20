@@ -36,6 +36,10 @@ th,td{
 }
 th{background:#e8f5e9}
 
+.alerta-verde{color:#2e7d32;font-weight:bold}
+.alerta-amarilla{color:#f9a825;font-weight:bold}
+.alerta-roja{color:#c62828;font-weight:bold}
+
 .modal{
   display:none;
   position:fixed;
@@ -102,6 +106,7 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <th>Moho %</th>
       <th>Insectos</th>
       <th>Chamico</th>
+      <th>TAS (días)</th>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
       <th>Grado</th>
       {% endif %}
@@ -117,6 +122,19 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <td>{{ a.moho }}</td>
       <td>{{ "Sí" if a.insectos else "No" }}</td>
       <td>{{ a.chamico or 0 }}</td>
+      <td>
+        {% if a.tas %}
+          {% if a.tas <= 7 %}
+            <span class="alerta-roja">🔴 {{ a.tas }}</span>
+          {% elif a.tas <= 20 %}
+            <span class="alerta-amarilla">🟡 {{ a.tas }}</span>
+          {% else %}
+            <span class="alerta-verde">🟢 {{ a.tas }}</span>
+          {% endif %}
+        {% else %}
+          -
+        {% endif %}
+      </td>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
       <td><b>{{ a.grado }}</b></td>
       {% endif %}
