@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, abort
 import sqlite3, csv, io
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from calculos import (
@@ -12,7 +12,6 @@ from calculos import (
 app = Flask(__name__)
 DB_NAME = "silos.db"
 
-
 # ======================================================
 # UTILIDADES
 # ======================================================
@@ -20,12 +19,10 @@ DB_NAME = "silos.db"
 def ahora_argentina():
     return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
 
-
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
-
 
 # ======================================================
 # DB INIT
@@ -79,7 +76,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 init_db()
 
 # ======================================================
@@ -122,19 +118,32 @@ def panel():
         factor = None
         tas_min = None
 
-        # ---- días desde confección (ROBUSTO) ----
+        # días desde confección
         dias_confeccion = None
         if s["fecha_confeccion"]:
             try:
-                fecha_conf = datetime.strptime(
-                    s["fecha_confeccion"], "%Y-%m-%d %H:%M"
-                )
-                dias_confeccion = (ahora - fecha_conf).days
+                fc = datetime.strptime(s["fecha_confeccion"], "%Y-%m-%d %H:%M")
+                dias_confeccion = (ahora - fc).days
             except:
                 dias_confeccion = None
 
-        # ---- último muestreo ----
+        fecha_ultimo_muestreo = None
+
         if s["ultimo_muestreo"]:
+            mu = conn.execute("""
+                SELECT fecha_muestreo
+                FROM muestreos
+                WHERE id=?
+            """, (s["ultimo_muestreo"],)).fetchone()
+
+            if mu and mu["fecha_muestreo"]:
+                try:
+                    fecha_ultimo_muestreo = datetime.strptime(
+                        mu["fecha_muestreo"], "%Y-%m-%d %H:%M"
+                    )
+                except:
+                    fecha_ultimo_muestreo = None
+
             datos = conn.execute("""
                 SELECT seccion, grado, factor, tas
                 FROM analisis
@@ -142,41 +151,45 @@ def panel():
             """, (s["ultimo_muestreo"],)).fetchall()
 
             if datos:
-                total_factor = 0
+                total = 0
                 grados = []
                 tas_vals = []
 
                 for d in datos:
                     peso = pesos.get(d["seccion"], 0)
-
                     if d["factor"] is not None:
-                        total_factor += d["factor"] * peso
+                        total += d["factor"] * peso
                     if d["grado"] is not None:
                         grados.append(d["grado"])
                     if d["tas"] is not None:
                         tas_vals.append(d["tas"])
 
-                if total_factor > 0:
-                    factor = round(total_factor * 100, 1)
+                if total > 0:
+                    factor = round(total * 100, 1)
                 if grados:
                     grado = max(grados)
                 if tas_vals:
                     tas_min = min(tas_vals)
 
-        recomendacion = recomendacion_por_tas(tas_min)
+        # fecha estimada de extracción
+        fecha_extraccion_estimada = None
+        if tas_min is not None and fecha_ultimo_muestreo:
+            fecha_extraccion_estimada = (
+                fecha_ultimo_muestreo + timedelta(days=tas_min)
+            ).strftime("%Y-%m-%d")
 
         resultado.append({
             **dict(s),
             "grado": grado,
             "factor": factor,
             "tas_min": tas_min,
-            "recomendacion": recomendacion,
-            "dias_confeccion": dias_confeccion
+            "recomendacion": recomendacion_por_tas(tas_min),
+            "dias_confeccion": dias_confeccion,
+            "fecha_extraccion_estimada": fecha_extraccion_estimada
         })
 
     conn.close()
     return render_template("panel.html", registros=resultado)
-
 
 # ======================================================
 # FORM
@@ -185,7 +198,6 @@ def panel():
 @app.route("/form")
 def form():
     return render_template("form.html")
-
 
 # ======================================================
 # REGISTRAR SILO
@@ -218,14 +230,13 @@ def save_silo():
     conn.close()
     return jsonify(ok=True)
 
-
 # ======================================================
 # NUEVO MUESTREO
 # ======================================================
 
 @app.route("/api/nuevo_muestreo", methods=["POST"])
 def nuevo_muestreo():
-    qr = request.json["qr"]
+    qr = request.json["qr"].strip()
     conn = get_db()
     cur = conn.cursor()
 
@@ -239,90 +250,6 @@ def nuevo_muestreo():
     conn.close()
     return jsonify(id_muestreo=mid)
 
-
-# ======================================================
-# GUARDAR / EDITAR ANÁLISIS
-# ======================================================
-
-@app.route("/api/analisis_seccion", methods=["POST"])
-def guardar_analisis_seccion():
-    d = request.get_json()
-
-    def f(x):
-        try:
-            return float(x)
-        except:
-            return 0.0
-
-    datos = {
-        "temperatura": f(d.get("temperatura")),
-        "humedad": f(d.get("humedad")),
-        "ph": f(d.get("ph")) if d.get("ph") not in ("", None) else None,
-        "danados": f(d.get("danados")),
-        "quebrados": f(d.get("quebrados")),
-        "materia_extrana": f(d.get("materia_extrana")),
-        "olor": f(d.get("olor")),
-        "moho": f(d.get("moho")),
-        "insectos": int(d.get("insectos", False)),
-        "chamico": int(d.get("chamico", 0))
-    }
-
-    cereal = d["cereal"]
-
-    if cereal == "Maíz":
-        grado = grado_maiz(datos)
-        factor = factor_maiz(datos)
-        tas = tas_maiz(datos)
-    elif cereal == "Trigo":
-        grado = grado_trigo(datos)
-        factor = factor_trigo(datos)
-        tas = tas_trigo(datos)
-    elif cereal == "Soja":
-        grado, factor, tas = None, factor_soja(datos), None
-    else:
-        grado, factor, tas = None, factor_girasol(datos), None
-
-    conn = get_db()
-    existe = conn.execute("""
-        SELECT id FROM analisis
-        WHERE id_muestreo=? AND seccion=?
-    """, (d["id_muestreo"], d["seccion"])).fetchone()
-
-    if existe:
-        conn.execute("""
-            UPDATE analisis SET
-                temperatura=?, humedad=?, ph=?,
-                danados=?, quebrados=?, materia_extrana=?,
-                olor=?, moho=?, insectos=?, chamico=?,
-                grado=?, factor=?, tas=?
-            WHERE id=?
-        """, (
-            datos["temperatura"], datos["humedad"], datos["ph"],
-            datos["danados"], datos["quebrados"], datos["materia_extrana"],
-            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
-            grado, factor, tas, existe["id"]
-        ))
-    else:
-        conn.execute("""
-            INSERT INTO analisis (
-                id_muestreo, seccion, temperatura, humedad, ph,
-                danados, quebrados, materia_extrana,
-                olor, moho, insectos, chamico,
-                grado, factor, tas
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            d["id_muestreo"], d["seccion"],
-            datos["temperatura"], datos["humedad"], datos["ph"],
-            datos["danados"], datos["quebrados"], datos["materia_extrana"],
-            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
-            grado, factor, tas
-        ))
-
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
-
-
 # ======================================================
 # SILO
 # ======================================================
@@ -330,57 +257,23 @@ def guardar_analisis_seccion():
 @app.route("/silo/<qr>")
 def ver_silo(qr):
     conn = get_db()
-    ahora = ahora_argentina()
-
     silo = conn.execute(
-        "SELECT * FROM silos WHERE numero_qr=?", (qr,)
+        "SELECT * FROM silos WHERE numero_qr=?", (qr.strip(),)
     ).fetchone()
 
-    dias_confeccion = None
-    if silo["fecha_confeccion"]:
-        try:
-            fecha_conf = datetime.strptime(
-                silo["fecha_confeccion"], "%Y-%m-%d %H:%M"
-            )
-            dias_confeccion = (ahora - fecha_conf).days
-        except:
-            dias_confeccion = None
+    if silo is None:
+        conn.close()
+        abort(404)
 
-    muestreos_db = conn.execute("""
+    muestreos = conn.execute("""
         SELECT id, fecha_muestreo
         FROM muestreos
         WHERE numero_qr=?
         ORDER BY fecha_muestreo DESC
-    """, (qr,)).fetchall()
-
-    muestreos = []
-    for m in muestreos_db:
-        dias_desde = None
-        try:
-            fecha_m = datetime.strptime(
-                m["fecha_muestreo"], "%Y-%m-%d %H:%M"
-            )
-            dias_desde = (ahora - fecha_m).days
-        except:
-            dias_desde = None
-
-        muestreos.append({
-            "id": m["id"],
-            "fecha_muestreo": m["fecha_muestreo"],
-            "dias_desde_muestreo": dias_desde
-        })
+    """, (qr.strip(),)).fetchall()
 
     conn.close()
-
-    silo_dict = dict(silo)
-    silo_dict["dias_confeccion"] = dias_confeccion
-
-    return render_template(
-        "silo.html",
-        silo=silo_dict,
-        muestreos=muestreos
-    )
-
+    return render_template("silo.html", silo=silo, muestreos=muestreos)
 
 # ======================================================
 # MUESTREO
@@ -406,7 +299,6 @@ def ver_muestreo(id):
 
     conn.close()
     return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
-
 
 # ======================================================
 # EXPORTAR CSV
@@ -440,7 +332,6 @@ def exportar():
         download_name="silos.csv",
         mimetype="text/csv"
     )
-
 
 if __name__ == "__main__":
     app.run(debug=True)
