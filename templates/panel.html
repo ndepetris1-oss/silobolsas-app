@@ -9,70 +9,50 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{
-  font-family:Arial;
-  background:#e8f5e9;
-  margin:0;
-}
+body{font-family:Arial;background:#e8f5e9;margin:0}
 header{
-  background:#2e7d32;
-  color:white;
-  text-align:center;
-  padding:14px;
-  font-size:20px;
-  font-weight:bold;
+  background:#2e7d32;color:white;text-align:center;
+  padding:14px;font-size:20px;font-weight:bold
 }
 .container{
-  width:95%;
-  margin:15px auto;
-  background:white;
-  border-radius:14px;
-  padding:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,.2);
+  width:96%;margin:15px auto;background:white;
+  border-radius:14px;padding:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,.2)
 }
-.toolbar{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
+
+.toolbar, .filters{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px
 }
-button{
-  background:#43a047;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer;
-  font-size:14px;
+
+button, select{
+  background:#43a047;color:white;border:none;
+  border-radius:8px;padding:8px 12px;
+  cursor:pointer;font-size:14px
 }
+select{background:#66bb6a}
 button:hover{background:#2e7d32}
 
 #map{
-  height:420px;
-  border-radius:12px;
-  margin-bottom:15px;
+  height:420px;border-radius:12px;margin-bottom:15px
 }
 
-table{
-  width:100%;
-  border-collapse:collapse;
-}
+table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{
-  padding:8px;
-  border-bottom:1px solid #c8e6c9;
-  text-align:center;
+  padding:6px;border-bottom:1px solid #c8e6c9;
+  text-align:center
 }
-th{
-  background:#a5d6a7;
+th{background:#a5d6a7}
+
+tr[data-rec="extraer"]{background:#ffebee}
+tr[data-rec="remuestrear"]{background:#fffde7}
+
+.badge{
+  padding:4px 8px;border-radius:6px;
+  font-weight:bold;font-size:12px
 }
-tr:hover{
-  background:#f1f8e9;
-}
-.humedo{
-  background:#ffebee;
-  color:#b71c1c;
-  font-weight:bold;
-}
+.verde{background:#c8e6c9;color:#1b5e20}
+.amarillo{background:#fff9c4;color:#f57f17}
+.rojo{background:#ffcdd2;color:#b71c1c}
 </style>
 </head>
 
@@ -83,46 +63,99 @@ tr:hover{
 <div class="container">
 
 <div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo registro</button>
-  <button onclick="location.href='/api/export'">📤 Exportar Excel</button>
+  <button onclick="location.href='/form'">➕ Nuevo silo</button>
+  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
   <button onclick="centrar()">📍 Mi ubicación</button>
-  <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
+</div>
+
+<div class="filters">
+  <select id="fCereal" onchange="filtrar()">
+    <option value="">Cereal</option>
+    <option>Maíz</option>
+    <option>Trigo</option>
+    <option>Soja</option>
+    <option>Girasol</option>
+  </select>
+
+  <select id="fEstado" onchange="filtrar()">
+    <option value="">Estado</option>
+    <option>Seco</option>
+    <option>Humedo</option>
+  </select>
+
+  <select id="fRec" onchange="filtrar()">
+    <option value="">Recomendación</option>
+    <option value="normal">Normal</option>
+    <option value="remuestrear">Remuestrear</option>
+    <option value="extraer">Extraer</option>
+  </select>
+
+  <button onclick="ordenarAntiguos()">🕒 Más antiguos</button>
+  <button onclick="soloCriticos()">🔴 Solo críticos</button>
+  <button onclick="resetFiltros()">♻ Reset</button>
 </div>
 
 <div id="map"></div>
 
-<table>
+<table id="tabla">
 <thead>
 <tr>
   <th>QR</th>
   <th>Cereal</th>
   <th>Estado</th>
-  <th>Fecha confección</th>
+  <th>Días</th>
+  <th>TAS min</th>
+  <th>Recomendación</th>
   <th>Grado</th>
   <th>Factor</th>
   <th>Acción</th>
 </tr>
 </thead>
+
 <tbody>
 {% for r in registros %}
-<tr>
+<tr
+  data-cereal="{{ r.cereal }}"
+  data-estado="{{ r.estado }}"
+  data-rec="{{ r.recomendacion }}"
+  data-dias="{{ r.dias_confeccion }}"
+>
   <td>{{ r.numero_qr }}</td>
   <td>{{ r.cereal }}</td>
-  <td class="{{ 'humedo' if r.estado == 'Humedo' else '' }}">
-    {{ r.estado }}
-  </td>
-  <td>{{ r.fecha_confeccion }}</td>
-  <td>{{ r.grado if r.grado is not none else '-' }}</td>
+  <td>{{ r.estado }}</td>
+  <td>{{ r.dias_confeccion }}</td>
+
   <td>
-    {% if r.factor is not none %}
-      {{ (r.factor * 100) | round(0) }} %
+    {% if r.tas_min %}
+      {{ r.tas_min }}
     {% else %}
       -
     {% endif %}
   </td>
+
+  <td>
+    {% if r.recomendacion == "extraer" %}
+      <span class="badge rojo">🔴 Extraer</span>
+    {% elif r.recomendacion == "remuestrear" %}
+      <span class="badge amarillo">🟡 Remuestrear</span>
+    {% else %}
+      <span class="badge verde">🟢 Normal</span>
+    {% endif %}
+  </td>
+
+  <td>{{ r.grado if r.grado is not none else "-" }}</td>
+
+  <td>
+    {% if r.factor %}
+      {{ r.factor }} %
+    {% else %}
+      -
+    {% endif %}
+  </td>
+
   <td>
     <button onclick="location.href='/silo/{{ r.numero_qr }}'">
-      📊 Ver silo
+      📊 Ver
     </button>
   </td>
 </tr>
@@ -138,38 +171,67 @@ const map = L.map('map');
 
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '© Esri' }
+  { attribution:'© Esri' }
 ).addTo(map);
 
 let bounds = [];
 
-registros.forEach(r => {
-  if (r.lat && r.lon) {
-    L.marker([r.lat, r.lon])
+registros.forEach(r=>{
+  if(r.lat && r.lon){
+    L.marker([r.lat,r.lon])
       .addTo(map)
       .bindPopup(
-        `<b>${r.numero_qr}</b><br>${r.cereal}<br>${r.estado}`
+        `<b>${r.numero_qr}</b><br>
+         ${r.cereal}<br>
+         ${r.recomendacion}`
       );
-    bounds.push([r.lat, r.lon]);
+    bounds.push([r.lat,r.lon]);
   }
 });
 
-if (bounds.length) {
-  map.fitBounds(bounds, { padding:[30,30] });
-} else {
-  map.setView([-34.6, -58.4], 6);
+if(bounds.length){
+  map.fitBounds(bounds,{padding:[30,30]});
+}else{
+  map.setView([-34.6,-58.4],6);
 }
 
 function centrar(){
-  if(!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(pos=>{
-    map.setView([pos.coords.latitude, pos.coords.longitude],16);
+    map.setView([pos.coords.latitude,pos.coords.longitude],16);
   });
 }
 
-function pantallaCompleta(){
-  const el = document.getElementById("map");
-  if(el.requestFullscreen) el.requestFullscreen();
+function filtrar(){
+  const c = fCereal.value;
+  const e = fEstado.value;
+  const r = fRec.value;
+
+  document.querySelectorAll("#tabla tbody tr").forEach(tr=>{
+    tr.style.display =
+      (!c || tr.dataset.cereal===c) &&
+      (!e || tr.dataset.estado===e) &&
+      (!r || tr.dataset.rec===r)
+      ? "" : "none";
+  });
+}
+
+function soloCriticos(){
+  fRec.value="extraer";
+  filtrar();
+}
+
+function ordenarAntiguos(){
+  const tbody=document.querySelector("#tabla tbody");
+  [...tbody.rows]
+    .sort((a,b)=>b.dataset.dias-a.dataset.dias)
+    .forEach(r=>tbody.appendChild(r));
+}
+
+function resetFiltros(){
+  fCereal.value="";
+  fEstado.value="";
+  fRec.value="";
+  filtrar();
 }
 </script>
 
