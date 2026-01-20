@@ -189,7 +189,78 @@ def panel():
     return render_template("panel.html", registros=resultado)
 
 # ======================================================
-# SILO (FIX ERROR 500)
+# REGISTRAR / EDITAR SILO  (FIX DEFINITIVO)
+# ======================================================
+
+@app.route("/api/save", methods=["POST"])
+def save_silo():
+    d = request.get_json()
+    conn = get_db()
+
+    existe = conn.execute(
+        "SELECT numero_qr FROM silos WHERE numero_qr=?",
+        (d["numero_qr"],)
+    ).fetchone()
+
+    if existe:
+        conn.execute("""
+            UPDATE silos SET
+                cereal=?,
+                estado=?,
+                metros=?,
+                lat=?,
+                lon=?
+            WHERE numero_qr=?
+        """, (
+            d["cereal"],
+            d["estado"],
+            d["metros"],
+            d.get("lat"),
+            d.get("lon"),
+            d["numero_qr"]
+        ))
+    else:
+        conn.execute("""
+            INSERT INTO silos (
+                numero_qr, cereal, estado,
+                metros, lat, lon, fecha_confeccion
+            ) VALUES (?,?,?,?,?,?,?)
+        """, (
+            d["numero_qr"],
+            d["cereal"],
+            d["estado"],
+            d["metros"],
+            d.get("lat"),
+            d.get("lon"),
+            ahora_argentina().strftime("%Y-%m-%d %H:%M")
+        ))
+
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
+
+# ======================================================
+# NUEVO MUESTREO
+# ======================================================
+
+@app.route("/api/nuevo_muestreo", methods=["POST"])
+def nuevo_muestreo():
+    qr = request.json["qr"].strip()
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO muestreos (numero_qr, fecha_muestreo)
+        VALUES (?,?)
+    """, (qr, ahora_argentina().strftime("%Y-%m-%d %H:%M")))
+
+    conn.commit()
+    mid = cur.lastrowid
+    conn.close()
+    return jsonify(id_muestreo=mid)
+
+# ======================================================
+# SILO (SIN ERROR 500)
 # ======================================================
 
 @app.route("/silo/<qr>")
@@ -232,12 +303,35 @@ def ver_silo(qr):
     return render_template("silo.html", silo=silo, muestreos=muestreos)
 
 # ======================================================
-# FORM / MUESTREO / EXPORT (SIN CAMBIOS)
+# MUESTREO
 # ======================================================
 
-@app.route("/form")
-def form():
-    return render_template("form.html")
+@app.route("/muestreo/<int:id>")
+def ver_muestreo(id):
+    conn = get_db()
+
+    muestreo = conn.execute("""
+        SELECT m.*, s.numero_qr, s.cereal
+        FROM muestreos m
+        JOIN silos s ON s.numero_qr = m.numero_qr
+        WHERE m.id=?
+    """, (id,)).fetchone()
+
+    analisis = conn.execute("""
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo=?
+        ORDER BY seccion
+    """, (id,)).fetchall()
+
+    conn.close()
+    return render_template("muestreo.html",
+                           muestreo=muestreo,
+                           analisis=analisis)
+
+# ======================================================
+# EXPORTAR CSV
+# ======================================================
 
 @app.route("/api/export")
 def exportar():
@@ -261,9 +355,14 @@ def exportar():
 
     mem = io.BytesIO(output.getvalue().encode())
     mem.seek(0)
-    return send_file(mem, as_attachment=True,
-                     download_name="silos.csv",
-                     mimetype="text/csv")
+    return send_file(
+        mem,
+        as_attachment=True,
+        download_name="silos.csv",
+        mimetype="text/csv"
+    )
+
+# ======================================================
 
 if __name__ == "__main__":
     app.run(debug=True)
