@@ -193,7 +193,24 @@ def save_silo():
         d["metros"],
         d.get("lat"),
         d.get("lon"),
-        datetime.now().isoformat()
+        conn.execute("""
+    INSERT INTO silos VALUES (?,?,?,?,?,?,?)
+    ON CONFLICT(numero_qr) DO UPDATE SET
+    cereal=excluded.cereal,
+    estado=excluded.estado,
+    metros=excluded.metros,
+    lat=excluded.lat,
+    lon=excluded.lon
+""", (
+    d["numero_qr"],
+    d["cereal"],
+    d["estado"],
+    d["metros"],
+    d.get("lat"),
+    d.get("lon"),
+    ahora_argentina().strftime("%Y-%m-%d %H:%M")
+))
+
     ))
     conn.commit()
     conn.close()
