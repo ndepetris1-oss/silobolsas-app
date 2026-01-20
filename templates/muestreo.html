@@ -55,7 +55,17 @@ th{background:#e8f5e9}
   overflow:auto
 }
 
-input,select{width:100%;padding:6px;margin-bottom:8px}
+input,select{
+  width:100%;
+  padding:6px;
+  margin-bottom:8px
+}
+
+label{
+  font-weight:bold;
+  display:block;
+  margin-top:6px
+}
 </style>
 </head>
 
@@ -106,7 +116,7 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <td>{{ a.olor }}</td>
       <td>{{ a.moho }}</td>
       <td>{{ "Sí" if a.insectos else "No" }}</td>
-      <td>{{ "Sí" if a.chamico else "No" }}</td>
+      <td>{{ a.chamico or 0 }}</td>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
       <td><b>{{ a.grado }}</b></td>
       {% endif %}
@@ -130,16 +140,25 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
     <h3 id="tituloModal"></h3>
 
-    <input id="temperatura" placeholder="Temperatura">
-    <input id="humedad" placeholder="Humedad">
+    <label>Temperatura (°C)</label>
+    <input id="temperatura">
+
+    <label>Humedad (%)</label>
+    <input id="humedad">
 
     {% if muestreo.cereal not in ("Soja","Girasol") %}
-    <input id="ph" placeholder="PH">
+    <label>PH</label>
+    <input id="ph">
     {% endif %}
 
-    <input id="danados" placeholder="Dañados">
-    <input id="quebrados" placeholder="Quebrados">
-    <input id="materia_extrana" placeholder="Materia extraña">
+    <label>Dañados (%)</label>
+    <input id="danados">
+
+    <label>Quebrados (%)</label>
+    <input id="quebrados">
+
+    <label>Materia extraña (%)</label>
+    <input id="materia_extrana">
 
     <label>Olor (%)</label>
     <select id="olor">
@@ -159,8 +178,15 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <option value="2">2</option>
     </select>
 
-    <label><input type="checkbox" id="insectos"> Insectos</label><br>
-    <label><input type="checkbox" id="chamico"> Chamico</label><br><br>
+    <label>
+      <input type="checkbox" id="insectos"> Insectos
+    </label>
+
+    <!-- CHAMICO GIRASOL -->
+    <label id="labelChamico">Chamico (semillas / 100 g)</label>
+    <input type="number" id="chamico" min="0" step="1" placeholder="Ej: 3">
+
+    <br>
 
     <button onclick="guardarAnalisis()">💾 Guardar</button>
     <button onclick="cerrarModal()">Cancelar</button>
@@ -170,13 +196,21 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
 <script>
 let seccionActual = null;
+const cereal = "{{ muestreo.cereal }}";
+
+const labelChamico = document.getElementById("labelChamico");
+const chamicoInput = document.getElementById("chamico");
+
+if (cereal !== "Girasol") {
+  labelChamico.style.display = "none";
+  chamicoInput.style.display = "none";
+}
 
 function abrirAnalisis(seccion){
   seccionActual = seccion;
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
 
-  // limpiar campos
   ["temperatura","humedad","danados","quebrados","materia_extrana"]
     .forEach(id => document.getElementById(id).value = "");
 
@@ -185,7 +219,7 @@ function abrirAnalisis(seccion){
   olor.value = "0";
   moho.value = "0";
   insectos.checked = false;
-  chamico.checked = false;
+  chamico.value = "";
 
   document.getElementById("modal").style.display = "flex";
 }
@@ -211,7 +245,7 @@ function guardarAnalisis(){
       olor: olor.value,
       moho: moho.value,
       insectos: insectos.checked,
-      chamico: chamico.checked
+      chamico: chamico.value || 0
     })
   }).then(() => location.reload());
 }
