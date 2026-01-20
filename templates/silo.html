@@ -2,44 +2,87 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Detalle del Silo - {{ silo.numero_qr }}</title>
+<title>Silo {{ silo.numero_qr }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:Arial;background:#eef5ee;margin:0}
-header{background:#2e7d32;color:white;padding:14px;font-size:20px;text-align:center}
-.container{width:90%;margin:20px auto;background:white;padding:20px;border-radius:12px}
-button{background:#43a047;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+body{
+  font-family:Arial;
+  background:#eef5ee;
+  margin:0;
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  font-size:20px;
+  text-align:center;
+}
+.container{
+  width:90%;
+  margin:20px auto;
+  background:white;
+  padding:20px;
+  border-radius:12px;
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer;
+}
 button:hover{background:#2e7d32}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:center}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  border-bottom:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
 th{background:#c8e6c9}
-.alerta{background:#fff3cd;padding:10px;border-radius:8px;margin:10px 0}
+.alerta{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin:10px 0;
+}
+.info{
+  background:#f1f8e9;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
 </style>
 </head>
 
 <body>
 
-<header>Detalle del Silo · {{ silo.numero_qr }}</header>
+<header>SILO · {{ silo.numero_qr }}</header>
 
 <div class="container">
 
 <button onclick="location.href='/panel'">⬅ Volver al panel</button>
 
-<h3>Información general</h3>
-<p>
-<b>Cereal:</b> {{ silo.cereal }} |
-<b>Estado:</b> {{ silo.estado }} |
-<b>Metros:</b> {{ silo.metros }} |
-<b>Fecha confección:</b> {{ silo.fecha_confeccion }}
-</p>
+<div class="info">
+  <b>Cereal:</b> {{ silo.cereal }} |
+  <b>Estado:</b> {{ silo.estado }} |
+  <b>Metros:</b> {{ silo.metros }} |
+  <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
+</div>
 
 <hr>
 
 <h3>Muestreos</h3>
 
 {% if not muestreos %}
-<div class="alerta">⚠️ Este silo aún no tiene muestreos cargados.</div>
+  <div class="alerta">
+    ⚠️ Este silo aún no tiene muestreos cargados.
+  </div>
 {% endif %}
 
 <button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
@@ -47,17 +90,19 @@ th{background:#c8e6c9}
 <table>
 <thead>
 <tr>
-<th>Fecha</th>
-<th>Acciones</th>
+  <th>Fecha muestreo</th>
+  <th>Acción</th>
 </tr>
 </thead>
 <tbody>
 {% for m in muestreos %}
 <tr>
-<td>{{ m.fecha_muestreo }}</td>
-<td>
-<button onclick="verMuestreo({{ m.id }})">📊 Ver / Cargar análisis</button>
-</td>
+  <td>{{ m.fecha_muestreo }}</td>
+  <td>
+    <button onclick="location.href='/muestreo/{{ m.id }}'">
+      📊 Ver / cargar análisis
+    </button>
+  </td>
 </tr>
 {% endfor %}
 </tbody>
@@ -69,14 +114,10 @@ th{background:#c8e6c9}
 function nuevoMuestreo(){
   fetch("/api/nuevo_muestreo",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({qr:"{{ silo.numero_qr }}"})
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ qr:"{{ silo.numero_qr }}" })
   })
-  .then(()=>location.reload());
-}
-
-function verMuestreo(id){
-  location.href="/muestreo/"+id;
+  .then(() => location.reload());
 }
 </script>
 
