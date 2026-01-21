@@ -10,20 +10,41 @@
 
 <style>
 body{font-family:Arial;background:#e8f5e9;margin:0}
-header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
-.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-button,select{
-  background:#43a047;color:white;border:none;border-radius:8px;
-  padding:8px 14px;cursor:pointer
+header{
+  background:#2e7d32;color:white;text-align:center;
+  padding:14px;font-size:20px
 }
-select{color:black;background:#c8e6c9}
+.container{
+  width:95%;margin:15px auto;background:white;
+  border-radius:14px;padding:15px
+}
+.toolbar{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px
+}
+button,select{
+  background:#43a047;color:white;border:none;
+  border-radius:8px;padding:8px 14px;cursor:pointer
+}
+select{background:#c8e6c9;color:black}
 button:hover{background:#2e7d32}
-#map{height:420px;border-radius:12px;margin-bottom:15px}
+#map{
+  height:420px;border-radius:12px;margin-bottom:15px
+}
 table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th,td{
+  padding:8px;border-bottom:1px solid #c8e6c9;
+  text-align:center
+}
 th{background:#a5d6a7}
-.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.estado-humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.estado-parcial{background:#fff3cd}
+.estado-extraido{background:#e0e0e0;color:#555}
+.badge{
+  padding:4px 10px;border-radius:12px;font-size:12px
+}
+.normal{background:#c8e6c9}
+.remuestrear{background:#fff3cd}
+.extraer{background:#f8d7da}
 </style>
 </head>
 
@@ -34,7 +55,7 @@ th{background:#a5d6a7}
 <div class="container">
 
 <div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo registro</button>
+  <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
 
   <select id="filtroCereal">
@@ -47,8 +68,16 @@ th{background:#a5d6a7}
 
   <select id="filtroEstado">
     <option value="">Estado</option>
-    <option>Seco</option>
-    <option>Humedo</option>
+    <option>Activo</option>
+    <option>Extracción parcial</option>
+    <option>Extraído</option>
+  </select>
+
+  <select id="filtroRec">
+    <option value="">Recomendación</option>
+    <option>Normal</option>
+    <option>Remuestrear</option>
+    <option>Extraer</option>
   </select>
 
   <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
@@ -88,31 +117,37 @@ L.tileLayer(
   { attribution: '© Esri' }
 ).addTo(map);
 
-let markers = [];
+let markers=[];
 
-function icono(cereal){
+function icono(cereal, estado){
   let color="blue";
   if(cereal==="Maíz") color="orange";
   if(cereal==="Soja") color="yellow";
-  if(cereal==="Trigo") color="#9e9e9e";
+  if(cereal==="Trigo") color="#bdbdbd";
   if(cereal==="Girasol") color="black";
+  if(estado==="Extraído") color="#616161";
+
   return L.divIcon({
-    html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
+    html:`<div style="
+      background:${color};
+      width:14px;height:14px;
+      border-radius:50%;
+      border:2px solid white">
+    </div>`
   });
 }
 
-function diasDesde(fecha){
-  if(!fecha) return "-";
-  const f = new Date(fecha.replace(" ", "T"));
-  const hoy = new Date();
-  return Math.floor((hoy - f) / (1000*60*60*24));
+function claseEstado(e){
+  if(e==="Humedo") return "estado-humedo";
+  if(e==="Extracción parcial") return "estado-parcial";
+  if(e==="Extraído") return "estado-extraido";
+  return "";
 }
 
 function render(){
   tbody.innerHTML="";
   markers.forEach(m=>map.removeLayer(m));
   markers=[];
-
   let bounds=[];
 
   registrosFiltrados.forEach(r=>{
@@ -120,31 +155,40 @@ function render(){
       <tr>
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
-        <td class="${r.estado==='Humedo'?'humedo':''}">${r.estado}</td>
-        <td>${r.fecha_confeccion} (${diasDesde(r.fecha_confeccion)} d)</td>
-        <td>${r.grado ?? '-'}</td>
-        <td>${r.factor != null ? (r.factor*100).toFixed(1)+'%' : '-'}</td>
-        <td>${r.tas_min ?? '-'}</td>
-        <td>${r.fecha_extraccion ?? '-'}</td>
+        <td class="${claseEstado(r.estado)}">${r.estado}</td>
+        <td>${r.fecha_confeccion}${r.dias_confeccion!=null?` (${r.dias_confeccion} d)`:``}</td>
+        <td>${r.grado ?? "-"}</td>
+        <td>${r.factor ? (r.factor*100).toFixed(2)+"%" : "-"}</td>
+        <td>${r.tas_min ?? "-"}</td>
+        <td>${r.fecha_extraccion_estimada ?? "-"}</td>
         <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
-      </tr>`;
+      </tr>
+    `;
 
     if(r.lat && r.lon){
-      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m); bounds.push([r.lat,r.lon]);
+      const m=L.marker(
+        [r.lat,r.lon],
+        {icon:icono(r.cereal,r.estado)}
+      ).addTo(map);
+      markers.push(m);
+      bounds.push([r.lat,r.lon]);
     }
   });
 
-  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+  if(bounds.length){
+    map.fitBounds(bounds,{padding:[30,30]});
+  }
 }
 
 function aplicarFiltros(){
   const c=document.getElementById("filtroCereal").value;
   const e=document.getElementById("filtroEstado").value;
+  const r=document.getElementById("filtroRec").value;
 
   registrosFiltrados = registros.filter(x =>
     (!c || x.cereal===c) &&
-    (!e || x.estado===e)
+    (!e || x.estado===e) &&
+    (!r || x.recomendacion===r)
   );
   render();
 }
@@ -152,6 +196,7 @@ function aplicarFiltros(){
 function resetFiltros(){
   document.getElementById("filtroCereal").value="";
   document.getElementById("filtroEstado").value="";
+  document.getElementById("filtroRec").value="";
   registrosFiltrados=[...registros];
   render();
 }
