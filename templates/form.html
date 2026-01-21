@@ -2,170 +2,151 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registro / Extracción Silo Bolsa</title>
+<title>Registro / Extracción - Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
   background:#e6f4ea;
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
   padding:20px;
-  color:#1e4620;
+  color:#2d5a27
 }
-h2{text-align:center}
+h2{text-align:center;color:#1e4620}
 label{display:block;margin-top:12px;font-weight:bold}
 input,select,button{
   width:100%;padding:10px;margin-top:6px;
-  border-radius:8px;border:1px solid #66bb6a;
-  font-size:15px;
+  border-radius:8px;border:1px solid #5cb85c;
+  font-size:15px
 }
+input[readonly]{background:#f0f0f0}
 button{
-  background:#43a047;color:white;border:none;
-  margin-top:20px;font-size:16px;font-weight:bold;
+  background:#5cb85c;color:white;
+  border:none;margin-top:20px;
+  font-size:16px;font-weight:bold;cursor:pointer
 }
-button:hover{background:#2e7d32}
+button:hover{background:#4cae4c}
 .hidden{display:none}
-.box{
-  background:white;padding:15px;border-radius:12px;
-  margin-top:15px;
-}
 </style>
 </head>
 
 <body>
 
-<h2 id="titulo">Registro de Silo Bolsa</h2>
+<h2>Silo Bolsa</h2>
 
-<div class="box">
-
-<label>QR</label>
+<label>Número de QR</label>
 <input type="text" id="numero_qr" readonly>
 
-<!-- ================= CONFECCIÓN ================= -->
-<div id="confeccion">
-
-<label>Cereal</label>
-<select id="cereal">
-  <option value="">Seleccione…</option>
-  <option>Maíz</option>
-  <option>Trigo</option>
-  <option>Soja</option>
-  <option>Girasol</option>
+<label>Acción</label>
+<select id="accion" onchange="cambiarAccion()">
+  <option value="registro">Registrar silo</option>
+  <option value="extraccion">Registrar extracción</option>
 </select>
 
-<label>Estado del grano</label>
-<select id="estado">
-  <option value="">Seleccione…</option>
-  <option>Seco</option>
-  <option>Humedo</option>
-</select>
+<!-- REGISTRO -->
+<div id="bloqueRegistro">
 
-<label>Metros lineales</label>
-<input type="number" id="metros" placeholder="Ej: 75">
+  <label>Cereal</label>
+  <select id="cereal">
+    <option value="">Seleccione…</option>
+    <option>Maíz</option>
+    <option>Trigo</option>
+    <option>Soja</option>
+    <option>Girasol</option>
+  </select>
+
+  <label>Estado del grano</label>
+  <select id="estado">
+    <option value="">Seleccione…</option>
+    <option value="Seco">Seco</option>
+    <option value="Humedo">Húmedo</option>
+  </select>
+
+  <label>Metros lineales</label>
+  <input type="number" id="metros" placeholder="Ej: 75">
 
 </div>
 
-<!-- ================= EXTRACCIÓN ================= -->
-<div id="extraccion" class="hidden">
+<!-- EXTRACCION -->
+<div id="bloqueExtraccion" class="hidden">
 
-<label>Tipo de extracción</label>
-<select id="tipo_extraccion">
-  <option value="">Seleccione…</option>
-  <option value="parcial">Parcial</option>
-  <option value="completa">Completa</option>
-</select>
-
-</div>
-
-<button onclick="guardar()">Guardar</button>
+  <label>Tipo de extracción</label>
+  <select id="estado_silo">
+    <option value="">Seleccione…</option>
+    <option value="Extracción parcial">Extracción parcial</option>
+    <option value="Extraído">Extraído</option>
+  </select>
 
 </div>
+
+<button onclick="enviar()">Guardar</button>
 
 <script>
+// QR desde URL
 const params = new URLSearchParams(window.location.search);
-const qr = params.get("id");
-document.getElementById("numero_qr").value = qr || "";
+const qrInput = document.getElementById("numero_qr");
+qrInput.value = params.get("id") || "";
 
-const confeccionBox = document.getElementById("confeccion");
-const extraccionBox = document.getElementById("extraccion");
-const titulo = document.getElementById("titulo");
-
-let modo = "confeccion";
-
-// ================= DETECTAR QR =================
-async function detectarQR(){
-  if(!qr) return;
-
-  const res = await fetch(`/api/silo/${qr}`);
-  const data = await res.json();
-
-  if(data.numero_qr){
-    // Ya existe → EXTRACCIÓN
-    modo = "extraccion";
-    titulo.innerText = "Extracción de Silo Bolsa";
-    confeccionBox.classList.add("hidden");
-    extraccionBox.classList.remove("hidden");
-  }
+function cambiarAccion(){
+  const a = accion.value;
+  bloqueRegistro.classList.toggle("hidden", a==="extraccion");
+  bloqueExtraccion.classList.toggle("hidden", a==="registro");
 }
 
-detectarQR();
-
-// ================= GUARDAR =================
-async function guardar(){
-  if(!qr){
+async function enviar(){
+  if(!qrInput.value){
     alert("QR no válido");
     return;
   }
 
-  let payload = { numero_qr: qr };
+  const accionVal = accion.value;
+  let data = { numero_qr: qrInput.value };
 
-  if(modo === "confeccion"){
-    payload.cereal = cereal.value;
-    payload.estado = estado.value;
-    payload.metros = metros.value;
-
-    if(!payload.cereal || !payload.estado || !payload.metros){
-      alert("Complete todos los campos");
+  if(accionVal === "registro"){
+    if(!cereal.value || !estado.value || !metros.value){
+      alert("Complete todos los campos del registro");
       return;
     }
 
-    // GPS
+    let lat=null, lon=null;
     try{
       const pos = await new Promise((ok,err)=>
         navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
       );
-      payload.lat = pos.coords.latitude;
-      payload.lon = pos.coords.longitude;
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
     }catch(e){}
 
-    await fetch("/api/save",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify(payload)
-    });
-
-    alert("Confección registrada correctamente");
-    location.reload();
+    data = {
+      ...data,
+      cereal: cereal.value,
+      estado: estado.value,     // Seco / Humedo
+      metros: metros.value,
+      lat: lat,
+      lon: lon
+    };
   }
 
-  if(modo === "extraccion"){
-    const tipo = document.getElementById("tipo_extraccion").value;
-    if(!tipo){
-      alert("Seleccione tipo de extracción");
+  if(accionVal === "extraccion"){
+    if(!estado_silo.value){
+      alert("Seleccione el tipo de extracción");
       return;
     }
+    data.estado_silo = estado_silo.value;
+  }
 
-    await fetch("/api/extraccion",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        numero_qr: qr,
-        tipo_extraccion: tipo
-      })
-    });
+  const res = await fetch("/api/save",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
 
-    alert("Extracción registrada correctamente");
-    location.reload();
+  const r = await res.json();
+  if(r.ok){
+    alert("Datos guardados correctamente");
+    // NO redirige al panel
+  }else{
+    alert("Error al guardar");
   }
 }
 </script>
