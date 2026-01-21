@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registro / Extracción - Silo Bolsa</title>
+<title>Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -26,6 +26,13 @@ button{
   font-size:16px;font-weight:bold;cursor:pointer
 }
 button:hover{background:#4cae4c}
+.box{
+  background:#dcedc8;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:15px;
+  font-weight:bold;
+}
 .hidden{display:none}
 </style>
 </head>
@@ -37,14 +44,10 @@ button:hover{background:#4cae4c}
 <label>Número de QR</label>
 <input type="text" id="numero_qr" readonly>
 
-<label>Acción</label>
-<select id="accion" onchange="cambiarAccion()">
-  <option value="registro">Registrar silo</option>
-  <option value="extraccion">Registrar extracción</option>
-</select>
+<div id="aviso" class="box hidden"></div>
 
 <!-- REGISTRO -->
-<div id="bloqueRegistro">
+<div id="bloqueRegistro" class="hidden">
 
   <label>Cereal</label>
   <select id="cereal">
@@ -82,29 +85,37 @@ button:hover{background:#4cae4c}
 <button onclick="enviar()">Guardar</button>
 
 <script>
-// QR desde URL
 const params = new URLSearchParams(window.location.search);
-const qrInput = document.getElementById("numero_qr");
-qrInput.value = params.get("id") || "";
+const qr = params.get("id");
+numero_qr.value = qr || "";
 
-function cambiarAccion(){
-  const a = accion.value;
-  bloqueRegistro.classList.toggle("hidden", a==="extraccion");
-  bloqueExtraccion.classList.toggle("hidden", a==="registro");
-}
-
-async function enviar(){
-  if(!qrInput.value){
-    alert("QR no válido");
+async function init(){
+  if(!qr){
+    alert("QR inválido");
     return;
   }
 
-  const accionVal = accion.value;
-  let data = { numero_qr: qrInput.value };
+  const res = await fetch(`/api/silo/${qr}`);
+  const data = await res.json();
 
-  if(accionVal === "registro"){
+  if(data.existe){
+    aviso.innerText = "⚠️ Silo ya registrado. Registrar extracción.";
+    aviso.classList.remove("hidden");
+    bloqueExtraccion.classList.remove("hidden");
+  }else{
+    aviso.innerText = "🆕 Registrar nuevo silo bolsa.";
+    aviso.classList.remove("hidden");
+    bloqueRegistro.classList.remove("hidden");
+  }
+}
+
+async function enviar(){
+
+  let payload = { numero_qr: qr };
+
+  if(!bloqueRegistro.classList.contains("hidden")){
     if(!cereal.value || !estado.value || !metros.value){
-      alert("Complete todos los campos del registro");
+      alert("Complete todos los datos del silo");
       return;
     }
 
@@ -117,38 +128,38 @@ async function enviar(){
       lon = pos.coords.longitude;
     }catch(e){}
 
-    data = {
-      ...data,
+    payload = {
+      ...payload,
       cereal: cereal.value,
-      estado: estado.value,     // Seco / Humedo
+      estado: estado.value,
       metros: metros.value,
-      lat: lat,
-      lon: lon
+      lat, lon
     };
   }
 
-  if(accionVal === "extraccion"){
+  if(!bloqueExtraccion.classList.contains("hidden")){
     if(!estado_silo.value){
       alert("Seleccione el tipo de extracción");
       return;
     }
-    data.estado_silo = estado_silo.value;
+    payload.estado_silo = estado_silo.value;
   }
 
-  const res = await fetch("/api/save",{
+  const r = await fetch("/api/save",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   });
 
-  const r = await res.json();
-  if(r.ok){
+  const j = await r.json();
+  if(j.ok){
     alert("Datos guardados correctamente");
-    // NO redirige al panel
   }else{
     alert("Error al guardar");
   }
 }
+
+init();
 </script>
 
 </body>
