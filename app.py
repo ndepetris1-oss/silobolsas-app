@@ -5,6 +5,16 @@ from zoneinfo import ZoneInfo
 import csv, io
 
 # ======================
+# IMPORTAR CALCULOS
+# ======================
+from calculos import (
+    grado_maiz, factor_maiz,
+    grado_trigo, factor_trigo,
+    factor_soja, factor_girasol,
+    tas_maiz, tas_trigo
+)
+
+# ======================
 # APP
 # ======================
 app = Flask(__name__)
@@ -66,7 +76,8 @@ def init_db():
         insectos INTEGER,
         chamico REAL,
         grado INTEGER,
-        factor REAL
+        factor REAL,
+        tas INTEGER
     )
     """)
 
@@ -109,8 +120,12 @@ def panel():
             """, (s["ultimo_muestreo"],)).fetchall()
 
             if datos:
-                grado = max([d["grado"] for d in datos if d["grado"] is not None], default=None)
-                factor = round(sum([d["factor"] for d in datos if d["factor"]]) / len(datos), 4)
+                grados = [d["grado"] for d in datos if d["grado"] is not None]
+                grado = max(grados) if grados else None
+                factor = round(
+                    sum(d["factor"] for d in datos if d["factor"] is not None) / len(datos),
+                    4
+                )
 
         resultado.append({**dict(s), "grado": grado, "factor": factor})
 
@@ -193,7 +208,7 @@ def nuevo_muestreo():
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR ANALISIS
+# GUARDAR ANALISIS (CLAVE)
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
@@ -205,11 +220,39 @@ def guardar_analisis_seccion():
         except:
             return 0.0
 
-    grado = None
-    factor = 1.0
-    factor -= f(d.get("olor")) / 100
-    factor -= f(d.get("moho")) / 100
-    factor = round(max(factor, 0), 4)
+    datos = {
+        "temperatura": f(d.get("temperatura")),
+        "humedad": f(d.get("humedad")),
+        "ph": f(d.get("ph")) if d.get("ph") not in ("", None) else None,
+        "danados": f(d.get("danados")),
+        "quebrados": f(d.get("quebrados")),
+        "materia_extrana": f(d.get("materia_extrana")),
+        "olor": f(d.get("olor")),
+        "moho": f(d.get("moho")),
+        "chamico": f(d.get("chamico")),
+    }
+
+    cereal = d["cereal"]
+
+    if cereal == "Maíz":
+        grado = grado_maiz(datos)
+        factor = factor_maiz(datos)
+        tas = tas_maiz(datos)
+
+    elif cereal == "Trigo":
+        grado = grado_trigo(datos)
+        factor = factor_trigo(datos)
+        tas = tas_trigo(datos)
+
+    elif cereal == "Soja":
+        grado = None
+        factor = factor_soja(datos)
+        tas = None
+
+    elif cereal == "Girasol":
+        grado = None
+        factor = factor_girasol(datos)
+        tas = None
 
     conn = get_db()
     existe = conn.execute("""
@@ -217,52 +260,40 @@ def guardar_analisis_seccion():
         WHERE id_muestreo=? AND seccion=?
     """, (d["id_muestreo"], d["seccion"])).fetchone()
 
+    valores = (
+        datos["temperatura"],
+        datos["humedad"],
+        datos["ph"],
+        datos["danados"],
+        datos["quebrados"],
+        datos["materia_extrana"],
+        datos["olor"],
+        datos["moho"],
+        int(d.get("insectos", False)),
+        datos["chamico"],
+        grado,
+        factor,
+        tas
+    )
+
     if existe:
         conn.execute("""
             UPDATE analisis SET
                 temperatura=?, humedad=?, ph=?,
                 danados=?, quebrados=?, materia_extrana=?,
                 olor=?, moho=?, insectos=?, chamico=?,
-                grado=?, factor=?
+                grado=?, factor=?, tas=?
             WHERE id=?
-        """, (
-            f(d.get("temperatura")),
-            f(d.get("humedad")),
-            f(d.get("ph")),
-            f(d.get("danados")),
-            f(d.get("quebrados")),
-            f(d.get("materia_extrana")),
-            f(d.get("olor")),
-            f(d.get("moho")),
-            int(d.get("insectos", False)),
-            f(d.get("chamico")),
-            grado,
-            factor,
-            existe["id"]
-        ))
+        """, (*valores, existe["id"]))
     else:
         conn.execute("""
             INSERT INTO analisis (
                 id_muestreo, seccion, temperatura, humedad, ph,
                 danados, quebrados, materia_extrana,
-                olor, moho, insectos, chamico, grado, factor
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            d["id_muestreo"],
-            d["seccion"],
-            f(d.get("temperatura")),
-            f(d.get("humedad")),
-            f(d.get("ph")),
-            f(d.get("danados")),
-            f(d.get("quebrados")),
-            f(d.get("materia_extrana")),
-            f(d.get("olor")),
-            f(d.get("moho")),
-            int(d.get("insectos", False)),
-            f(d.get("chamico")),
-            grado,
-            factor
-        ))
+                olor, moho, insectos, chamico,
+                grado, factor, tas
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (d["id_muestreo"], d["seccion"], *valores))
 
     conn.commit()
     conn.close()
@@ -282,7 +313,7 @@ def ver_silo(qr):
         ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
     conn.close()
-    return render_template("silo.html", silo=silo, muestreos=muestreos)
+    return render_template("silo.html", silo=dict(silo), muestreos=muestreos)
 
 @app.route("/muestreo/<int:id>")
 def ver_muestreo(id):
