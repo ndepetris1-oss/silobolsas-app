@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import csv, io
 
 # ======================
-# IMPORTAR CÁLCULOS
+# CALCULOS
 # ======================
 from calculos import (
     grado_maiz, factor_maiz, tas_maiz,
@@ -22,7 +22,7 @@ DB_NAME = "silobolsas.db"
 # ======================
 # UTILIDADES
 # ======================
-def ahora():
+def ahora_argentina():
     return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
 
 def get_db():
@@ -41,13 +41,13 @@ def init_db():
     CREATE TABLE IF NOT EXISTS silos (
         numero_qr TEXT PRIMARY KEY,
         cereal TEXT,
-        estado TEXT,                 -- Seco / Humedo
+        estado TEXT,              -- Seco / Humedo (grano)
+        estado_silo TEXT,         -- Activo / Extracción parcial / Extraído
         metros INTEGER,
         lat REAL,
         lon REAL,
         fecha_confeccion TEXT,
-        fecha_extraccion TEXT,
-        tipo_extraccion TEXT         -- parcial / completa
+        fecha_extraccion TEXT
     )
     """)
 
@@ -94,88 +94,70 @@ def panel():
     conn = get_db()
 
     silos = conn.execute("""
-        SELECT * FROM silos
+        SELECT s.*,
+        (
+            SELECT m.id FROM muestreos m
+            WHERE m.numero_qr = s.numero_qr
+            ORDER BY m.fecha_muestreo DESC
+            LIMIT 1
+        ) ultimo_muestreo
+        FROM silos s
         ORDER BY fecha_confeccion DESC
     """).fetchall()
 
     registros = []
 
     for s in silos:
-        ultimo_muestreo = conn.execute("""
-            SELECT id, fecha_muestreo
-            FROM muestreos
-            WHERE numero_qr=?
-            ORDER BY fecha_muestreo DESC
-            LIMIT 1
-        """, (s["numero_qr"],)).fetchone()
-
         grado = None
         factor = None
         tas_min = None
-        fecha_extraccion_estimada = None
+        fecha_ext_est = None
 
-        if ultimo_muestreo:
+        if s["ultimo_muestreo"]:
             analisis = conn.execute("""
-                SELECT *
-                FROM analisis
+                SELECT * FROM analisis
                 WHERE id_muestreo=?
-            """, (ultimo_muestreo["id"],)).fetchall()
+            """, (s["ultimo_muestreo"],)).fetchall()
 
             if analisis:
                 grados = [a["grado"] for a in analisis if a["grado"] is not None]
                 factores = [a["factor"] for a in analisis if a["factor"] is not None]
-                tas_vals = [a["tas"] for a in analisis if a["tas"] is not None]
+                tas_vals = [a["tas"] for a in analisis if a["tas"]]
 
                 grado = max(grados) if grados else None
-                factor = round(sum(factores) / len(factores), 4) if factores else None
+                factor = round(sum(factores)/len(factores),4) if factores else None
                 tas_min = min(tas_vals) if tas_vals else None
 
                 if tas_min:
-                    fecha_extraccion_estimada = (
-                        datetime.strptime(
-                            ultimo_muestreo["fecha_muestreo"],
-                            "%Y-%m-%d %H:%M"
-                        ) + timedelta(days=tas_min)
-                    ).strftime("%Y-%m-%d")
-
-        # Estado del silo (independiente del grano)
-        estado_silo = "Activo"
-        if s["fecha_extraccion"]:
-            if s["tipo_extraccion"] == "parcial":
-                estado_silo = "Extracción parcial"
-            else:
-                estado_silo = "Extraído"
+                    f_m = datetime.fromisoformat(
+                        conn.execute(
+                            "SELECT fecha_muestreo FROM muestreos WHERE id=?",
+                            (s["ultimo_muestreo"],)
+                        ).fetchone()[0]
+                    )
+                    fecha_ext_est = (f_m + timedelta(days=tas_min)).strftime("%Y-%m-%d")
 
         registros.append({
             **dict(s),
-            "estado_grano": s["estado"],
-            "estado_silo": estado_silo,
             "grado": grado,
             "factor": factor,
             "tas_min": tas_min,
-            "fecha_extraccion_estimada": fecha_extraccion_estimada
+            "fecha_extraccion_estimada": fecha_ext_est
         })
 
     conn.close()
     return render_template("panel.html", registros=registros)
 
 # ======================
-# FORM (REGISTRO / EXTRACCIÓN)
+# FORM
 # ======================
 @app.route("/form")
 def form():
     return render_template("form.html")
 
-@app.route("/api/silo/<qr>")
-def api_silo(qr):
-    conn = get_db()
-    silo = conn.execute(
-        "SELECT * FROM silos WHERE numero_qr=?",
-        (qr,)
-    ).fetchone()
-    conn.close()
-    return jsonify(dict(silo) if silo else {})
-
+# ======================
+# REGISTRAR / EXTRAER SILO
+# ======================
 @app.route("/api/save", methods=["POST"])
 def save_silo():
     d = request.get_json()
@@ -187,52 +169,41 @@ def save_silo():
     ).fetchone()
 
     if existe:
+        # Extracción
         conn.execute("""
             UPDATE silos SET
-                cereal=?, estado=?, metros=?, lat=?, lon=?
+                estado_silo=?,
+                fecha_extraccion=?
             WHERE numero_qr=?
         """, (
-            d["cereal"], d["estado"], d["metros"],
-            d.get("lat"), d.get("lon"), d["numero_qr"]
+            d.get("estado_silo", "Activo"),
+            ahora_argentina().strftime("%Y-%m-%d %H:%M"),
+            d["numero_qr"]
         ))
     else:
+        # Registro nuevo
         conn.execute("""
             INSERT INTO silos (
-                numero_qr, cereal, estado, metros,
-                lat, lon, fecha_confeccion
-            ) VALUES (?,?,?,?,?,?,?)
+                numero_qr, cereal, estado, estado_silo,
+                metros, lat, lon, fecha_confeccion
+            ) VALUES (?,?,?,?,?,?,?,?)
         """, (
-            d["numero_qr"], d["cereal"], d["estado"], d["metros"],
-            d.get("lat"), d.get("lon"),
-            ahora().strftime("%Y-%m-%d %H:%M")
+            d["numero_qr"],
+            d["cereal"],
+            d["estado"],        # Seco / Humedo
+            "Activo",
+            d["metros"],
+            d.get("lat"),
+            d.get("lon"),
+            ahora_argentina().strftime("%Y-%m-%d %H:%M")
         ))
-
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
-
-@app.route("/api/extraccion", methods=["POST"])
-def registrar_extraccion():
-    d = request.get_json()
-    conn = get_db()
-
-    conn.execute("""
-        UPDATE silos SET
-            fecha_extraccion=?,
-            tipo_extraccion=?
-        WHERE numero_qr=?
-    """, (
-        ahora().strftime("%Y-%m-%d %H:%M"),
-        d["tipo_extraccion"],
-        d["numero_qr"]
-    ))
 
     conn.commit()
     conn.close()
     return jsonify(ok=True)
 
 # ======================
-# MUESTREOS
+# NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
 def nuevo_muestreo():
@@ -243,36 +214,38 @@ def nuevo_muestreo():
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
-    """, (qr, ahora().strftime("%Y-%m-%d %H:%M")))
+    """, (qr, ahora_argentina().strftime("%Y-%m-%d %H:%M")))
 
     conn.commit()
     mid = cur.lastrowid
     conn.close()
     return jsonify(id_muestreo=mid)
 
+# ======================
+# GUARDAR ANALISIS
+# ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
-def guardar_analisis():
+def guardar_analisis_seccion():
     d = request.get_json()
-    cereal = d["cereal"]
 
-    # Convertidor seguro
     def f(x):
-        try:
-            return float(x)
-        except:
-            return 0.0
+        try: return float(x)
+        except: return 0.0
 
     datos = {
         "temperatura": f(d.get("temperatura")),
         "humedad": f(d.get("humedad")),
-        "ph": f(d.get("ph")),
+        "ph": f(d.get("ph")) if d.get("ph") not in ("", None) else None,
         "danados": f(d.get("danados")),
         "quebrados": f(d.get("quebrados")),
         "materia_extrana": f(d.get("materia_extrana")),
         "olor": f(d.get("olor")),
         "moho": f(d.get("moho")),
+        "insectos": int(d.get("insectos", False)),
         "chamico": f(d.get("chamico"))
     }
+
+    cereal = d["cereal"]
 
     grado = None
     factor = None
@@ -292,22 +265,40 @@ def guardar_analisis():
         factor = factor_girasol(datos)
 
     conn = get_db()
+    existe = conn.execute("""
+        SELECT id FROM analisis
+        WHERE id_muestreo=? AND seccion=?
+    """, (d["id_muestreo"], d["seccion"])).fetchone()
 
-    conn.execute("""
-        INSERT INTO analisis (
-            id_muestreo, seccion, temperatura, humedad, ph,
-            danados, quebrados, materia_extrana,
-            olor, moho, insectos, chamico,
+    if existe:
+        conn.execute("""
+            UPDATE analisis SET
+                temperatura=?, humedad=?, ph=?,
+                danados=?, quebrados=?, materia_extrana=?,
+                olor=?, moho=?, insectos=?, chamico=?,
+                grado=?, factor=?, tas=?
+            WHERE id=?
+        """, (
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor, tas, existe["id"]
+        ))
+    else:
+        conn.execute("""
+            INSERT INTO analisis (
+                id_muestreo, seccion, temperatura, humedad, ph,
+                danados, quebrados, materia_extrana,
+                olor, moho, insectos, chamico,
+                grado, factor, tas
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            d["id_muestreo"], d["seccion"],
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
             grado, factor, tas
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        d["id_muestreo"], d["seccion"],
-        datos["temperatura"], datos["humedad"], datos["ph"],
-        datos["danados"], datos["quebrados"], datos["materia_extrana"],
-        datos["olor"], datos["moho"],
-        int(d.get("insectos", False)), datos["chamico"],
-        grado, factor, tas
-    ))
+        ))
 
     conn.commit()
     conn.close()
@@ -319,18 +310,13 @@ def guardar_analisis():
 @app.route("/silo/<qr>")
 def ver_silo(qr):
     conn = get_db()
-    silo = conn.execute(
-        "SELECT * FROM silos WHERE numero_qr=?",
-        (qr,)
-    ).fetchone()
-
+    silo = conn.execute("SELECT * FROM silos WHERE numero_qr=?", (qr,)).fetchone()
     muestreos = conn.execute("""
-        SELECT *
+        SELECT id, fecha_muestreo
         FROM muestreos
         WHERE numero_qr=?
         ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
-
     conn.close()
     return render_template("silo.html", silo=silo, muestreos=muestreos)
 
@@ -338,7 +324,7 @@ def ver_silo(qr):
 def ver_muestreo(id):
     conn = get_db()
     muestreo = conn.execute("""
-        SELECT m.*, s.cereal, s.numero_qr
+        SELECT m.*, s.numero_qr, s.cereal
         FROM muestreos m
         JOIN silos s ON s.numero_qr=m.numero_qr
         WHERE m.id=?
@@ -355,13 +341,17 @@ def ver_muestreo(id):
     return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
 
 # ======================
-# EXPORT CSV
+# EXPORTAR CSV
 # ======================
 @app.route("/api/export")
 def exportar():
     conn = get_db()
     rows = conn.execute("""
-        SELECT * FROM silos
+        SELECT s.numero_qr, s.cereal, s.estado, s.estado_silo,
+               m.fecha_muestreo, a.seccion, a.grado, a.factor
+        FROM silos s
+        LEFT JOIN muestreos m ON s.numero_qr=m.numero_qr
+        LEFT JOIN analisis a ON a.id_muestreo=m.id
     """).fetchall()
     conn.close()
 
@@ -374,12 +364,9 @@ def exportar():
 
     mem = io.BytesIO(output.getvalue().encode())
     mem.seek(0)
-    return send_file(
-        mem,
-        as_attachment=True,
-        download_name="silos.csv",
-        mimetype="text/csv"
-    )
+    return send_file(mem, as_attachment=True,
+                     download_name="silos.csv",
+                     mimetype="text/csv")
 
 # ======================
 # RUN
