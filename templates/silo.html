@@ -3,63 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>Silo {{ silo.numero_qr }}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  font-family:Arial;
-  background:#eef5ee;
-  margin:0
-}
-header{
-  background:#2e7d32;
-  color:white;
-  padding:14px;
-  font-size:20px;
-  text-align:center
-}
-.container{
-  width:90%;
-  margin:20px auto;
-  background:white;
-  padding:20px;
-  border-radius:12px
-}
+body{font-family:Arial;background:#eef7ef;margin:0}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+.info{background:#e0e0e0;border-radius:10px;padding:10px;margin-bottom:15px}
 button{
-  background:#43a047;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer
+  background:#43a047;color:white;border:none;border-radius:8px;
+  padding:8px 14px;cursor:pointer
 }
 button:hover{background:#2e7d32}
-.info{
-  background:#f1f8e9;
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:15px
-}
-.estado-activo{background:#c8e6c9}
-.estado-parcial{background:#fff3cd}
-.estado-extraido{background:#e0e0e0;color:#555}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:15px
-}
-th,td{
-  border-bottom:1px solid #ddd;
-  padding:8px;
-  text-align:center
-}
-th{background:#c8e6c9}
-.alert{
-  background:#fff3cd;
-  padding:10px;
-  border-radius:8px;
-  margin:10px 0
-}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th{background:#a5d6a7}
 </style>
 </head>
 
@@ -71,29 +29,16 @@ th{background:#c8e6c9}
 
 <button onclick="location.href='/panel'">⬅ Volver al panel</button>
 
-<div class="info estado-{% if silo.estado=='Activo' %}activo{% elif silo.estado=='Extracción parcial' %}parcial{% else %}extraido{% endif %}">
-  <b>Cereal:</b> {{ silo.cereal }} |
-  <b>Estado:</b> {{ silo.estado }} |
-  <b>Metros:</b> {{ silo.metros }} |
-  <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
-  {% if silo.fecha_extraccion %}
-    | <b>Extracción:</b> {{ silo.fecha_extraccion }} ({{ silo.tipo_extraccion }})
-  {% endif %}
+<div class="info">
+<b>Cereal:</b> {{ silo.cereal }} |
+<b>Estado grano:</b> {{ silo.estado }} |
+<b>Metros:</b> {{ silo.metros }} |
+<b>Fecha confección:</b> {{ silo.fecha_confeccion }}
 </div>
-
-<hr>
 
 <h3>Muestreos</h3>
 
-{% if not muestreos %}
-  <div class="alert">
-    ⚠️ Este silo aún no tiene muestreos cargados.
-  </div>
-{% endif %}
-
-{% if silo.estado != 'Extraído' %}
 <button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
-{% endif %}
 
 <table>
 <thead>
@@ -107,11 +52,16 @@ th{background:#c8e6c9}
 {% for m in muestreos %}
 <tr>
   <td>{{ m.fecha_muestreo }}</td>
-  <td>{{ m.dias_desde }}</td>
   <td>
-    <button onclick="location.href='/muestreo/{{ m.id }}'">
-      📊 Ver análisis
-    </button>
+    {% if m.dias_desde is not none %}
+      {{ m.dias_desde }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td>
+    <!-- 👇 RUTA CORRECTA -->
+    <button onclick="location.href='/muestreo/{{ m.id }}'">📊 Ver análisis</button>
   </td>
 </tr>
 {% endfor %}
@@ -121,12 +71,16 @@ th{background:#c8e6c9}
 </div>
 
 <script>
-function nuevoMuestreo(){
-  fetch("/api/nuevo_muestreo",{
+async function nuevoMuestreo(){
+  const r = await fetch("/api/nuevo_muestreo",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ qr:"{{ silo.numero_qr }}" })
-  }).then(()=>location.reload());
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  });
+  const d = await r.json();
+  if(d.id_muestreo){
+    location.href = "/muestreo/" + d.id_muestreo;
+  }
 }
 </script>
 
