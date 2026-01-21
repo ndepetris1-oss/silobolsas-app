@@ -5,6 +5,15 @@ from zoneinfo import ZoneInfo
 import csv, io
 
 # ======================
+# IMPORTAR CALCULOS
+# ======================
+from calculos import (
+    grado_maiz, factor_maiz, tas_maiz,
+    grado_trigo, factor_trigo, tas_trigo,
+    factor_soja, factor_girasol
+)
+
+# ======================
 # APP
 # ======================
 app = Flask(__name__)
@@ -34,8 +43,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS silos (
         numero_qr TEXT PRIMARY KEY,
         cereal TEXT,
-        estado_grano TEXT,           -- Seco / Humedo
-        estado_silo TEXT,            -- Activo / Extracción parcial / Extraído
+        estado_grano TEXT,
+        estado_silo TEXT,
         metros INTEGER,
         lat REAL,
         lon REAL,
@@ -106,7 +115,7 @@ def api_silo(qr):
 def panel():
     conn = get_db()
 
-    rows = conn.execute("""
+    silos = conn.execute("""
         SELECT s.*,
         (
             SELECT m.id FROM muestreos m
@@ -120,7 +129,7 @@ def panel():
 
     registros = []
 
-    for s in rows:
+    for s in silos:
         grado = None
         factor = None
         tas_min = None
@@ -173,7 +182,7 @@ def form():
     return render_template("form.html")
 
 # ======================
-# REGISTRAR SILO (1RA VEZ)
+# REGISTRAR SILO
 # ======================
 @app.route("/api/registrar_silo", methods=["POST"])
 def registrar_silo():
@@ -201,7 +210,7 @@ def registrar_silo():
     return jsonify(ok=True)
 
 # ======================
-# REGISTRAR EXTRACCIÓN
+# EXTRACCION
 # ======================
 @app.route("/api/extraccion", methods=["POST"])
 def registrar_extraccion():
@@ -214,7 +223,7 @@ def registrar_extraccion():
             fecha_extraccion=?
         WHERE numero_qr=?
     """, (
-        d["estado_silo"],  # Extracción parcial / Extraído
+        d["estado_silo"],
         ahora_argentina().strftime("%Y-%m-%d %H:%M"),
         d["numero_qr"]
     ))
@@ -243,7 +252,7 @@ def nuevo_muestreo():
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR ANALISIS
+# GUARDAR ANALISIS (CLAVE)
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
@@ -253,7 +262,42 @@ def guardar_analisis_seccion():
         try:
             return float(x)
         except:
-            return None
+            return 0.0
+
+    datos = {
+        "temperatura": f(d.get("temperatura")),
+        "humedad": f(d.get("humedad")),
+        "ph": f(d.get("ph")) if d.get("ph") not in (None, "") else None,
+        "danados": f(d.get("danados")),
+        "quebrados": f(d.get("quebrados")),
+        "materia_extrana": f(d.get("materia_extrana")),
+        "olor": f(d.get("olor")),
+        "moho": f(d.get("moho")),
+        "insectos": int(d.get("insectos", False)),
+        "chamico": f(d.get("chamico"))
+    }
+
+    cereal = d.get("cereal")
+
+    grado = None
+    factor = 1.0
+    tas = None
+
+    if cereal == "Maíz":
+        grado = grado_maiz(datos)
+        factor = factor_maiz(datos)
+        tas = tas_maiz(datos)
+
+    elif cereal == "Trigo":
+        grado = grado_trigo(datos)
+        factor = factor_trigo(datos)
+        tas = tas_trigo(datos)
+
+    elif cereal == "Soja":
+        factor = factor_soja(datos)
+
+    elif cereal == "Girasol":
+        factor = factor_girasol(datos)
 
     conn = get_db()
 
@@ -261,24 +305,6 @@ def guardar_analisis_seccion():
         SELECT id FROM analisis
         WHERE id_muestreo=? AND seccion=?
     """, (d["id_muestreo"], d["seccion"])).fetchone()
-
-    datos = (
-        d["id_muestreo"],
-        d["seccion"],
-        f(d.get("temperatura")),
-        f(d.get("humedad")),
-        f(d.get("ph")),
-        f(d.get("danados")),
-        f(d.get("quebrados")),
-        f(d.get("materia_extrana")),
-        f(d.get("olor")),
-        f(d.get("moho")),
-        int(d.get("insectos", 0)),
-        f(d.get("chamico")),
-        d.get("grado"),
-        d.get("factor"),
-        d.get("tas")
-    )
 
     if existe:
         conn.execute("""
@@ -288,15 +314,48 @@ def guardar_analisis_seccion():
                 olor=?, moho=?, insectos=?, chamico=?,
                 grado=?, factor=?, tas=?
             WHERE id=?
-        """, datos[2:] + (existe["id"],))
+        """, (
+            datos["temperatura"],
+            datos["humedad"],
+            datos["ph"],
+            datos["danados"],
+            datos["quebrados"],
+            datos["materia_extrana"],
+            datos["olor"],
+            datos["moho"],
+            datos["insectos"],
+            datos["chamico"],
+            grado,
+            factor,
+            tas,
+            existe["id"]
+        ))
     else:
         conn.execute("""
             INSERT INTO analisis (
-                id_muestreo, seccion, temperatura, humedad, ph,
+                id_muestreo, seccion,
+                temperatura, humedad, ph,
                 danados, quebrados, materia_extrana,
-                olor, moho, insectos, chamico, grado, factor, tas
+                olor, moho, insectos, chamico,
+                grado, factor, tas
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, datos)
+        """, (
+            d["id_muestreo"],
+            d["seccion"],
+            datos["temperatura"],
+            datos["humedad"],
+            datos["ph"],
+            datos["danados"],
+            datos["quebrados"],
+            datos["materia_extrana"],
+            datos["olor"],
+            datos["moho"],
+            datos["insectos"],
+            datos["chamico"],
+            grado,
+            factor,
+            tas
+        ))
 
     conn.commit()
     conn.close()
@@ -315,10 +374,7 @@ def ver_silo(qr):
 
     muestreos = conn.execute("""
         SELECT id, fecha_muestreo,
-        CAST(
-            julianday('now') - julianday(fecha_muestreo)
-            AS INT
-        ) dias
+        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
         FROM muestreos
         WHERE numero_qr=?
         ORDER BY fecha_muestreo DESC
@@ -348,11 +404,7 @@ def ver_muestreo(id):
     """, (id,)).fetchall()
 
     conn.close()
-    return render_template(
-        "muestreo.html",
-        muestreo=muestreo,
-        analisis=analisis
-    )
+    return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
 
 # ======================
 # EXPORT CSV
@@ -360,14 +412,12 @@ def ver_muestreo(id):
 @app.route("/api/export")
 def exportar():
     conn = get_db()
-    rows = conn.execute("""
-        SELECT *
-        FROM silos
-    """).fetchall()
+    rows = conn.execute("SELECT * FROM silos").fetchall()
     conn.close()
 
     output = io.StringIO()
     writer = csv.writer(output)
+
     if rows:
         writer.writerow(rows[0].keys())
         for r in rows:
