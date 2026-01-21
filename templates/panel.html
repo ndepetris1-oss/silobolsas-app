@@ -9,21 +9,24 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#e8f5e9}
-header{background:#2e7d32;color:white;padding:14px;text-align:center;font-size:20px}
-.container{width:96%;margin:15px auto;background:white;padding:15px;border-radius:14px}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+body{font-family:Arial;background:#e8f5e9;margin:0}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 button,select{
-  background:#43a047;color:white;border:none;
-  border-radius:8px;padding:8px 14px;cursor:pointer
+  background:#43a047;color:white;border:none;border-radius:8px;
+  padding:8px 14px;cursor:pointer
 }
 select{background:#c8e6c9;color:black}
 button:hover{background:#2e7d32}
 #map{height:420px;border-radius:12px;margin-bottom:15px}
 table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
-.grano-humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.estado-activo{color:#2e7d32;font-weight:bold}
+.estado-parcial{color:#f9a825;font-weight:bold}
+.estado-extraido{color:#b71c1c;font-weight:bold}
 </style>
 </head>
 
@@ -37,7 +40,7 @@ th{background:#a5d6a7}
   <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
 
-  <select id="fCereal">
+  <select id="filtroCereal">
     <option value="">Cereal</option>
     <option>Maíz</option>
     <option>Soja</option>
@@ -45,28 +48,21 @@ th{background:#a5d6a7}
     <option>Girasol</option>
   </select>
 
-  <select id="fEstadoGrano">
+  <select id="filtroEstadoGrano">
     <option value="">Estado grano</option>
     <option>Seco</option>
     <option>Humedo</option>
   </select>
 
-  <select id="fEstadoSilo">
+  <select id="filtroEstadoSilo">
     <option value="">Estado silo</option>
     <option>Activo</option>
     <option>Extracción parcial</option>
     <option>Extraído</option>
   </select>
 
-  <select id="fRec">
-    <option value="">Recomendación</option>
-    <option>Normal</option>
-    <option>Remuestrear</option>
-    <option>Extraer</option>
-  </select>
-
   <button onclick="pantallaCompleta()">🖥 Pantalla completa</button>
-  <button onclick="reset()">♻ Reset</button>
+  <button onclick="resetFiltros()">♻ Reset</button>
 </div>
 
 <div id="map"></div>
@@ -86,33 +82,32 @@ th{background:#a5d6a7}
   <th>Acción</th>
 </tr>
 </thead>
-<tbody id="tbody"></tbody>
+<tbody id="tabla"></tbody>
 </table>
 
 </div>
 
 <script>
 const registros = {{ registros | tojson }};
-let filtrados = [...registros];
+let visibles = [...registros];
+const tbody = document.getElementById("tabla");
 
-const tbody = document.getElementById("tbody");
-
-const map = L.map("map");
+const map = L.map('map');
 L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { attribution:"© Esri" }
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '© Esri' }
 ).addTo(map);
 
 let markers=[];
 
 function icono(c){
-  let col="blue";
-  if(c==="Maíz") col="orange";
-  if(c==="Soja") col="yellow";
-  if(c==="Trigo") col="#bdbdbd";
-  if(c==="Girasol") col="black";
+  let color="blue";
+  if(c==="Maíz") color="orange";
+  if(c==="Soja") color="yellow";
+  if(c==="Trigo") color="#bdbdbd";
+  if(c==="Girasol") color="black";
   return L.divIcon({
-    html:`<div style="background:${col};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
+    html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
   });
 }
 
@@ -120,18 +115,19 @@ function render(){
   tbody.innerHTML="";
   markers.forEach(m=>map.removeLayer(m));
   markers=[];
+
   let bounds=[];
 
-  filtrados.forEach(r=>{
+  visibles.forEach(r=>{
     tbody.innerHTML+=`
       <tr>
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
-        <td class="${r.estado==='Humedo'?'grano-humedo':''}">${r.estado}</td>
-        <td>${r.estado_silo ?? 'Activo'}</td>
+        <td class="${r.estado_grano==='Humedo'?'humedo':''}">${r.estado_grano ?? '-'}</td>
+        <td class="estado-${(r.estado_silo||'activo').replace(' ','-').toLowerCase()}">${r.estado_silo ?? 'Activo'}</td>
         <td>${r.fecha_confeccion}</td>
         <td>${r.grado ?? '-'}</td>
-        <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
+        <td>${r.factor ?? '-'}%</td>
         <td>${r.tas_min ?? '-'}</td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
         <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
@@ -140,34 +136,37 @@ function render(){
 
     if(r.lat && r.lon){
       const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m);
-      bounds.push([r.lat,r.lon]);
+      markers.push(m); bounds.push([r.lat,r.lon]);
     }
   });
 
   if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 }
 
-function aplicar(){
-  filtrados = registros.filter(x =>
-    (!fCereal.value || x.cereal===fCereal.value) &&
-    (!fEstadoGrano.value || x.estado===fEstadoGrano.value) &&
-    (!fEstadoSilo.value || (x.estado_silo ?? 'Activo')===fEstadoSilo.value) &&
-    (!fRec.value || x.recomendacion===fRec.value)
+function aplicarFiltros(){
+  const c=document.getElementById("filtroCereal").value;
+  const eg=document.getElementById("filtroEstadoGrano").value;
+  const es=document.getElementById("filtroEstadoSilo").value;
+
+  visibles = registros.filter(r =>
+    (!c || r.cereal===c) &&
+    (!eg || r.estado_grano===eg) &&
+    (!es || r.estado_silo===es)
   );
   render();
 }
 
-function reset(){
+function resetFiltros(){
   document.querySelectorAll("select").forEach(s=>s.value="");
-  filtrados=[...registros];
+  visibles=[...registros];
   render();
 }
 
-document.querySelectorAll("select").forEach(s=>s.onchange=aplicar);
+document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
 
 function pantallaCompleta(){
-  document.getElementById("map").requestFullscreen();
+  const el=document.getElementById("map");
+  if(el.requestFullscreen) el.requestFullscreen();
 }
 
 render();
