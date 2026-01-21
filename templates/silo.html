@@ -9,21 +9,21 @@
 body{
   font-family:Arial;
   background:#eef5ee;
-  margin:0
+  margin:0;
 }
 header{
   background:#2e7d32;
   color:white;
   padding:14px;
   font-size:20px;
-  text-align:center
+  text-align:center;
 }
 .container{
-  width:92%;
+  width:90%;
   margin:20px auto;
   background:white;
   padding:20px;
-  border-radius:12px
+  border-radius:12px;
 }
 button{
   background:#43a047;
@@ -31,47 +31,42 @@ button{
   border:none;
   border-radius:8px;
   padding:8px 14px;
-  cursor:pointer
+  cursor:pointer;
 }
 button:hover{background:#2e7d32}
-
-.info{
-  background:#f1f8e9;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:15px;
-  font-size:14px
-}
-
 table{
   width:100%;
   border-collapse:collapse;
   margin-top:15px;
-  font-size:14px
 }
 th,td{
   border-bottom:1px solid #ddd;
   padding:8px;
-  text-align:center
+  text-align:center;
 }
-th{background:#c8e6c9}
-
-.badge{
-  padding:4px 8px;
-  border-radius:6px;
-  font-weight:bold;
-  font-size:12px
+th{
+  background:#c8e6c9;
 }
-.verde{background:#c8e6c9;color:#1b5e20}
-.amarillo{background:#fff9c4;color:#f57f17}
-.rojo{background:#ffcdd2;color:#b71c1c}
-.gris{background:#e0e0e0;color:#555}
+.info{
+  background:#f1f8e9;
+  padding:12px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
+.alerta{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
 </style>
 </head>
 
 <body>
 
-<header>SILO · {{ silo.numero_qr }}</header>
+<header>
+  SILO · {{ silo.numero_qr }}
+</header>
 
 <div class="container">
 
@@ -80,17 +75,8 @@ th{background:#c8e6c9}
 <div class="info">
   <b>Cereal:</b> {{ silo.cereal }} |
   <b>Estado:</b> {{ silo.estado }} |
-  <b>Metros:</b> {{ silo.metros }} <br><br>
-
-  <b>Fecha confección:</b>
-  {% if silo.fecha_confeccion %}
-    {{ silo.fecha_confeccion }}
-    {% if silo.dias_confeccion is not none %}
-      ({{ silo.dias_confeccion }} días)
-    {% endif %}
-  {% else %}
-    -
-  {% endif %}
+  <b>Metros:</b> {{ silo.metros }} |
+  <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
 </div>
 
 <hr>
@@ -98,7 +84,7 @@ th{background:#c8e6c9}
 <h3>Muestreos</h3>
 
 {% if not muestreos %}
-  <div class="info">
+  <div class="alerta">
     ⚠️ Este silo aún no tiene muestreos cargados.
   </div>
 {% endif %}
@@ -109,44 +95,16 @@ th{background:#c8e6c9}
 <thead>
 <tr>
   <th>Fecha muestreo</th>
-  <th>Días desde muestreo</th>
-  <th>Estado</th>
   <th>Acción</th>
 </tr>
 </thead>
-
 <tbody>
 {% for m in muestreos %}
 <tr>
   <td>{{ m.fecha_muestreo }}</td>
-
-  <td>
-    {% if m.dias_desde_muestreo is none %}
-      <span class="badge gris">-</span>
-    {% elif m.dias_desde_muestreo <= 7 %}
-      <span class="badge verde">{{ m.dias_desde_muestreo }} días</span>
-    {% elif m.dias_desde_muestreo <= 20 %}
-      <span class="badge amarillo">{{ m.dias_desde_muestreo }} días</span>
-    {% else %}
-      <span class="badge rojo">{{ m.dias_desde_muestreo }} días</span>
-    {% endif %}
-  </td>
-
-  <td>
-    {% if m.dias_desde_muestreo is none %}
-      -
-    {% elif m.dias_desde_muestreo <= 7 %}
-      🟢 Reciente
-    {% elif m.dias_desde_muestreo <= 20 %}
-      🟡 Remuestrear
-    {% else %}
-      🔴 Vencido
-    {% endif %}
-  </td>
-
   <td>
     <button onclick="location.href='/muestreo/{{ m.id }}'">
-      📊 Ver / Cargar análisis
+      📊 Ver / cargar análisis
     </button>
   </td>
 </tr>
@@ -161,8 +119,12 @@ function nuevoMuestreo(){
   fetch("/api/nuevo_muestreo",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ qr:"{{ silo.numero_qr }}" })
-  }).then(()=>location.reload());
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  })
+  .then(res => {
+    if(res.ok) location.reload();
+    else alert("Error al crear muestreo");
+  });
 }
 </script>
 
