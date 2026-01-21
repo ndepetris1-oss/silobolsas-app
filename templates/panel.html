@@ -1,170 +1,377 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Panel de Control - Silo Bolsas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+from flask import Flask, render_template, request, jsonify, send_file
+import sqlite3
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import csv, io
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+# ======================
+# IMPORTAR CÁLCULOS
+# ======================
+from calculos import (
+    grado_maiz, factor_maiz,
+    grado_trigo, factor_trigo,
+    factor_soja, factor_girasol,
+    tas_maiz, tas_trigo
+)
 
-<style>
-body{font-family:Arial;background:#e8f5e9;margin:0}
-header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
-.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-button,select{
-  background:#43a047;color:white;border:none;border-radius:8px;
-  padding:8px 14px;cursor:pointer
-}
-select{color:black;background:#c8e6c9}
-button:hover{background:#2e7d32}
-#map{height:420px;border-radius:12px;margin-bottom:15px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
-th{background:#a5d6a7}
-.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
-</style>
-</head>
+# ======================
+# APP
+# ======================
+app = Flask(__name__)
+DB_NAME = "silobolsas.db"
 
-<body>
+print(">>> APP.PY CARGADO CORRECTAMENTE <<<")
 
-<header>PANEL DE CONTROL · SILO BOLSAS</header>
+# ======================
+# UTILIDADES
+# ======================
+def ahora_argentina():
+    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
 
-<div class="container">
+def get_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-<div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo registro</button>
-  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
+# ======================
+# DB INIT
+# ======================
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
 
-  <select id="filtroCereal">
-    <option value="">Cereal</option>
-    <option>Maíz</option>
-    <option>Soja</option>
-    <option>Trigo</option>
-    <option>Girasol</option>
-  </select>
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS silos (
+        numero_qr TEXT PRIMARY KEY,
+        cereal TEXT,
+        estado TEXT,
+        metros INTEGER,
+        lat REAL,
+        lon REAL,
+        fecha_confeccion TEXT
+    )
+    """)
 
-  <select id="filtroEstado">
-    <option value="">Estado</option>
-    <option>Seco</option>
-    <option>Humedo</option>
-  </select>
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS muestreos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_qr TEXT,
+        fecha_muestreo TEXT
+    )
+    """)
 
-  <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
-  <button onclick="resetFiltros()">♻ Reset</button>
-</div>
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS analisis (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_muestreo INTEGER,
+        seccion TEXT,
+        temperatura REAL,
+        humedad REAL,
+        ph REAL,
+        danados REAL,
+        quebrados REAL,
+        materia_extrana REAL,
+        olor REAL,
+        moho REAL,
+        insectos INTEGER,
+        chamico REAL,
+        grado INTEGER,
+        factor REAL
+    )
+    """)
 
-<div id="map"></div>
+    conn.commit()
+    conn.close()
 
-<table id="tabla">
-<thead>
-<tr>
-  <th>QR</th>
-  <th>Cereal</th>
-  <th>Estado</th>
-  <th>Confección</th>
-  <th>Grado</th>
-  <th>Factor</th>
-  <th>TAS mín</th>
-  <th>Extracción estimada</th>
-  <th>Acción</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
+init_db()
 
-</div>
+# ======================
+# PANEL
+# ======================
+@app.route("/")
+@app.route("/panel")
+def panel():
+    conn = get_db()
 
-<script>
-const registros = {{ registros | tojson }};
-let registrosFiltrados = [...registros];
+    silos = conn.execute("""
+        SELECT s.*,
+        (
+            SELECT m.id FROM muestreos m
+            WHERE m.numero_qr = s.numero_qr
+            ORDER BY m.fecha_muestreo DESC
+            LIMIT 1
+        ) ultimo_muestreo
+        FROM silos s
+        ORDER BY fecha_confeccion DESC
+    """).fetchall()
 
-const tbody = document.querySelector("#tabla tbody");
+    resultado = []
 
-const map = L.map('map');
-L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '© Esri' }
-).addTo(map);
+    for s in silos:
+        grado = None
+        factor = None
+        tas_min = None
+        fecha_extraccion = None
 
-let markers = [];
+        if s["ultimo_muestreo"]:
+            analisis = conn.execute("""
+                SELECT *
+                FROM analisis
+                WHERE id_muestreo=?
+            """, (s["ultimo_muestreo"],)).fetchall()
 
-function icono(cereal){
-  let color="blue";
-  if(cereal==="Maíz") color="orange";
-  if(cereal==="Soja") color="yellow";
-  if(cereal==="Trigo") color="#9e9e9e";
-  if(cereal==="Girasol") color="black";
-  return L.divIcon({
-    html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
-  });
-}
+            if analisis:
+                # ===== GRADO / FACTOR =====
+                grados = [a["grado"] for a in analisis if a["grado"] is not None]
+                grado = max(grados) if grados else None
 
-function diasDesde(fecha){
-  if(!fecha) return "-";
-  const f = new Date(fecha.replace(" ", "T"));
-  const hoy = new Date();
-  return Math.floor((hoy - f) / (1000*60*60*24));
-}
+                factores = [a["factor"] for a in analisis if a["factor"] is not None]
+                factor = round(sum(factores) / len(factores), 4) if factores else None
 
-function render(){
-  tbody.innerHTML="";
-  markers.forEach(m=>map.removeLayer(m));
-  markers=[];
+                # ===== TAS =====
+                tas_vals = []
+                for a in analisis:
+                    d = dict(a)
+                    if s["cereal"] == "Maíz":
+                        t = tas_maiz(d)
+                    elif s["cereal"] == "Trigo":
+                        t = tas_trigo(d)
+                    else:
+                        t = None
 
-  let bounds=[];
+                    if t:
+                        tas_vals.append(t)
 
-  registrosFiltrados.forEach(r=>{
-    tbody.innerHTML+=`
-      <tr>
-        <td>${r.numero_qr}</td>
-        <td>${r.cereal}</td>
-        <td class="${r.estado==='Humedo'?'humedo':''}">${r.estado}</td>
-        <td>${r.fecha_confeccion} (${diasDesde(r.fecha_confeccion)} d)</td>
-        <td>${r.grado ?? '-'}</td>
-        <td>${r.factor != null ? (r.factor*100).toFixed(1)+'%' : '-'}</td>
-        <td>${r.tas_min ?? '-'}</td>
-        <td>${r.fecha_extraccion ?? '-'}</td>
-        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
-      </tr>`;
+                tas_min = min(tas_vals) if tas_vals else None
 
-    if(r.lat && r.lon){
-      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m); bounds.push([r.lat,r.lon]);
+                if tas_min:
+                    fecha_m = conn.execute(
+                        "SELECT fecha_muestreo FROM muestreos WHERE id=?",
+                        (s["ultimo_muestreo"],)
+                    ).fetchone()["fecha_muestreo"]
+
+                    fecha_m = datetime.strptime(fecha_m, "%Y-%m-%d %H:%M")
+                    fecha_extraccion = (fecha_m + timedelta(days=tas_min)).strftime("%Y-%m-%d")
+
+        resultado.append({
+            **dict(s),
+            "grado": grado,
+            "factor": factor,
+            "tas_min": tas_min,
+            "fecha_extraccion": fecha_extraccion
+        })
+
+    conn.close()
+    return render_template("panel.html", registros=resultado)
+
+# ======================
+# FORM
+# ======================
+@app.route("/form")
+def form():
+    return render_template("form.html")
+
+# ======================
+# REGISTRAR / EDITAR SILO
+# ======================
+@app.route("/api/save", methods=["POST"])
+def save_silo():
+    d = request.get_json()
+    conn = get_db()
+
+    existe = conn.execute(
+        "SELECT numero_qr FROM silos WHERE numero_qr=?",
+        (d["numero_qr"],)
+    ).fetchone()
+
+    if existe:
+        conn.execute("""
+            UPDATE silos SET
+                cereal=?, estado=?, metros=?, lat=?, lon=?
+            WHERE numero_qr=?
+        """, (
+            d["cereal"], d["estado"], d["metros"],
+            d.get("lat"), d.get("lon"), d["numero_qr"]
+        ))
+    else:
+        conn.execute("""
+            INSERT INTO silos VALUES (?,?,?,?,?,?,?)
+        """, (
+            d["numero_qr"], d["cereal"], d["estado"], d["metros"],
+            d.get("lat"), d.get("lon"),
+            ahora_argentina().strftime("%Y-%m-%d %H:%M")
+        ))
+
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
+
+# ======================
+# NUEVO MUESTREO
+# ======================
+@app.route("/api/nuevo_muestreo", methods=["POST"])
+def nuevo_muestreo():
+    qr = request.json["qr"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO muestreos (numero_qr, fecha_muestreo)
+        VALUES (?,?)
+    """, (qr, ahora_argentina().strftime("%Y-%m-%d %H:%M")))
+
+    conn.commit()
+    mid = cur.lastrowid
+    conn.close()
+    return jsonify(id_muestreo=mid)
+
+# ======================
+# GUARDAR / EDITAR ANÁLISIS
+# ======================
+@app.route("/api/analisis_seccion", methods=["POST"])
+def guardar_analisis_seccion():
+    d = request.get_json()
+
+    def f(x):
+        try:
+            return float(x)
+        except:
+            return 0.0
+
+    datos = {
+        "temperatura": f(d.get("temperatura")),
+        "humedad": f(d.get("humedad")),
+        "ph": f(d.get("ph")) if d.get("ph") not in (None, "") else None,
+        "danados": f(d.get("danados")),
+        "quebrados": f(d.get("quebrados")),
+        "materia_extrana": f(d.get("materia_extrana")),
+        "olor": f(d.get("olor")),
+        "moho": f(d.get("moho")),
+        "insectos": int(d.get("insectos", False)),
+        "chamico": f(d.get("chamico"))
     }
-  });
 
-  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
-}
+    cereal = d["cereal"]
 
-function aplicarFiltros(){
-  const c=document.getElementById("filtroCereal").value;
-  const e=document.getElementById("filtroEstado").value;
+    if cereal == "Maíz":
+        grado = grado_maiz(datos)
+        factor = factor_maiz(datos)
+    elif cereal == "Trigo":
+        grado = grado_trigo(datos)
+        factor = factor_trigo(datos)
+    elif cereal == "Soja":
+        grado = None
+        factor = factor_soja(datos)
+    else:  # Girasol
+        grado = None
+        factor = factor_girasol(datos)
 
-  registrosFiltrados = registros.filter(x =>
-    (!c || x.cereal===c) &&
-    (!e || x.estado===e)
-  );
-  render();
-}
+    conn = get_db()
+    existe = conn.execute("""
+        SELECT id FROM analisis
+        WHERE id_muestreo=? AND seccion=?
+    """, (d["id_muestreo"], d["seccion"])).fetchone()
 
-function resetFiltros(){
-  document.getElementById("filtroCereal").value="";
-  document.getElementById("filtroEstado").value="";
-  registrosFiltrados=[...registros];
-  render();
-}
+    if existe:
+        conn.execute("""
+            UPDATE analisis SET
+                temperatura=?, humedad=?, ph=?,
+                danados=?, quebrados=?, materia_extrana=?,
+                olor=?, moho=?, insectos=?, chamico=?,
+                grado=?, factor=?
+            WHERE id=?
+        """, (
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor, existe["id"]
+        ))
+    else:
+        conn.execute("""
+            INSERT INTO analisis (
+                id_muestreo, seccion, temperatura, humedad, ph,
+                danados, quebrados, materia_extrana,
+                olor, moho, insectos, chamico, grado, factor
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            d["id_muestreo"], d["seccion"],
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor
+        ))
 
-document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
 
-function pantallaCompleta(){
-  const el=document.getElementById("map");
-  if(el.requestFullscreen) el.requestFullscreen();
-}
+# ======================
+# VISTAS
+# ======================
+@app.route("/silo/<qr>")
+def ver_silo(qr):
+    conn = get_db()
+    silo = conn.execute("SELECT * FROM silos WHERE numero_qr=?", (qr,)).fetchone()
+    muestreos = conn.execute("""
+        SELECT id, fecha_muestreo,
+        CAST((julianday('now') - julianday(fecha_muestreo)) AS INTEGER) AS dias_desde
+        FROM muestreos
+        WHERE numero_qr=?
+        ORDER BY fecha_muestreo DESC
+    """, (qr,)).fetchall()
+    conn.close()
+    return render_template("silo.html", silo=silo, muestreos=muestreos)
 
-render();
-</script>
+@app.route("/muestreo/<int:id>")
+def ver_muestreo(id):
+    conn = get_db()
+    muestreo = conn.execute("""
+        SELECT m.*, s.numero_qr, s.cereal
+        FROM muestreos m
+        JOIN silos s ON s.numero_qr=m.numero_qr
+        WHERE m.id=?
+    """, (id,)).fetchone()
 
-</body>
-</html>
+    analisis = conn.execute("""
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo=?
+        ORDER BY seccion
+    """, (id,)).fetchall()
+
+    conn.close()
+    return render_template("muestreo.html", muestreo=muestreo, analisis=analisis)
+
+# ======================
+# EXPORTAR CSV
+# ======================
+@app.route("/api/export")
+def exportar():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT s.numero_qr, s.cereal, s.estado,
+               m.fecha_muestreo, a.seccion, a.grado, a.factor
+        FROM silos s
+        LEFT JOIN muestreos m ON s.numero_qr=m.numero_qr
+        LEFT JOIN analisis a ON a.id_muestreo=m.id
+    """).fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        writer.writerow(rows[0].keys())
+        for r in rows:
+            writer.writerow(list(r))
+
+    mem = io.BytesIO(output.getvalue().encode())
+    mem.seek(0)
+    return send_file(mem, as_attachment=True,
+                     download_name="silos.csv",
+                     mimetype="text/csv")
+
+# ======================
+# RUN
+# ======================
+if __name__ == "__main__":
+    app.run(debug=True)
