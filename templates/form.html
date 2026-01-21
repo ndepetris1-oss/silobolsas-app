@@ -2,140 +2,170 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registro de Silo Bolsa</title>
+<title>Registro / Extracción Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  background-color:#e6f4ea;
-  font-family:Arial,sans-serif;
+  background:#e6f4ea;
+  font-family:Arial, sans-serif;
   padding:20px;
-  color:#2d5a27;
-}
-h2{
-  text-align:center;
   color:#1e4620;
 }
-label{
-  display:block;
-  margin-top:12px;
-  font-weight:bold;
-}
+h2{text-align:center}
+label{display:block;margin-top:12px;font-weight:bold}
 input,select,button{
-  width:100%;
-  padding:10px;
-  margin-top:6px;
-  border-radius:8px;
-  border:1px solid #5cb85c;
-  box-sizing:border-box;
+  width:100%;padding:10px;margin-top:6px;
+  border-radius:8px;border:1px solid #66bb6a;
   font-size:15px;
 }
-input[readonly]{
-  background:#f0f0f0;
-}
 button{
-  background-color:#5cb85c;
-  color:white;
-  border:none;
-  margin-top:20px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
+  background:#43a047;color:white;border:none;
+  margin-top:20px;font-size:16px;font-weight:bold;
 }
-button:hover{
-  background-color:#4cae4c;
+button:hover{background:#2e7d32}
+.hidden{display:none}
+.box{
+  background:white;padding:15px;border-radius:12px;
+  margin-top:15px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Registro de Silo Bolsa</h2>
+<h2 id="titulo">Registro de Silo Bolsa</h2>
 
-<label>Número de QR</label>
+<div class="box">
+
+<label>QR</label>
 <input type="text" id="numero_qr" readonly>
+
+<!-- ================= CONFECCIÓN ================= -->
+<div id="confeccion">
 
 <label>Cereal</label>
 <select id="cereal">
   <option value="">Seleccione…</option>
-  <option value="Maíz">Maíz</option>
-  <option value="Trigo">Trigo</option>
-  <option value="Soja">Soja</option>
-  <option value="Girasol">Girasol</option>
+  <option>Maíz</option>
+  <option>Trigo</option>
+  <option>Soja</option>
+  <option>Girasol</option>
 </select>
 
 <label>Estado del grano</label>
 <select id="estado">
   <option value="">Seleccione…</option>
-  <option value="Seco">Seco</option>
-  <option value="Humedo">Húmedo</option>
+  <option>Seco</option>
+  <option>Humedo</option>
 </select>
 
 <label>Metros lineales</label>
 <input type="number" id="metros" placeholder="Ej: 75">
 
-<button onclick="enviar()">Registrar</button>
+</div>
+
+<!-- ================= EXTRACCIÓN ================= -->
+<div id="extraccion" class="hidden">
+
+<label>Tipo de extracción</label>
+<select id="tipo_extraccion">
+  <option value="">Seleccione…</option>
+  <option value="parcial">Parcial</option>
+  <option value="completa">Completa</option>
+</select>
+
+</div>
+
+<button onclick="guardar()">Guardar</button>
+
+</div>
 
 <script>
-// Obtener QR desde la URL
 const params = new URLSearchParams(window.location.search);
-const qrInput = document.getElementById("numero_qr");
-qrInput.value = params.get("id") || "";
+const qr = params.get("id");
+document.getElementById("numero_qr").value = qr || "";
 
-async function enviar(){
+const confeccionBox = document.getElementById("confeccion");
+const extraccionBox = document.getElementById("extraccion");
+const titulo = document.getElementById("titulo");
 
-  if(!qrInput.value){
+let modo = "confeccion";
+
+// ================= DETECTAR QR =================
+async function detectarQR(){
+  if(!qr) return;
+
+  const res = await fetch(`/api/silo/${qr}`);
+  const data = await res.json();
+
+  if(data.numero_qr){
+    // Ya existe → EXTRACCIÓN
+    modo = "extraccion";
+    titulo.innerText = "Extracción de Silo Bolsa";
+    confeccionBox.classList.add("hidden");
+    extraccionBox.classList.remove("hidden");
+  }
+}
+
+detectarQR();
+
+// ================= GUARDAR =================
+async function guardar(){
+  if(!qr){
     alert("QR no válido");
     return;
   }
 
-  const cereal = document.getElementById("cereal").value;
-  const estado = document.getElementById("estado").value;
-  const metros = document.getElementById("metros").value;
+  let payload = { numero_qr: qr };
 
-  if(!cereal || !estado || !metros){
-    alert("Complete todos los campos");
-    return;
+  if(modo === "confeccion"){
+    payload.cereal = cereal.value;
+    payload.estado = estado.value;
+    payload.metros = metros.value;
+
+    if(!payload.cereal || !payload.estado || !payload.metros){
+      alert("Complete todos los campos");
+      return;
+    }
+
+    // GPS
+    try{
+      const pos = await new Promise((ok,err)=>
+        navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
+      );
+      payload.lat = pos.coords.latitude;
+      payload.lon = pos.coords.longitude;
+    }catch(e){}
+
+    await fetch("/api/save",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(payload)
+    });
+
+    alert("Confección registrada correctamente");
+    location.reload();
   }
 
-  let lat = null;
-  let lon = null;
+  if(modo === "extraccion"){
+    const tipo = document.getElementById("tipo_extraccion").value;
+    if(!tipo){
+      alert("Seleccione tipo de extracción");
+      return;
+    }
 
-  try{
-    const pos = await new Promise((ok,err)=>
-      navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
-    );
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  }catch(e){
-    console.warn("GPS no disponible, se guarda sin ubicación");
-  }
+    await fetch("/api/extraccion",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        tipo_extraccion: tipo
+      })
+    });
 
-  const data = {
-    numero_qr: qrInput.value,
-    cereal: cereal,
-    estado: estado,
-    metros: metros,
-    lat: lat,
-    lon: lon
-  };
-
-  const res = await fetch("/api/save",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
-  });
-
-  const r = await res.json();
-
-  if (r.ok) {
-    alert(
-      "Datos guardados correctamente.\n\n" +
-      "Puede cerrar esta pantalla."
-    );
-    // NO redireccionar al panel
-  } else {
-    alert("Error al guardar los datos");
+    alert("Extracción registrada correctamente");
+    location.reload();
   }
 }
 </script>
