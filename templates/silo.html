@@ -9,21 +9,21 @@
 body{
   font-family:Arial;
   background:#eef5ee;
-  margin:0;
+  margin:0
 }
 header{
   background:#2e7d32;
   color:white;
   padding:14px;
   font-size:20px;
-  text-align:center;
+  text-align:center
 }
 .container{
   width:90%;
   margin:20px auto;
   background:white;
   padding:20px;
-  border-radius:12px;
+  border-radius:12px
 }
 button{
   background:#43a047;
@@ -31,52 +31,54 @@ button{
   border:none;
   border-radius:8px;
   padding:8px 14px;
-  cursor:pointer;
+  cursor:pointer
 }
 button:hover{background:#2e7d32}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:15px;
-}
-th,td{
-  border-bottom:1px solid #ddd;
-  padding:8px;
-  text-align:center;
-}
-th{
-  background:#c8e6c9;
-}
 .info{
   background:#f1f8e9;
   padding:12px;
   border-radius:8px;
-  margin-bottom:15px;
+  margin-bottom:15px
 }
-.alerta{
+.estado-activo{background:#c8e6c9}
+.estado-parcial{background:#fff3cd}
+.estado-extraido{background:#e0e0e0;color:#555}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px
+}
+th,td{
+  border-bottom:1px solid #ddd;
+  padding:8px;
+  text-align:center
+}
+th{background:#c8e6c9}
+.alert{
   background:#fff3cd;
   padding:10px;
   border-radius:8px;
-  margin-bottom:15px;
+  margin:10px 0
 }
 </style>
 </head>
 
 <body>
 
-<header>
-  SILO · {{ silo.numero_qr }}
-</header>
+<header>SILO · {{ silo.numero_qr }}</header>
 
 <div class="container">
 
 <button onclick="location.href='/panel'">⬅ Volver al panel</button>
 
-<div class="info">
+<div class="info estado-{% if silo.estado=='Activo' %}activo{% elif silo.estado=='Extracción parcial' %}parcial{% else %}extraido{% endif %}">
   <b>Cereal:</b> {{ silo.cereal }} |
   <b>Estado:</b> {{ silo.estado }} |
   <b>Metros:</b> {{ silo.metros }} |
   <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
+  {% if silo.fecha_extraccion %}
+    | <b>Extracción:</b> {{ silo.fecha_extraccion }} ({{ silo.tipo_extraccion }})
+  {% endif %}
 </div>
 
 <hr>
@@ -84,17 +86,20 @@ th{
 <h3>Muestreos</h3>
 
 {% if not muestreos %}
-  <div class="alerta">
+  <div class="alert">
     ⚠️ Este silo aún no tiene muestreos cargados.
   </div>
 {% endif %}
 
+{% if silo.estado != 'Extraído' %}
 <button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
+{% endif %}
 
 <table>
 <thead>
 <tr>
   <th>Fecha muestreo</th>
+  <th>Días desde muestreo</th>
   <th>Acción</th>
 </tr>
 </thead>
@@ -102,9 +107,10 @@ th{
 {% for m in muestreos %}
 <tr>
   <td>{{ m.fecha_muestreo }}</td>
+  <td>{{ m.dias_desde }}</td>
   <td>
     <button onclick="location.href='/muestreo/{{ m.id }}'">
-      📊 Ver / cargar análisis
+      📊 Ver análisis
     </button>
   </td>
 </tr>
@@ -119,12 +125,8 @@ function nuevoMuestreo(){
   fetch("/api/nuevo_muestreo",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
-  })
-  .then(res => {
-    if(res.ok) location.reload();
-    else alert("Error al crear muestreo");
-  });
+    body:JSON.stringify({ qr:"{{ silo.numero_qr }}" })
+  }).then(()=>location.reload());
 }
 </script>
 
