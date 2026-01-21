@@ -24,10 +24,6 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
 .humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
-.badge{padding:4px 10px;border-radius:12px;font-size:12px}
-.normal{background:#c8e6c9}
-.remuestrear{background:#fff3cd}
-.extraer{background:#f8d7da}
 </style>
 </head>
 
@@ -55,13 +51,6 @@ th{background:#a5d6a7}
     <option>Humedo</option>
   </select>
 
-  <select id="filtroRec">
-    <option value="">Recomendación</option>
-    <option>Normal</option>
-    <option>Remuestrear</option>
-    <option>Extraer</option>
-  </select>
-
   <button onclick="pantallaCompleta()">🖥️ Pantalla completa</button>
   <button onclick="resetFiltros()">♻ Reset</button>
 </div>
@@ -71,9 +60,15 @@ th{background:#a5d6a7}
 <table id="tabla">
 <thead>
 <tr>
-  <th>QR</th><th>Cereal</th><th>Estado</th>
-  <th>Confección</th><th>Grado</th><th>Factor</th>
-  <th>TAS mín</th><th>Extracción estimada</th><th>Acción</th>
+  <th>QR</th>
+  <th>Cereal</th>
+  <th>Estado</th>
+  <th>Confección</th>
+  <th>Grado</th>
+  <th>Factor</th>
+  <th>TAS mín</th>
+  <th>Extracción estimada</th>
+  <th>Acción</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -99,11 +94,18 @@ function icono(cereal){
   let color="blue";
   if(cereal==="Maíz") color="orange";
   if(cereal==="Soja") color="yellow";
-  if(cereal==="Trigo") color="#bdbdbd";
+  if(cereal==="Trigo") color="#9e9e9e";
   if(cereal==="Girasol") color="black";
   return L.divIcon({
     html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
   });
+}
+
+function diasDesde(fecha){
+  if(!fecha) return "-";
+  const f = new Date(fecha.replace(" ", "T"));
+  const hoy = new Date();
+  return Math.floor((hoy - f) / (1000*60*60*24));
 }
 
 function render(){
@@ -119,11 +121,11 @@ function render(){
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
         <td class="${r.estado==='Humedo'?'humedo':''}">${r.estado}</td>
-        <td>${r.fecha_confeccion}${r.dias_confeccion!=null?` (${r.dias_confeccion} d)`:``}</td>
-        <td>${r.grado??'-'}</td>
-        <td>${r.factor??'-'}%</td>
-        <td>${r.tas_min??'-'}</td>
-        <td>${r.fecha_extraccion_estimada??'-'}</td>
+        <td>${r.fecha_confeccion} (${diasDesde(r.fecha_confeccion)} d)</td>
+        <td>${r.grado ?? '-'}</td>
+        <td>${r.factor != null ? (r.factor*100).toFixed(1)+'%' : '-'}</td>
+        <td>${r.tas_min ?? '-'}</td>
+        <td>${r.fecha_extraccion ?? '-'}</td>
         <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
       </tr>`;
 
@@ -139,12 +141,10 @@ function render(){
 function aplicarFiltros(){
   const c=document.getElementById("filtroCereal").value;
   const e=document.getElementById("filtroEstado").value;
-  const r=document.getElementById("filtroRec").value;
 
   registrosFiltrados = registros.filter(x =>
     (!c || x.cereal===c) &&
-    (!e || x.estado===e) &&
-    (!r || x.recomendacion===r)
+    (!e || x.estado===e)
   );
   render();
 }
@@ -152,7 +152,6 @@ function aplicarFiltros(){
 function resetFiltros(){
   document.getElementById("filtroCereal").value="";
   document.getElementById("filtroEstado").value="";
-  document.getElementById("filtroRec").value="";
   registrosFiltrados=[...registros];
   render();
 }
