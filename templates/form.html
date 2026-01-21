@@ -2,12 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registro de Silo Bolsa</title>
+<title>Registro / Extracción Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  background-color:#e6f4ea;
+  background:#e6f4ea;
   font-family:Arial,sans-serif;
   padding:20px;
   color:#2d5a27;
@@ -18,7 +18,7 @@ h2{
 }
 label{
   display:block;
-  margin-top:12px;
+  margin-top:14px;
   font-weight:bold;
 }
 input,select,button{
@@ -27,60 +27,83 @@ input,select,button{
   margin-top:6px;
   border-radius:8px;
   border:1px solid #5cb85c;
-  box-sizing:border-box;
   font-size:15px;
 }
 input[readonly]{
   background:#f0f0f0;
 }
 button{
-  background-color:#5cb85c;
+  background:#5cb85c;
   color:white;
   border:none;
-  margin-top:20px;
+  margin-top:24px;
   font-size:16px;
   font-weight:bold;
   cursor:pointer;
 }
-button:hover{
-  background-color:#4cae4c;
+button:hover{ background:#4cae4c; }
+.alert{
+  background:#fff3cd;
+  border:1px solid #ffeeba;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:15px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Registro de Silo Bolsa</h2>
+<h2 id="titulo">Registro de Silo Bolsa</h2>
+
+{% if silo %}
+<div class="alert">
+  ⚠️ Este QR ya tiene un silo registrado.<br>
+  Podés usar este formulario para <b>registrar la extracción</b>.
+</div>
+{% endif %}
 
 <label>Número de QR</label>
-<input type="text" id="numero_qr" readonly>
+<input type="text" id="numero_qr" readonly value="{{ silo.numero_qr if silo else '' }}">
+
+<!-- ================= CONFECCIÓN ================= -->
+<div id="bloqueConfeccion" {% if silo %}style="display:none"{% endif %}>
 
 <label>Cereal</label>
 <select id="cereal">
   <option value="">Seleccione…</option>
-  <option value="Maíz">Maíz</option>
-  <option value="Trigo">Trigo</option>
-  <option value="Soja">Soja</option>
-  <option value="Girasol">Girasol</option>
-</select>
-
-<label>Estado del grano</label>
-<select id="estado">
-  <option value="">Seleccione…</option>
-  <option value="Seco">Seco</option>
-  <option value="Humedo">Húmedo</option>
+  <option>Maíz</option>
+  <option>Trigo</option>
+  <option>Soja</option>
+  <option>Girasol</option>
 </select>
 
 <label>Metros lineales</label>
 <input type="number" id="metros" placeholder="Ej: 75">
 
-<button onclick="enviar()">Registrar</button>
+</div>
+
+<!-- ================= EXTRACCIÓN ================= -->
+<div id="bloqueExtraccion" {% if not silo %}style="display:none"{% endif %}>
+
+<label>Tipo de extracción</label>
+<select id="tipo_extraccion">
+  <option value="">Seleccione…</option>
+  <option value="Parcial">Extracción parcial</option>
+  <option value="Completa">Extracción completa</option>
+</select>
+
+</div>
+
+<button onclick="enviar()">Guardar</button>
 
 <script>
-// Obtener QR desde la URL
+// Obtener QR desde URL si no vino del backend
 const params = new URLSearchParams(window.location.search);
 const qrInput = document.getElementById("numero_qr");
-qrInput.value = params.get("id") || "";
+if(!qrInput.value){
+  qrInput.value = params.get("id") || "";
+}
 
 async function enviar(){
   if(!qrInput.value){
@@ -88,36 +111,41 @@ async function enviar(){
     return;
   }
 
-  const cereal = document.getElementById("cereal").value;
-  const estado = document.getElementById("estado").value;
-  const metros = document.getElementById("metros").value;
+  const esExtraccion = {{ 'true' if silo else 'false' }};
 
-  if(!cereal || !estado || !metros){
-    alert("Complete todos los campos");
-    return;
-  }
-
-  let lat = null;
-  let lon = null;
-
-  try{
-    const pos = await new Promise((ok,err)=>
-      navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
-    );
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  }catch(e){
-    console.warn("GPS no disponible, se guarda sin ubicación");
-  }
-
-  const data = {
-    numero_qr: qrInput.value,
-    cereal: cereal,
-    estado: estado,
-    metros: metros,
-    lat: lat,
-    lon: lon
+  let data = {
+    numero_qr: qrInput.value
   };
+
+  if(esExtraccion){
+    const tipo = document.getElementById("tipo_extraccion").value;
+    if(!tipo){
+      alert("Seleccione tipo de extracción");
+      return;
+    }
+    data.estado = (tipo==="Completa") ? "Extraído" : "Extracción parcial";
+    data.tipo_extraccion = tipo;
+  }else{
+    const cereal = document.getElementById("cereal").value;
+    const metros = document.getElementById("metros").value;
+    if(!cereal || !metros){
+      alert("Complete todos los campos");
+      return;
+    }
+    data.cereal = cereal;
+    data.metros = metros;
+    data.estado = "Activo";
+
+    try{
+      const pos = await new Promise((ok,err)=>
+        navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
+      );
+      data.lat = pos.coords.latitude;
+      data.lon = pos.coords.longitude;
+    }catch(e){
+      console.warn("Sin GPS");
+    }
+  }
 
   const res = await fetch("/api/save",{
     method:"POST",
@@ -126,8 +154,9 @@ async function enviar(){
   });
 
   const r = await res.json();
-  if (r.ok) {
-    alert("Registro guardado correctamente");
+  if(r.ok){
+    alert("Datos guardados correctamente");
+    location.href="/panel";
   }else{
     alert("Error al guardar");
   }
