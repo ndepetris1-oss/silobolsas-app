@@ -104,8 +104,11 @@ def api_silo(qr):
 
     return jsonify(
         existe=True,
-        estado_silo=s["estado_silo"]
+        estado_silo=s["estado_silo"],
+        cereal=s["cereal"],
+        fecha_confeccion=s["fecha_confeccion"]
     )
+
 
 # ======================
 # PANEL
