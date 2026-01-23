@@ -31,6 +31,9 @@ button{
   font-size:16px;
   font-weight:bold;
 }
+button:disabled{
+  background:#9ccc9c;
+}
 .hidden{display:none}
 .alert{
   margin-top:15px;
@@ -132,21 +135,35 @@ async function obtenerGPS(){
     const pos = await new Promise((ok, err) =>
       navigator.geolocation.getCurrentPosition(ok, err, {
         enableHighAccuracy: true,
-        timeout: 5000
+        timeout: 8000
       })
     );
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
+    console.log("GPS OK:", lat, lon);
   }catch(e){
     console.warn("GPS no disponible");
   }
+}
+
+/* ================= BOTON ================= */
+function bloquearBoton(texto="Guardando..."){
+  const btn = document.getElementById("btnGuardar");
+  btn.disabled = true;
+  btn.innerText = texto;
+}
+
+function desbloquearBoton(){
+  const btn = document.getElementById("btnGuardar");
+  btn.disabled = false;
+  btn.innerText = "Guardar";
 }
 
 /* ================= INIT ================= */
 async function init(){
   if(!qr) return;
 
-  obtenerGPS();
+  await obtenerGPS();
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
@@ -174,24 +191,11 @@ tipo_evento.onchange = e => {
     e.target.value !== "Otros"
   );
 };
-function bloquearBoton(texto="Guardando..."){
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = true;
-  btn.innerText = texto;
-  btn.style.opacity = "0.7";
-}
-
-function desbloquearBoton(){
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = false;
-  btn.innerText = "Guardar";
-  btn.style.opacity = "1";
-}
 
 /* ================= GUARDAR ================= */
 async function guardar(){
-  
-bloquearBoton();
+
+  bloquearBoton();
 
   /* ---- REGISTRO ---- */
   if(modo === "registro"){
@@ -216,7 +220,6 @@ bloquearBoton();
 
     alert("Silo registrado correctamente");
     location.reload();
-    desbloquearBoton();
     return;
   }
 
@@ -227,8 +230,8 @@ bloquearBoton();
     fd.append("tipo", tipo_evento.value);
     fd.append("detalle", detalle_evento.value);
     if(foto.files[0]) fd.append("foto", foto.files[0]);
-    if(lat) fd.append("lat", lat);
-    if(lon) fd.append("lon", lon);
+    if(lat !== null) fd.append("lat", lat);
+    if(lon !== null) fd.append("lon", lon);
 
     await fetch("/api/monitoreo",{
       method:"POST",
@@ -237,7 +240,6 @@ bloquearBoton();
 
     alert("Monitoreo guardado");
     location.reload();
-    desbloquearBoton();
     return;
   }
 
@@ -254,11 +256,11 @@ bloquearBoton();
 
     alert("Extracción registrada");
     location.reload();
-    desbloquearBoton();
     return;
   }
 
   alert("No hay datos para guardar");
+  desbloquearBoton();
 }
 
 init();
