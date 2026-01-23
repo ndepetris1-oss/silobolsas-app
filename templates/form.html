@@ -190,11 +190,14 @@ function desbloquearBoton(){
 
 /* ================= GUARDAR ================= */
 async function guardar(){
+  
+bloquearBoton();
 
   /* ---- REGISTRO ---- */
   if(modo === "registro"){
     if(!cereal.value || !estado_grano.value || !metros.value){
       alert("Complete todos los campos");
+      desbloquearBoton();
       return;
     }
 
@@ -213,6 +216,7 @@ async function guardar(){
 
     alert("Silo registrado correctamente");
     location.reload();
+    desbloquearBoton();
     return;
   }
 
@@ -233,6 +237,7 @@ async function guardar(){
 
     alert("Monitoreo guardado");
     location.reload();
+    desbloquearBoton();
     return;
   }
 
@@ -249,6 +254,7 @@ async function guardar(){
 
     alert("Extracción registrada");
     location.reload();
+    desbloquearBoton();
     return;
   }
 
