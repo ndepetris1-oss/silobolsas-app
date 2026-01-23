@@ -6,48 +6,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  background:#e6f4ea;
-  font-family:Arial, sans-serif;
-  padding:20px;
-  color:#1e4620;
-}
-h2{
-  text-align:center;
-}
-label{
-  display:block;
-  margin-top:14px;
-  font-weight:bold;
-}
-input, select, button{
-  width:100%;
-  padding:12px;
-  margin-top:6px;
-  border-radius:10px;
-  border:1px solid #4caf50;
-  font-size:15px;
-}
-input[readonly]{
-  background:#f0f0f0;
+body{background:#e6f4ea;font-family:Arial;padding:20px;color:#1e4620}
+h2{text-align:center}
+label{display:block;margin-top:14px;font-weight:bold}
+input,select,button{
+  width:100%;padding:12px;margin-top:6px;
+  border-radius:10px;border:1px solid #4caf50;font-size:15px
 }
 button{
-  background:#4caf50;
-  color:white;
-  border:none;
-  margin-top:22px;
-  font-size:16px;
-  font-weight:bold;
+  background:#4caf50;color:white;border:none;
+  margin-top:22px;font-size:16px;font-weight:bold
 }
 .hidden{display:none}
 .alert{
-  margin-top:15px;
-  padding:12px;
-  border-radius:10px;
-  background:#fff3cd;
-  color:#856404;
-  font-weight:bold;
-  text-align:center;
+  margin-top:15px;padding:12px;border-radius:10px;
+  background:#fff3cd;color:#856404;font-weight:bold;text-align:center
 }
 </style>
 </head>
@@ -59,8 +32,10 @@ button{
 <label>Número de QR</label>
 <input type="text" id="qr" readonly>
 
-<div id="bloqueRegistro" class="hidden">
+<div id="infoSilo" class="alert hidden"></div>
 
+<!-- REGISTRO -->
+<div id="bloqueRegistro" class="hidden">
   <label>Cereal</label>
   <select id="cereal">
     <option value="">Seleccione…</option>
@@ -73,115 +48,118 @@ button{
   <label>Estado del grano</label>
   <select id="estado_grano">
     <option value="">Seleccione…</option>
-    <option value="Seco">Seco</option>
-    <option value="Humedo">Húmedo</option>
+    <option>Seco</option>
+    <option>Humedo</option>
   </select>
 
   <label>Metros lineales</label>
-  <input type="number" id="metros" placeholder="Ej: 60">
-
+  <input type="number" id="metros">
 </div>
 
+<!-- EXTRACCION -->
 <div id="bloqueExtraccion" class="hidden">
-
-  <div class="alert">
-    ⚠️ Este silo ya fue registrado.<br>
-    Informar extracción.
-  </div>
-
   <label>Tipo de extracción</label>
   <select id="estado_silo">
     <option value="">Seleccione…</option>
-    <option value="Extracción parcial">Extracción parcial</option>
-    <option value="Extraído">Extraído (completo)</option>
+    <option>Extracción parcial</option>
+    <option>Extraído</option>
+  </select>
+</div>
+
+<!-- MONITOREO -->
+<div id="bloqueMonitoreo" class="hidden">
+  <hr>
+  <h3>Monitoreo en campo</h3>
+
+  <label>Tipo de evento</label>
+  <select id="tipo_evento">
+    <option value="">Seleccione…</option>
+    <option>Rotura</option>
+    <option>Malezas</option>
+    <option>Encharcado</option>
+    <option>Animales</option>
+    <option>Otros</option>
   </select>
 
+  <input id="detalle_evento" class="hidden" placeholder="Detalle (otros)">
+
+  <label>Foto</label>
+  <input type="file" id="foto" accept="image/*">
 </div>
 
 <button onclick="guardar()">Guardar</button>
 
 <script>
-const params = new URLSearchParams(window.location.search);
-const qr = params.get("id");
-document.getElementById("qr").value = qr || "";
+const params=new URLSearchParams(window.location.search);
+const qr=params.get("id");
+qr && (document.getElementById("qr").value=qr);
 
-let modo = null; // registro | extraccion
+let modo=null;
 
 async function init(){
   if(!qr) return;
 
-  const res = await fetch(`/api/silo/${qr}`);
-  const data = await res.json();
+  const res=await fetch(`/api/silo/${qr}`);
+  const data=await res.json();
 
   if(data.existe){
-    modo = "extraccion";
-    document.getElementById("bloqueExtraccion").classList.remove("hidden");
+    modo="extraccion";
+    bloqueExtraccion.classList.remove("hidden");
+    bloqueMonitoreo.classList.remove("hidden");
+
+    infoSilo.innerHTML=`🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+    infoSilo.classList.remove("hidden");
   }else{
-    modo = "registro";
-    document.getElementById("bloqueRegistro").classList.remove("hidden");
+    modo="registro";
+    bloqueRegistro.classList.remove("hidden");
   }
 }
 
+tipo_evento.onchange=e=>{
+  detalle_evento.classList.toggle("hidden",e.target.value!=="Otros");
+};
+
 async function guardar(){
-  if(!qr){
-    alert("QR inválido");
-    return;
-  }
-
-  let lat=null, lon=null;
-  try{
-    const pos = await new Promise((ok,err)=>
-      navigator.geolocation.getCurrentPosition(ok,err,{timeout:5000})
-    );
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  }catch(e){}
-
   if(modo==="registro"){
-    const cereal = document.getElementById("cereal").value;
-    const estado_grano = document.getElementById("estado_grano").value;
-    const metros = document.getElementById("metros").value;
-
-    if(!cereal || !estado_grano || !metros){
-      alert("Complete todos los campos");
-      return;
-    }
-
     await fetch("/api/registrar_silo",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
         numero_qr:qr,
-        cereal,
-        estado_grano,
-        metros,
-        lat,
-        lon
+        cereal:cereal.value,
+        estado_grano:estado_grano.value,
+        metros:metros.value
       })
     });
-
-    alert("Silo registrado correctamente");
-    window.location.reload();
+    alert("Silo registrado");
+    location.reload();
+    return;
   }
 
-  if(modo==="extraccion"){
-    const estado_silo = document.getElementById("estado_silo").value;
-    if(!estado_silo){
-      alert("Seleccione tipo de extracción");
-      return;
-    }
+  if(tipo_evento.value){
+    const fd=new FormData();
+    fd.append("numero_qr",qr);
+    fd.append("tipo",tipo_evento.value);
+    fd.append("detalle",detalle_evento.value);
+    if(foto.files[0]) fd.append("foto",foto.files[0]);
 
+    await fetch("/api/monitoreo",{method:"POST",body:fd});
+    alert("Monitoreo guardado");
+    location.reload();
+    return;
+  }
+
+  if(estado_silo.value){
     await fetch("/api/extraccion",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
         numero_qr:qr,
-        estado_silo
+        estado_silo:estado_silo.value
       })
     });
-
-    alert("Extracción registrada correctamente");
-    window.location.reload();
+    alert("Extracción registrada");
+    location.reload();
   }
 }
 
