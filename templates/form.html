@@ -84,7 +84,12 @@ button{
   <input id="detalle_evento" class="hidden" placeholder="Detalle (otros)">
 
   <label>Foto</label>
-  <input type="file" id="foto" accept="image/*">
+  <input 
+  type="file"
+  id="foto"
+  accept="image/*"
+  capture="environment"
+>
 </div>
 
 <button onclick="guardar()">Guardar</button>
