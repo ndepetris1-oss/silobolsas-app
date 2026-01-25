@@ -7,57 +7,62 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:#eef7ef;
-  margin:0
+  margin:0;
+  padding:0;
 }
 header{
   background:#2e7d32;
   color:white;
   text-align:center;
   padding:14px;
-  font-size:20px
+  font-size:20px;
 }
 .container{
   width:95%;
   margin:15px auto;
   background:white;
   border-radius:14px;
-  padding:15px
+  padding:15px;
 }
 .info{
   background:#e0e0e0;
   border-radius:10px;
   padding:10px;
-  margin-bottom:15px
-}
-button{
-  background:#43a047;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer
-}
-button:hover{background:#2e7d32}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px
-}
-th,td{
-  padding:8px;
-  border-bottom:1px solid #c8e6c9;
-  text-align:center
-}
-th{
-  background:#a5d6a7
+  margin-bottom:15px;
 }
 .alerta{
   background:#fff3cd;
   padding:10px;
   border-radius:8px;
-  margin:10px 0
+  margin-bottom:10px;
+}
+.evento{
+  border:1px solid #c8e6c9;
+  border-radius:10px;
+  padding:12px;
+  margin-bottom:12px;
+}
+.evento.resuelto{
+  background:#e8f5e9;
+}
+.evento.pendiente{
+  background:#ffebee;
+}
+button,a{
+  display:inline-block;
+  margin-top:6px;
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:6px 12px;
+  text-decoration:none;
+  font-size:14px;
+}
+a.descarga{
+  background:#2e7d32;
 }
 </style>
 </head>
@@ -68,98 +73,56 @@ th{
 
 <div class="container">
 
-<button onclick="location.href='/panel'">⬅ Volver al panel</button>
+<a href="/panel">⬅ Volver al panel</a>
 
 <div class="info">
   <b>Cereal:</b> {{ silo.cereal }} |
-  <b>Estado grano:</b> {{ silo.estado }} |
-  <b>Metros:</b> {{ silo.metros }} |
+  <b>Estado grano:</b> {{ silo.estado_grano }} |
+  <b>Metros:</b> {{ silo.metros }}<br>
   <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
 </div>
 
-<hr>
-
-<h3>Muestreos</h3>
-<hr>
 <h3>Monitoreos en campo</h3>
 
 {% if not monitoreos %}
   <div class="alerta">
-    No hay monitoreos registrados.
+    No hay eventos de monitoreo registrados.
   </div>
 {% endif %}
 
 {% for m in monitoreos %}
-<div class="info" style="margin-bottom:12px">
-  <b>Fecha:</b> {{ m.fecha }}<br>
-  <b>Evento:</b> {{ m.tipo }}<br>
+<div class="evento {{ 'resuelto' if m.resuelto else 'pendiente' }}">
+
+  <b>📅 Evento:</b> {{ m.fecha_evento }}<br>
+  <b>⚠️ Tipo:</b> {{ m.tipo }}<br>
 
   {% if m.detalle %}
-    <b>Detalle:</b> {{ m.detalle }}<br>
+    <b>📝 Detalle:</b> {{ m.detalle }}<br>
   {% endif %}
 
-  {% if m.foto %}
-    <img
-      src="/{{ m.foto }}"
-      style="width:100%;max-width:420px;border-radius:10px;margin-top:8px"
-    >
+  {% if m.foto_evento %}
+    <a class="descarga" href="/{{ m.foto_evento }}" download>
+      ⬇️ Descargar foto del evento
+    </a><br>
   {% endif %}
-</div>
-{% endfor %}
 
-{% if not muestreos %}
-<div class="alerta">
-  ⚠️ Este silo aún no tiene muestreos cargados.
-</div>
-{% endif %}
+  {% if m.resuelto %}
+    <hr>
+    <b>✅ Resuelto:</b> {{ m.fecha_resolucion }}<br>
 
-<button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
-
-<table>
-<thead>
-<tr>
-  <th>Fecha muestreo</th>
-  <th>Días desde muestreo</th>
-  <th>Acción</th>
-</tr>
-</thead>
-<tbody>
-{% for m in muestreos %}
-<tr>
-  <td>{{ m.fecha_muestreo }}</td>
-  <td>
-    {% if m.dias_desde is not none %}
-      {{ m.dias_desde }}
-    {% else %}
-      -
+    {% if m.foto_resolucion %}
+      <a class="descarga" href="/{{ m.foto_resolucion }}" download>
+        ⬇️ Descargar foto de la resolución
+      </a>
     {% endif %}
-  </td>
-  <td>
-    <button onclick="location.href='/muestreo/{{ m.id }}'">
-      📊 Ver análisis
-    </button>
-  </td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+  {% else %}
+    <b>⏳ Estado:</b> Pendiente
+  {% endif %}
 
 </div>
+{% endfor %}
 
-<script>
-async function nuevoMuestreo(){
-  const r = await fetch("/api/nuevo_muestreo",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
-  });
-
-  const d = await r.json();
-  if(d.id_muestreo){
-    location.href = "/muestreo/" + d.id_muestreo;
-  }
-}
-</script>
+</div>
 
 </body>
 </html>
