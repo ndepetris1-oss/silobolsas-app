@@ -27,7 +27,7 @@ button{
   background:#4caf50;
   color:white;
   border:none;
-  margin-top:16px;
+  margin-top:18px;
   font-size:16px;
   font-weight:bold;
 }
@@ -36,7 +36,7 @@ button:disabled{background:#9ccc9c}
 .card{
   background:#ffffff;
   border-radius:12px;
-  padding:12px;
+  padding:14px;
   margin-top:14px;
 }
 .alert{
@@ -44,6 +44,7 @@ button:disabled{background:#9ccc9c}
   padding:10px;
   border-radius:8px;
   margin-top:10px;
+  font-weight:bold;
 }
 </style>
 </head>
@@ -58,7 +59,9 @@ button:disabled{background:#9ccc9c}
 <div id="infoSilo" class="alert hidden"></div>
 
 <!-- REGISTRO -->
-<div id="bloqueRegistro" class="hidden card">
+<div id="bloqueRegistro" class="card hidden">
+  <h3>🆕 Registro de silo</h3>
+
   <label>Cereal</label>
   <select id="cereal">
     <option value="">Seleccione…</option>
@@ -68,7 +71,7 @@ button:disabled{background:#9ccc9c}
     <option>Girasol</option>
   </select>
 
-  <label>Estado grano</label>
+  <label>Estado del grano</label>
   <select id="estado_grano">
     <option value="">Seleccione…</option>
     <option>Seco</option>
@@ -79,9 +82,9 @@ button:disabled{background:#9ccc9c}
   <input type="number" id="metros">
 </div>
 
-<!-- NUEVO EVENTO -->
-<div id="bloqueEvento" class="hidden card">
-  <h3>➕ Nuevo evento</h3>
+<!-- MONITOREO -->
+<div id="bloqueMonitoreo" class="card hidden">
+  <h3>📸 Monitoreo en campo</h3>
 
   <label>Tipo de evento</label>
   <select id="tipo_evento">
@@ -93,80 +96,23 @@ button:disabled{background:#9ccc9c}
     <option>Otros</option>
   </select>
 
-  <input id="detalle_evento" class="hidden" placeholder="Detalle">
+  <input
+    id="detalle_evento"
+    class="hidden"
+    placeholder="Detalle (solo si es Otros)"
+  >
 
-  <label>Foto del problema</label>
-  <input type="file" id="foto_evento" accept="image/*" capture="environment">
+  <label>Foto del evento</label>
+  <input
+    type="file"
+    id="foto"
+    accept="image/*"
+    capture="environment"
+  >
 </div>
 
-<!-- EVENTOS PENDIENTES -->
-<div id="bloquePendientes" class="hidden card">
-  <h3>🔧 Eventos pendientes</h3>
-  <div id="listaPendientes"></div>
-</div>
-
-<button id="btnGuardar" onclick="guardar()">Guardar</button>
-
-<script>
-const params = new URLSearchParams(location.search);
-const qr = params.get("id");
-document.getElementById("qr").value = qr || "";
-
-let modo = null;
-let eventosPendientes = [];
-
-/* ===== INIT ===== */
-async function init(){
-  if(!qr) return;
-
-  const r = await fetch(`/api/silo/${qr}`);
-  const d = await r.json();
-
-  if(!d.existe){
-    modo="registro";
-    bloqueRegistro.classList.remove("hidden");
-  }else{
-    modo="monitoreo";
-    infoSilo.innerHTML = `🌽 <b>${d.cereal}</b> | 📅 ${d.fecha_confeccion}`;
-    infoSilo.classList.remove("hidden");
-    bloqueEvento.classList.remove("hidden");
-    bloquePendientes.classList.remove("hidden");
-    cargarPendientes();
-  }
-}
-
-/* ===== OTROS ===== */
-tipo_evento.onchange = e=>{
-  detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
-};
-
-/* ===== CARGAR PENDIENTES ===== */
-async function cargarPendientes(){
-  const r = await fetch(`/silo/${qr}`);
-  const html = await r.text();
-  const div = document.createElement("div");
-  div.innerHTML = html;
-
-  const rows = div.querySelectorAll("[data-pendiente]");
-  listaPendientes.innerHTML = "";
-
-  rows.forEach(r=>{
-    const id = r.dataset.id;
-    listaPendientes.innerHTML += `
-      <div class="card">
-        <b>${r.dataset.tipo}</b><br>
-        📅 ${r.dataset.fecha}<br>
-        <label>
-          Foto reparación
-          <input type="file" onchange="resolver(${id}, this.files[0])">
-        </label>
-      </div>
-    `;
-  });
-}
-  
 <!-- EXTRACCION -->
-<div id="bloqueExtraccion" class="hidden card">
+<div id="bloqueExtraccion" class="card hidden">
   <h3>📦 Extracción</h3>
 
   <label>Tipo de extracción</label>
@@ -176,65 +122,119 @@ async function cargarPendientes(){
     <option>Extraído</option>
   </select>
 </div>
-  
+
+<button id="btnGuardar" onclick="guardar()">Guardar</button>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const qr = params.get("id");
+document.getElementById("qr").value = qr || "";
+
+let modo = null;
+
+/* ===== INIT ===== */
+async function init(){
+  if(!qr) return;
+
+  const res = await fetch(`/api/silo/${qr}`);
+  const data = await res.json();
+
+  if(!data.existe){
+    modo = "registro";
+    bloqueRegistro.classList.remove("hidden");
+  }else{
+    modo = "operacion";
+
+    infoSilo.innerHTML = `
+      🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
+      📅 <b>${data.fecha_confeccion}</b>
+    `;
+    infoSilo.classList.remove("hidden");
+
+    bloqueMonitoreo.classList.remove("hidden");
+    bloqueExtraccion.classList.remove("hidden");
+  }
+}
+
+/* ===== OTROS ===== */
+tipo_evento.onchange = e=>{
+  detalle_evento.classList.toggle(
+    "hidden",
+    e.target.value !== "Otros"
+  );
+};
+
 /* ===== GUARDAR ===== */
 async function guardar(){
-  btnGuardar.disabled=true;
+  const btn = document.getElementById("btnGuardar");
+  btn.disabled = true;
+  btn.innerText = "Guardando…";
 
-  if(modo==="registro"){
+  /* REGISTRO */
+  if(modo === "registro"){
+    if(!cereal.value || !estado_grano.value || !metros.value){
+      alert("Complete todos los campos");
+      btn.disabled=false;
+      btn.innerText="Guardar";
+      return;
+    }
+
     await fetch("/api/registrar_silo",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
-        numero_qr:qr,
-        cereal:cereal.value,
-        estado_grano:estado_grano.value,
-        metros:metros.value
+        numero_qr: qr,
+        cereal: cereal.value,
+        estado_grano: estado_grano.value,
+        metros: metros.value
       })
     });
+
+    alert("Silo registrado correctamente");
     location.reload();
     return;
   }
 
+  /* MONITOREO */
   if(tipo_evento.value){
     const fd = new FormData();
     fd.append("numero_qr", qr);
     fd.append("tipo", tipo_evento.value);
     fd.append("detalle", detalle_evento.value);
-    if(foto_evento.files[0]) fd.append("foto", foto_evento.files[0]);
+    if(foto.files[0]) fd.append("foto", foto.files[0]);
 
-    await fetch("/api/monitoreo",{method:"POST",body:fd});
+    await fetch("/api/monitoreo",{
+      method:"POST",
+      body: fd
+    });
+
+    alert("Monitoreo guardado");
+    location.reload();
+    return;
+  }
+
+  /* EXTRACCION */
+  if(estado_silo.value){
+    await fetch("/api/extraccion",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        estado_silo: estado_silo.value
+      })
+    });
+
+    alert("Extracción registrada");
     location.reload();
     return;
   }
 
   alert("No hay datos para guardar");
-  btnGuardar.disabled=false;
-}
-if(estado_silo.value){
-  await fetch("/api/extraccion",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      numero_qr: qr,
-      estado_silo: estado_silo.value
-    })
-  });
-  location.reload();
-  return;
-}
-/* ===== RESOLVER ===== */
-async function resolver(id, foto){
-  const fd = new FormData();
-  fd.append("id", id);
-  fd.append("foto_solucion", foto);
-
-  await fetch("/api/monitoreo_resolver",{method:"POST",body:fd});
-  location.reload();
+  btn.disabled=false;
+  btn.innerText="Guardar";
 }
 
 init();
-  bloqueExtraccion.classList.remove("hidden");
 </script>
 
 </body>
