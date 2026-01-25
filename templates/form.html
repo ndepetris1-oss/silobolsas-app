@@ -164,7 +164,19 @@ async function cargarPendientes(){
     `;
   });
 }
+  
+<!-- EXTRACCION -->
+<div id="bloqueExtraccion" class="hidden card">
+  <h3>📦 Extracción</h3>
 
+  <label>Tipo de extracción</label>
+  <select id="estado_silo">
+    <option value="">Seleccione…</option>
+    <option>Extracción parcial</option>
+    <option>Extraído</option>
+  </select>
+</div>
+  
 /* ===== GUARDAR ===== */
 async function guardar(){
   btnGuardar.disabled=true;
@@ -199,7 +211,18 @@ async function guardar(){
   alert("No hay datos para guardar");
   btnGuardar.disabled=false;
 }
-
+if(estado_silo.value){
+  await fetch("/api/extraccion",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      numero_qr: qr,
+      estado_silo: estado_silo.value
+    })
+  });
+  location.reload();
+  return;
+}
 /* ===== RESOLVER ===== */
 async function resolver(id, foto){
   const fd = new FormData();
@@ -211,6 +234,7 @@ async function resolver(id, foto){
 }
 
 init();
+  bloqueExtraccion.classList.remove("hidden");
 </script>
 
 </body>
