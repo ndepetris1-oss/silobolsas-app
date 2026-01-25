@@ -80,7 +80,6 @@ def init_db():
     )
     """)
 
-    # 👇 TABLA FINAL DE MONITOREOS
     c.execute("""
     CREATE TABLE IF NOT EXISTS monitoreos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,6 +224,26 @@ def registrar_silo():
     return jsonify(ok=True)
 
 # ======================
+# NUEVO MUESTREO  ✅ (ESTO FALTABA)
+# ======================
+@app.route("/api/nuevo_muestreo", methods=["POST"])
+def nuevo_muestreo():
+    qr = request.json["qr"]
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO muestreos (numero_qr, fecha_muestreo)
+        VALUES (?,?)
+    """, (qr, ahora().strftime("%Y-%m-%d %H:%M")))
+
+    conn.commit()
+    mid = cur.lastrowid
+    conn.close()
+
+    return jsonify(id_muestreo=mid)
+
+# ======================
 # MONITOREO — NUEVO EVENTO
 # ======================
 @app.route("/api/monitoreo", methods=["POST"])
@@ -258,36 +277,6 @@ def nuevo_monitoreo():
     return jsonify(ok=True)
 
 # ======================
-# MONITOREO — RESOLVER EVENTO
-# ======================
-@app.route("/api/monitoreo_resolver", methods=["POST"])
-def resolver_monitoreo():
-    mid = request.form.get("id")
-    foto_sol = request.files.get("foto_solucion")
-    path_sol = None
-
-    if foto_sol:
-        os.makedirs("static/monitoreos", exist_ok=True)
-        path_sol = f"static/monitoreos/{datetime.now().timestamp()}_{foto_sol.filename}"
-        foto_sol.save(path_sol)
-
-    conn = get_db()
-    conn.execute("""
-        UPDATE monitoreos SET
-            resuelto=1,
-            fecha_resolucion=?,
-            foto_resolucion=?
-        WHERE id=?
-    """, (
-        ahora().strftime("%Y-%m-%d %H:%M"),
-        path_sol,
-        mid
-    ))
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
-
-# ======================
 # SILO
 # ======================
 @app.route("/silo/<qr>")
@@ -299,14 +288,16 @@ def ver_silo(qr):
         (qr,)
     ).fetchone()
 
-    monitoreos = conn.execute("""
-        SELECT * FROM monitoreos
+    muestreos = conn.execute("""
+        SELECT id, fecha_muestreo,
+        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
+        FROM muestreos
         WHERE numero_qr=?
-        ORDER BY fecha_evento DESC
+        ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
 
     conn.close()
-    return render_template("silo.html", silo=silo, monitoreos=monitoreos)
+    return render_template("silo.html", silo=silo, muestreos=muestreos)
 
 # ======================
 # EXPORT CSV
