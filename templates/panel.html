@@ -79,6 +79,7 @@ th{background:#a5d6a7}
   <th>Factor</th>
   <th>TAS mín</th>
   <th>Extracción estimada</th>
+  <th>Evento</th>
   <th>Acción</th>
 </tr>
 </thead>
@@ -130,6 +131,9 @@ function render(){
         <td>${r.factor ?? '-'}%</td>
         <td>${r.tas_min ?? '-'}</td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
+        <td>
+  ${r.ultimo_evento ? `⚠️ ${r.ultimo_evento}` : "-"}
+</td>
         <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
       </tr>
     `;
