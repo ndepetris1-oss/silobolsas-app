@@ -7,29 +7,23 @@
 
 <style>
 body{
-  font-family:Arial;
-  background:#eef7ef;
-  margin:0
+  font-family:Arial, sans-serif;
+  background:#e8f5e9;
+  margin:0;
 }
 header{
   background:#2e7d32;
   color:white;
-  text-align:center;
   padding:14px;
-  font-size:20px
+  text-align:center;
+  font-size:20px;
 }
 .container{
   width:95%;
   margin:15px auto;
   background:white;
   border-radius:14px;
-  padding:15px
-}
-.info{
-  background:#e0e0e0;
-  border-radius:10px;
-  padding:10px;
-  margin-bottom:15px
+  padding:15px;
 }
 button{
   background:#43a047;
@@ -37,26 +31,34 @@ button{
   border:none;
   border-radius:8px;
   padding:8px 14px;
-  cursor:pointer
+  cursor:pointer;
+  font-weight:bold;
 }
 button:hover{background:#2e7d32}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px
+.info{
+  background:#eeeeee;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:12px;
 }
-th,td{
-  padding:8px;
-  border-bottom:1px solid #c8e6c9;
-  text-align:center
-}
-th{background:#a5d6a7}
 .alerta{
   background:#fff3cd;
   padding:10px;
   border-radius:8px;
-  margin:10px 0
+  margin:10px 0;
+  font-weight:bold;
 }
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #c8e6c9;
+  text-align:center;
+}
+th{background:#a5d6a7}
 </style>
 </head>
 
@@ -66,9 +68,9 @@ th{background:#a5d6a7}
 
 <div class="container">
 
-<button onclick="location.href='/panel'">⬅ Volver al panel</button>
+<button onclick="location.href='/panel'">← Volver al panel</button>
 
-<div class="info">
+<div class="info" style="margin-top:10px">
   <b>Cereal:</b> {{ silo.cereal }} |
   <b>Estado grano:</b> {{ silo.estado_grano }} |
   <b>Metros:</b> {{ silo.metros }} |
@@ -81,7 +83,7 @@ th{background:#a5d6a7}
 
 {% if not muestreos %}
   <div class="alerta">
-    ⚠️ Este silo aún no tiene muestreos cargados.
+    ⚠ Este silo aún no tiene muestreos cargados.
   </div>
 {% endif %}
 
@@ -102,7 +104,7 @@ th{background:#a5d6a7}
   <td>{{ m.dias }}</td>
   <td>
     <button onclick="location.href='/muestreo/{{ m.id }}'">
-      📈 Ver análisis
+      Ver
     </button>
   </td>
 </tr>
@@ -114,16 +116,13 @@ th{background:#a5d6a7}
 
 <script>
 async function nuevoMuestreo(){
-  const r = await fetch("/api/nuevo_muestreo",{
+  const res = await fetch("/api/nuevo_muestreo",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+    body:JSON.stringify({ qr:"{{ silo.numero_qr }}" })
   });
-
-  const d = await r.json();
-  if(d.id_muestreo){
-    location.href = "/muestreo/" + d.id_muestreo;
-  }
+  const data = await res.json();
+  location.href = "/muestreo/" + data.id_muestreo;
 }
 </script>
 
