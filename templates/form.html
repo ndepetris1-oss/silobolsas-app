@@ -31,9 +31,7 @@ button{
   font-size:16px;
   font-weight:bold;
 }
-button:disabled{
-  background:#9ccc9c;
-}
+button:disabled{background:#9ccc9c}
 .hidden{display:none}
 .alert{
   margin-top:15px;
@@ -103,19 +101,12 @@ button:disabled{
     <option>Otros</option>
   </select>
 
-  <input
-    id="detalle_evento"
-    class="hidden"
-    placeholder="Detalle (solo si es Otros)"
-  >
+  <input id="detalle_evento" class="hidden"
+         placeholder="Detalle (solo si es Otros)">
 
   <label>Foto</label>
-  <input
-    type="file"
-    id="foto"
-    accept="image/*"
-    capture="environment"
-  >
+  <input type="file" id="foto"
+         accept="image/*" capture="environment">
 </div>
 
 <button id="btnGuardar" onclick="guardar()">Guardar</button>
@@ -129,40 +120,32 @@ let modo = null;
 let lat = null;
 let lon = null;
 
-/* ================= GPS ================= */
+/* ===== GPS ===== */
 async function obtenerGPS(){
   try{
     const pos = await new Promise((ok, err) =>
       navigator.geolocation.getCurrentPosition(ok, err, {
-        enableHighAccuracy: true,
-        timeout: 8000
+        enableHighAccuracy:true, timeout:8000
       })
     );
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
-    console.log("GPS OK:", lat, lon);
-  }catch(e){
-    console.warn("GPS no disponible");
-  }
+  }catch(e){}
 }
 
-/* ================= BOTON ================= */
+/* ===== BOTON ===== */
 function bloquearBoton(texto="Guardando..."){
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = true;
-  btn.innerText = texto;
+  btnGuardar.disabled = true;
+  btnGuardar.innerText = texto;
 }
-
 function desbloquearBoton(){
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = false;
-  btn.innerText = "Guardar";
+  btnGuardar.disabled = false;
+  btnGuardar.innerText = "Guardar";
 }
 
-/* ================= INIT ================= */
+/* ===== INIT ===== */
 async function init(){
   if(!qr) return;
-
   await obtenerGPS();
 
   const res = await fetch(`/api/silo/${qr}`);
@@ -173,10 +156,7 @@ async function init(){
     bloqueExtraccion.classList.remove("hidden");
     bloqueMonitoreo.classList.remove("hidden");
 
-    infoSilo.innerHTML = `
-      🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
-      📅 <b>${data.fecha_confeccion}</b>
-    `;
+    infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 <b>${data.fecha_confeccion}</b>`;
     infoSilo.classList.remove("hidden");
   }else{
     modo = "registro";
@@ -184,73 +164,62 @@ async function init(){
   }
 }
 
-/* ========= EVENTO OTROS ========= */
-tipo_evento.onchange = e => {
-  detalle_evento.classList.toggle(
-    "hidden",
-    e.target.value !== "Otros"
-  );
+/* ===== OTROS ===== */
+tipo_evento.onchange = e=>{
+  detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
 };
 
-/* ================= GUARDAR ================= */
+/* ===== GUARDAR ===== */
 async function guardar(){
-
   bloquearBoton();
 
-  /* ---- REGISTRO ---- */
-  if(modo === "registro"){
+  /* REGISTRO */
+  if(modo==="registro"){
     if(!cereal.value || !estado_grano.value || !metros.value){
       alert("Complete todos los campos");
-      desbloquearBoton();
-      return;
+      desbloquearBoton(); return;
     }
 
     await fetch("/api/registrar_silo",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        numero_qr: qr,
-        cereal: cereal.value,
-        estado_grano: estado_grano.value,
-        metros: metros.value,
-        lat: lat,
-        lon: lon
+      body:JSON.stringify({
+        numero_qr:qr,
+        cereal:cereal.value,
+        estado_grano:estado_grano.value,
+        metros:metros.value,
+        lat, lon
       })
     });
 
-    alert("Silo registrado correctamente");
+    alert("Silo registrado");
     location.reload();
     return;
   }
 
-  /* ---- MONITOREO ---- */
+  /* MONITOREO (PRIORIDAD) */
   if(tipo_evento.value){
     const fd = new FormData();
     fd.append("numero_qr", qr);
     fd.append("tipo", tipo_evento.value);
-    fd.append("detalle", detalle_evento.value);
-    if(foto.files[0]) fd.append("foto", foto.files[0]);
-    if(lat !== null) fd.append("lat", lat);
-    if(lon !== null) fd.append("lon", lon);
+    fd.append("detalle", detalle_evento.value || "");
+    if(foto.files.length) fd.append("foto", foto.files[0]);
 
-    await fetch("/api/monitoreo",{
-      method:"POST",
-      body: fd
-    });
+    await fetch("/api/monitoreo",{ method:"POST", body:fd });
 
     alert("Monitoreo guardado");
     location.reload();
     return;
   }
 
-  /* ---- EXTRACCION ---- */
+  /* EXTRACCION */
   if(estado_silo.value){
     await fetch("/api/extraccion",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        numero_qr: qr,
-        estado_silo: estado_silo.value
+      body:JSON.stringify({
+        numero_qr:qr,
+        estado_silo:estado_silo.value
       })
     });
 
