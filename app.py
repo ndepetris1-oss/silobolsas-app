@@ -137,14 +137,7 @@ def panel():
             WHERE m.numero_qr = s.numero_qr
             ORDER BY m.fecha_muestreo DESC
             LIMIT 1
-        ) ultimo_muestreo,
-        (
-            SELECT mo.tipo
-            FROM monitoreos mo
-            WHERE mo.numero_qr = s.numero_qr
-            ORDER BY mo.fecha DESC
-            LIMIT 1
-        ) ultimo_evento
+        ) ultimo_muestreo
         FROM silos s
         ORDER BY fecha_confeccion DESC
     """).fetchall()
@@ -152,7 +145,46 @@ def panel():
     registros = []
 
     for s in silos:
-        registros.append(dict(s))
+        grado = None
+        factor = None
+        tas_min = None
+        fecha_extraccion_estimada = None
+
+        if s["ultimo_muestreo"]:
+            analisis = conn.execute("""
+                SELECT grado, factor, tas
+                FROM analisis
+                WHERE id_muestreo=?
+            """, (s["ultimo_muestreo"],)).fetchall()
+
+            if analisis:
+                grados = [a["grado"] for a in analisis if a["grado"] is not None]
+                factores = [a["factor"] for a in analisis if a["factor"] is not None]
+                tass = [a["tas"] for a in analisis if a["tas"] is not None]
+
+                grado = max(grados) if grados else None
+                factor = round(sum(factores) / len(factores), 4) if factores else None
+                tas_min = min(tass) if tass else None
+
+                if tas_min:
+                    fm = datetime.strptime(
+                        conn.execute(
+                            "SELECT fecha_muestreo FROM muestreos WHERE id=?",
+                            (s["ultimo_muestreo"],)
+                        ).fetchone()["fecha_muestreo"],
+                        "%Y-%m-%d %H:%M"
+                    )
+                    fecha_extraccion_estimada = (
+                        fm + timedelta(days=tas_min)
+                    ).strftime("%Y-%m-%d")
+
+        registros.append({
+            **dict(s),
+            "grado": grado,
+            "factor": factor,
+            "tas_min": tas_min,
+            "fecha_extraccion_estimada": fecha_extraccion_estimada
+        })
 
     conn.close()
     return render_template("panel.html", registros=registros)
