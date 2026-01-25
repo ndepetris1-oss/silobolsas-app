@@ -12,28 +12,16 @@
 body{font-family:Arial;background:#e8f5e9;margin:0}
 header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
 .container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-button,select{
-  background:#43a047;color:white;border:none;border-radius:8px;
-  padding:8px 14px;cursor:pointer
-}
-select{background:#c8e6c9;color:black}
-button:hover{background:#2e7d32}
 #map{height:420px;border-radius:12px;margin-bottom:15px}
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
-.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
 .estado-activo{color:#2e7d32;font-weight:bold}
 .estado-parcial{color:#f9a825;font-weight:bold}
 .estado-extraido{color:#b71c1c;font-weight:bold}
-.alerta-evento{
-  background:#fff3cd;
-  color:#856404;
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:13px;
-  font-weight:bold;
+button{
+  background:#43a047;color:white;border:none;
+  border-radius:8px;padding:6px 12px;cursor:pointer
 }
 </style>
 </head>
@@ -43,11 +31,6 @@ th{background:#a5d6a7}
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
 
 <div class="container">
-
-<div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo / Operación</button>
-  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-</div>
 
 <div id="map"></div>
 
@@ -59,11 +42,10 @@ th{background:#a5d6a7}
   <th>Estado grano</th>
   <th>Estado silo</th>
   <th>Confección</th>
-  <th>Evento</th>
   <th>Grado</th>
   <th>Factor</th>
   <th>TAS mín</th>
-  <th>Extracción est.</th>
+  <th>Extracción estimada</th>
   <th>Acción</th>
 </tr>
 </thead>
@@ -82,7 +64,8 @@ L.tileLayer(
   { attribution: '© Esri' }
 ).addTo(map);
 
-let markers=[];
+let markers = [];
+let bounds = [];
 
 function icono(c){
   let color="blue";
@@ -95,51 +78,34 @@ function icono(c){
   });
 }
 
-function render(){
-  tbody.innerHTML="";
-  markers.forEach(m=>map.removeLayer(m));
-  markers=[];
-  let bounds=[];
+registros.forEach(r=>{
+  tbody.innerHTML += `
+    <tr>
+      <td>${r.numero_qr}</td>
+      <td>${r.cereal}</td>
+      <td>${r.estado_grano ?? "-"}</td>
+      <td class="estado-${(r.estado_silo||'activo').replace(" ","-").toLowerCase()}">
+        ${r.estado_silo ?? "Activo"}
+      </td>
+      <td>${r.fecha_confeccion}</td>
+      <td>${r.grado ?? "-"}</td>
+      <td>${r.factor ? (r.factor*100).toFixed(2)+"%" : "-"}</td>
+      <td>${r.tas_min ?? "-"}</td>
+      <td>${r.fecha_extraccion_estimada ?? "-"}</td>
+      <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
+    </tr>
+  `;
 
-  registros.forEach(r=>{
-    tbody.innerHTML+=`
-      <tr>
-        <td>${r.numero_qr}</td>
-        <td>${r.cereal || "-"}</td>
-        <td class="${r.estado_grano==='Humedo'?'humedo':''}">
-          ${r.estado_grano || "-"}
-        </td>
-        <td class="estado-${(r.estado_silo||'activo').replace(' ','-').toLowerCase()}">
-          ${r.estado_silo || "Activo"}
-        </td>
-        <td>${r.fecha_confeccion || "-"}</td>
-        <td>
-          ${r.ultimo_evento
-            ? `<span class="alerta-evento">${r.ultimo_evento}</span>`
-            : "-"
-          }
-        </td>
-        <td>${r.grado ?? "-"}</td>
-        <td>${r.factor ? (r.factor*100).toFixed(2)+"%" : "-"}</td>
-        <td>${r.tas_min ?? "-"}</td>
-        <td>${r.fecha_extraccion_estimada ?? "-"}</td>
-        <td>
-          <button onclick="location.href='/silo/${r.numero_qr}'">Ver</button>
-        </td>
-      </tr>
-    `;
+  if(r.lat && r.lon){
+    const m = L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
+    markers.push(m);
+    bounds.push([r.lat,r.lon]);
+  }
+});
 
-    if(r.lat && r.lon){
-      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m);
-      bounds.push([r.lat,r.lon]);
-    }
-  });
-
-  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+if(bounds.length){
+  map.fitBounds(bounds,{padding:[30,30]});
 }
-
-render();
 </script>
 
 </body>
