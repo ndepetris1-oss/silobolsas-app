@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_file
-import sqlite3
+import sqlite3, os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import csv, io
@@ -82,6 +82,17 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS monitoreos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_qr TEXT,
+        fecha TEXT,
+        tipo TEXT,
+        detalle TEXT,
+        foto TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -109,7 +120,6 @@ def api_silo(qr):
         fecha_confeccion=s["fecha_confeccion"]
     )
 
-
 # ======================
 # PANEL
 # ======================
@@ -121,11 +131,19 @@ def panel():
     silos = conn.execute("""
         SELECT s.*,
         (
-            SELECT m.id FROM muestreos m
+            SELECT m.id
+            FROM muestreos m
             WHERE m.numero_qr = s.numero_qr
             ORDER BY m.fecha_muestreo DESC
             LIMIT 1
-        ) ultimo_muestreo
+        ) ultimo_muestreo,
+        (
+            SELECT mo.tipo
+            FROM monitoreos mo
+            WHERE mo.numero_qr = s.numero_qr
+            ORDER BY mo.fecha DESC
+            LIMIT 1
+        ) ultimo_evento
         FROM silos s
         ORDER BY fecha_confeccion DESC
     """).fetchall()
@@ -171,7 +189,8 @@ def panel():
             "grado": grado,
             "factor": factor,
             "tas_min": tas_min,
-            "fecha_extraccion_estimada": fecha_extraccion_estimada
+            "fecha_extraccion_estimada": fecha_extraccion_estimada,
+            "ultimo_evento": s["ultimo_evento"]
         })
 
     conn.close()
@@ -236,6 +255,39 @@ def registrar_extraccion():
     return jsonify(ok=True)
 
 # ======================
+# MONITOREO EN CAMPO
+# ======================
+@app.route("/api/monitoreo", methods=["POST"])
+def guardar_monitoreo():
+    numero_qr = request.form.get("numero_qr")
+    tipo = request.form.get("tipo")
+    detalle = request.form.get("detalle")
+
+    foto = request.files.get("foto")
+    nombre_foto = None
+
+    if foto:
+        os.makedirs("static/monitoreos", exist_ok=True)
+        nombre_foto = f"static/monitoreos/{datetime.now().timestamp()}_{foto.filename}"
+        foto.save(nombre_foto)
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO monitoreos (numero_qr, fecha, tipo, detalle, foto)
+        VALUES (?,?,?,?,?)
+    """, (
+        numero_qr,
+        ahora_argentina().strftime("%Y-%m-%d %H:%M"),
+        tipo,
+        detalle,
+        nombre_foto
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
+
+# ======================
 # NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
@@ -255,7 +307,7 @@ def nuevo_muestreo():
     return jsonify(id_muestreo=mid)
 
 # ======================
-# GUARDAR ANALISIS (CLAVE)
+# GUARDAR ANALISIS
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
 def guardar_analisis_seccion():
@@ -281,7 +333,6 @@ def guardar_analisis_seccion():
     }
 
     cereal = d.get("cereal")
-
     grado = None
     factor = 1.0
     tas = None
@@ -290,20 +341,16 @@ def guardar_analisis_seccion():
         grado = grado_maiz(datos)
         factor = factor_maiz(datos)
         tas = tas_maiz(datos)
-
     elif cereal == "Trigo":
         grado = grado_trigo(datos)
         factor = factor_trigo(datos)
         tas = tas_trigo(datos)
-
     elif cereal == "Soja":
         factor = factor_soja(datos)
-
     elif cereal == "Girasol":
         factor = factor_girasol(datos)
 
     conn = get_db()
-
     existe = conn.execute("""
         SELECT id FROM analisis
         WHERE id_muestreo=? AND seccion=?
@@ -318,20 +365,10 @@ def guardar_analisis_seccion():
                 grado=?, factor=?, tas=?
             WHERE id=?
         """, (
-            datos["temperatura"],
-            datos["humedad"],
-            datos["ph"],
-            datos["danados"],
-            datos["quebrados"],
-            datos["materia_extrana"],
-            datos["olor"],
-            datos["moho"],
-            datos["insectos"],
-            datos["chamico"],
-            grado,
-            factor,
-            tas,
-            existe["id"]
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor, tas, existe["id"]
         ))
     else:
         conn.execute("""
@@ -343,21 +380,11 @@ def guardar_analisis_seccion():
                 grado, factor, tas
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
-            d["id_muestreo"],
-            d["seccion"],
-            datos["temperatura"],
-            datos["humedad"],
-            datos["ph"],
-            datos["danados"],
-            datos["quebrados"],
-            datos["materia_extrana"],
-            datos["olor"],
-            datos["moho"],
-            datos["insectos"],
-            datos["chamico"],
-            grado,
-            factor,
-            tas
+            d["id_muestreo"], d["seccion"],
+            datos["temperatura"], datos["humedad"], datos["ph"],
+            datos["danados"], datos["quebrados"], datos["materia_extrana"],
+            datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+            grado, factor, tas
         ))
 
     conn.commit()
@@ -383,8 +410,20 @@ def ver_silo(qr):
         ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
 
+    monitoreos = conn.execute("""
+        SELECT *
+        FROM monitoreos
+        WHERE numero_qr=?
+        ORDER BY fecha DESC
+    """, (qr,)).fetchall()
+
     conn.close()
-    return render_template("silo.html", silo=silo, muestreos=muestreos)
+    return render_template(
+        "silo.html",
+        silo=silo,
+        muestreos=muestreos,
+        monitoreos=monitoreos
+    )
 
 # ======================
 # MUESTREO
