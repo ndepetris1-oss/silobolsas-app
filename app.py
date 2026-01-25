@@ -132,15 +132,30 @@ def panel():
     silos = conn.execute("""
         SELECT s.*,
         (
-            SELECT COUNT(*) FROM monitoreos
-            WHERE numero_qr=s.numero_qr AND resuelto=0
-        ) eventos_pendientes
+            SELECT m.id
+            FROM muestreos m
+            WHERE m.numero_qr = s.numero_qr
+            ORDER BY m.fecha_muestreo DESC
+            LIMIT 1
+        ) ultimo_muestreo,
+        (
+            SELECT mo.tipo
+            FROM monitoreos mo
+            WHERE mo.numero_qr = s.numero_qr
+            ORDER BY mo.fecha DESC
+            LIMIT 1
+        ) ultimo_evento
         FROM silos s
         ORDER BY fecha_confeccion DESC
     """).fetchall()
 
+    registros = []
+
+    for s in silos:
+        registros.append(dict(s))
+
     conn.close()
-    return render_template("panel.html", registros=silos)
+    return render_template("panel.html", registros=registros)
 
 # ======================
 # FORM
