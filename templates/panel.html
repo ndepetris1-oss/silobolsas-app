@@ -12,17 +12,37 @@
 body{font-family:Arial;background:#e8f5e9;margin:0}
 header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
 .container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px
+}
+
+button,select{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer
+}
+
+select{background:#c8e6c9;color:black}
+
+button:hover{background:#2e7d32}
+
 #map{height:420px;border-radius:12px;margin-bottom:15px}
+
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
 th{background:#a5d6a7}
+
+.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
 .estado-activo{color:#2e7d32;font-weight:bold}
-.estado-parcial{color:#f9a825;font-weight:bold}
-.estado-extraido{color:#b71c1c;font-weight:bold}
-button{
-  background:#43a047;color:white;border:none;
-  border-radius:8px;padding:6px 12px;cursor:pointer
-}
+.estado-extracción-parcial{color:#f9a825;font-weight:bold}
+.estado-extraído{color:#b71c1c;font-weight:bold}
 </style>
 </head>
 
@@ -31,6 +51,34 @@ button{
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
 
 <div class="container">
+
+<div class="toolbar">
+  <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
+  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
+
+  <select id="filtroCereal">
+    <option value="">Cereal</option>
+    <option>Maíz</option>
+    <option>Soja</option>
+    <option>Trigo</option>
+    <option>Girasol</option>
+  </select>
+
+  <select id="filtroEstadoGrano">
+    <option value="">Estado grano</option>
+    <option>Seco</option>
+    <option>Humedo</option>
+  </select>
+
+  <select id="filtroEstadoSilo">
+    <option value="">Estado silo</option>
+    <option>Activo</option>
+    <option>Extracción parcial</option>
+    <option>Extraído</option>
+  </select>
+
+  <button onclick="resetFiltros()">♻ Reset</button>
+</div>
 
 <div id="map"></div>
 
@@ -56,16 +104,17 @@ button{
 
 <script>
 const registros = {{ registros | tojson }};
+let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
+/* ===== MAPA ===== */
 const map = L.map('map');
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { attribution: '© Esri' }
 ).addTo(map);
 
-let markers = [];
-let bounds = [];
+let markers=[];
 
 function icono(c){
   let color="blue";
@@ -78,34 +127,62 @@ function icono(c){
   });
 }
 
-registros.forEach(r=>{
-  tbody.innerHTML += `
-    <tr>
-      <td>${r.numero_qr}</td>
-      <td>${r.cereal}</td>
-      <td>${r.estado_grano ?? "-"}</td>
-      <td class="estado-${(r.estado_silo||'activo').replace(" ","-").toLowerCase()}">
-        ${r.estado_silo ?? "Activo"}
-      </td>
-      <td>${r.fecha_confeccion}</td>
-      <td>${r.grado ?? "-"}</td>
-      <td>${r.factor ? (r.factor*100).toFixed(2)+"%" : "-"}</td>
-      <td>${r.tas_min ?? "-"}</td>
-      <td>${r.fecha_extraccion_estimada ?? "-"}</td>
-      <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
-    </tr>
-  `;
+function render(){
+  tbody.innerHTML="";
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
 
-  if(r.lat && r.lon){
-    const m = L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-    markers.push(m);
-    bounds.push([r.lat,r.lon]);
-  }
-});
+  let bounds=[];
 
-if(bounds.length){
-  map.fitBounds(bounds,{padding:[30,30]});
+  visibles.forEach(r=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${r.numero_qr}</td>
+        <td>${r.cereal}</td>
+        <td class="${r.estado_grano==='Humedo'?'humedo':''}">${r.estado_grano ?? '-'}</td>
+        <td class="estado-${(r.estado_silo||'activo').toLowerCase().replaceAll(' ','-')}">${r.estado_silo ?? 'Activo'}</td>
+        <td>${r.fecha_confeccion}</td>
+        <td>${r.grado ?? '-'}</td>
+        <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
+        <td>${r.tas_min ?? '-'}</td>
+        <td>${r.fecha_extraccion_estimada ?? '-'}</td>
+        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
+      </tr>
+    `;
+
+    if(r.lat && r.lon){
+      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
+      markers.push(m);
+      bounds.push([r.lat,r.lon]);
+    }
+  });
+
+  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 }
+
+/* ===== FILTROS ===== */
+function aplicarFiltros(){
+  const c=filtroCereal.value;
+  const eg=filtroEstadoGrano.value;
+  const es=filtroEstadoSilo.value;
+
+  visibles = registros.filter(r =>
+    (!c || r.cereal===c) &&
+    (!eg || r.estado_grano===eg) &&
+    (!es || r.estado_silo===es)
+  );
+  render();
+}
+
+function resetFiltros(){
+  document.querySelectorAll("select").forEach(s=>s.value="");
+  visibles=[...registros];
+  render();
+}
+
+document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
+
+render();
 </script>
 
 </body>
