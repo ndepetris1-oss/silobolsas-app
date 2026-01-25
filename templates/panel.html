@@ -27,6 +27,14 @@ th{background:#a5d6a7}
 .estado-activo{color:#2e7d32;font-weight:bold}
 .estado-parcial{color:#f9a825;font-weight:bold}
 .estado-extraido{color:#b71c1c;font-weight:bold}
+.alerta-evento{
+  background:#fff3cd;
+  color:#856404;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:13px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -37,32 +45,8 @@ th{background:#a5d6a7}
 <div class="container">
 
 <div class="toolbar">
-  <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
+  <button onclick="location.href='/form'">➕ Nuevo / Operación</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-
-  <select id="filtroCereal">
-    <option value="">Cereal</option>
-    <option>Maíz</option>
-    <option>Soja</option>
-    <option>Trigo</option>
-    <option>Girasol</option>
-  </select>
-
-  <select id="filtroEstadoGrano">
-    <option value="">Estado grano</option>
-    <option>Seco</option>
-    <option>Humedo</option>
-  </select>
-
-  <select id="filtroEstadoSilo">
-    <option value="">Estado silo</option>
-    <option>Activo</option>
-    <option>Extracción parcial</option>
-    <option>Extraído</option>
-  </select>
-
-  <button onclick="pantallaCompleta()">🖥 Pantalla completa</button>
-  <button onclick="resetFiltros()">♻ Reset</button>
 </div>
 
 <div id="map"></div>
@@ -75,11 +59,11 @@ th{background:#a5d6a7}
   <th>Estado grano</th>
   <th>Estado silo</th>
   <th>Confección</th>
+  <th>Evento</th>
   <th>Grado</th>
   <th>Factor</th>
   <th>TAS mín</th>
-  <th>Extracción estimada</th>
-  <th>Evento</th>
+  <th>Extracción est.</th>
   <th>Acción</th>
 </tr>
 </thead>
@@ -90,7 +74,6 @@ th{background:#a5d6a7}
 
 <script>
 const registros = {{ registros | tojson }};
-let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
 const map = L.map('map');
@@ -116,61 +99,44 @@ function render(){
   tbody.innerHTML="";
   markers.forEach(m=>map.removeLayer(m));
   markers=[];
-
   let bounds=[];
 
-  visibles.forEach(r=>{
+  registros.forEach(r=>{
     tbody.innerHTML+=`
       <tr>
         <td>${r.numero_qr}</td>
-        <td>${r.cereal}</td>
-        <td class="${r.estado_grano==='Humedo'?'humedo':''}">${r.estado_grano ?? '-'}</td>
-        <td class="estado-${(r.estado_silo||'activo').replace(' ','-').toLowerCase()}">${r.estado_silo ?? 'Activo'}</td>
-        <td>${r.fecha_confeccion}</td>
-        <td>${r.grado ?? '-'}</td>
-        <td>${r.factor ?? '-'}%</td>
-        <td>${r.tas_min ?? '-'}</td>
-        <td>${r.fecha_extraccion_estimada ?? '-'}</td>
+        <td>${r.cereal || "-"}</td>
+        <td class="${r.estado_grano==='Humedo'?'humedo':''}">
+          ${r.estado_grano || "-"}
+        </td>
+        <td class="estado-${(r.estado_silo||'activo').replace(' ','-').toLowerCase()}">
+          ${r.estado_silo || "Activo"}
+        </td>
+        <td>${r.fecha_confeccion || "-"}</td>
         <td>
-  ${r.ultimo_evento ? `⚠️ ${r.ultimo_evento}` : "-"}
-</td>
-        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
+          ${r.ultimo_evento
+            ? `<span class="alerta-evento">${r.ultimo_evento}</span>`
+            : "-"
+          }
+        </td>
+        <td>${r.grado ?? "-"}</td>
+        <td>${r.factor ? (r.factor*100).toFixed(2)+"%" : "-"}</td>
+        <td>${r.tas_min ?? "-"}</td>
+        <td>${r.fecha_extraccion_estimada ?? "-"}</td>
+        <td>
+          <button onclick="location.href='/silo/${r.numero_qr}'">Ver</button>
+        </td>
       </tr>
     `;
 
     if(r.lat && r.lon){
       const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m); bounds.push([r.lat,r.lon]);
+      markers.push(m);
+      bounds.push([r.lat,r.lon]);
     }
   });
 
   if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
-}
-
-function aplicarFiltros(){
-  const c=document.getElementById("filtroCereal").value;
-  const eg=document.getElementById("filtroEstadoGrano").value;
-  const es=document.getElementById("filtroEstadoSilo").value;
-
-  visibles = registros.filter(r =>
-    (!c || r.cereal===c) &&
-    (!eg || r.estado_grano===eg) &&
-    (!es || r.estado_silo===es)
-  );
-  render();
-}
-
-function resetFiltros(){
-  document.querySelectorAll("select").forEach(s=>s.value="");
-  visibles=[...registros];
-  render();
-}
-
-document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
-
-function pantallaCompleta(){
-  const el=document.getElementById("map");
-  if(el.requestFullscreen) el.requestFullscreen();
 }
 
 render();
