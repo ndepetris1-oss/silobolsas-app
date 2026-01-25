@@ -131,10 +131,30 @@ const qr = params.get("id");
 document.getElementById("qr").value = qr || "";
 
 let modo = null;
+let lat = null;
+let lon = null;
+
+/* ===== GPS ===== */
+async function obtenerGPS(){
+  try{
+    const pos = await new Promise((ok, err) =>
+      navigator.geolocation.getCurrentPosition(ok, err, {
+        enableHighAccuracy: true,
+        timeout: 8000
+      })
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  }catch(e){
+    console.warn("GPS no disponible");
+  }
+}
 
 /* ===== INIT ===== */
 async function init(){
   if(!qr) return;
+
+  await obtenerGPS();
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
@@ -186,7 +206,9 @@ async function guardar(){
         numero_qr: qr,
         cereal: cereal.value,
         estado_grano: estado_grano.value,
-        metros: metros.value
+        metros: metros.value,
+        lat: lat,
+        lon: lon
       })
     });
 
