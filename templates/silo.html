@@ -80,6 +80,32 @@ th{
 <hr>
 
 <h3>Muestreos</h3>
+<hr>
+<h3>Monitoreos en campo</h3>
+
+{% if not monitoreos %}
+  <div class="alerta">
+    No hay monitoreos registrados.
+  </div>
+{% endif %}
+
+{% for m in monitoreos %}
+<div class="info" style="margin-bottom:12px">
+  <b>Fecha:</b> {{ m.fecha }}<br>
+  <b>Evento:</b> {{ m.tipo }}<br>
+
+  {% if m.detalle %}
+    <b>Detalle:</b> {{ m.detalle }}<br>
+  {% endif %}
+
+  {% if m.foto %}
+    <img
+      src="/{{ m.foto }}"
+      style="width:100%;max-width:420px;border-radius:10px;margin-top:8px"
+    >
+  {% endif %}
+</div>
+{% endfor %}
 
 {% if not muestreos %}
 <div class="alerta">
