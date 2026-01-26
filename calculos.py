@@ -6,6 +6,10 @@
 # TAS – FUNCIONES
 # ======================================================
 
+# ======================================================
+# TAS – FUNCIONES
+# ======================================================
+
 def tas_maiz(d):
     return _tas_tabla_hum_temp(
         TAS_MAIZ,
@@ -36,7 +40,6 @@ def tas_colza_girasol(d):
         d["temperatura"],
         d["humedad"]
     )
-
 # ======================================================
 # MAÍZ
 # ======================================================
@@ -128,15 +131,6 @@ def factor_girasol(d):
     if d["materia_extrana"] > 0:
         f -= d["materia_extrana"] * 0.01
     return round(max(f, 0), 4)
-
-
-def tas_soja(d):
-return _tas_tabla_hum_temp(
-TAS_SOJA,
-d["temperatura"],
-d["humedad"]
-)
-
 
 # ======================================================
 # TAS – TABLAS
