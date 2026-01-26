@@ -280,6 +280,26 @@ def ver_muestreo(id):
 def guardar_analisis_seccion():
     d = request.get_json()
 
+    # ======================
+    # NORMALIZAR TIPOS (CLAVE)
+    # ======================
+    def to_float(x):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+
+    d["temperatura"] = to_float(d.get("temperatura"))
+    d["humedad"] = to_float(d.get("humedad"))
+    d["ph"] = to_float(d.get("ph"))
+    d["danados"] = to_float(d.get("danados"))
+    d["quebrados"] = to_float(d.get("quebrados"))
+    d["materia_extrana"] = to_float(d.get("materia_extrana"))
+    d["olor"] = to_float(d.get("olor"))
+    d["moho"] = to_float(d.get("moho"))
+    d["chamico"] = to_float(d.get("chamico"))
+    d["insectos"] = 1 if d.get("insectos") else 0
+
     conn = get_db()
     cur = conn.cursor()
 
@@ -294,14 +314,17 @@ def guardar_analisis_seccion():
 
     cereal = d["cereal"]
 
+    # ======================
+    # CALCULOS CORRECTOS
+    # ======================
     if cereal == "Maíz":
         grado = grado_maiz(d)
         factor = factor_maiz(d)
-        tas = tas_maiz(grado)
+        tas = tas_maiz(d)
     elif cereal == "Trigo":
         grado = grado_trigo(d)
         factor = factor_trigo(d)
-        tas = tas_trigo(grado)
+        tas = tas_trigo(d)
     elif cereal == "Soja":
         factor = factor_soja(d)
     elif cereal == "Girasol":
@@ -312,13 +335,13 @@ def guardar_analisis_seccion():
         d["seccion"],
         d["temperatura"],
         d["humedad"],
-        d.get("ph"),
+        d["ph"],
         d["danados"],
         d["quebrados"],
         d["materia_extrana"],
         d["olor"],
         d["moho"],
-        1 if d["insectos"] else 0,
+        d["insectos"],
         d["chamico"],
         grado,
         factor,
@@ -347,6 +370,7 @@ def guardar_analisis_seccion():
 
     conn.commit()
     conn.close()
+
     return jsonify(ok=True)
 
 # ======================
