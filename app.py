@@ -326,6 +326,84 @@ def ver_muestreo(id):
         muestreo=muestreo,
         analisis=analisis
     )
+    # ======================
+# ANALISIS — GUARDAR / EDITAR SECCION
+# ======================
+@app.route("/api/analisis_seccion", methods=["POST"])
+def guardar_analisis_seccion():
+    d = request.get_json()
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Si ya existe análisis para esa sección → UPDATE
+    existente = cur.execute("""
+        SELECT id FROM analisis
+        WHERE id_muestreo=? AND seccion=?
+    """, (d["id_muestreo"], d["seccion"])).fetchone()
+
+    # Cálculos según cereal
+    grado = None
+    factor = None
+    tas = None
+
+    cereal = d["cereal"]
+
+    if cereal == "Maíz":
+        grado = grado_maiz(d)
+        factor = factor_maiz(d)
+        tas = tas_maiz(grado)
+    elif cereal == "Trigo":
+        grado = grado_trigo(d)
+        factor = factor_trigo(d)
+        tas = tas_trigo(grado)
+    elif cereal == "Soja":
+        factor = factor_soja(d)
+    elif cereal == "Girasol":
+        factor = factor_girasol(d)
+
+    valores = (
+        d["id_muestreo"],
+        d["seccion"],
+        d["temperatura"],
+        d["humedad"],
+        d.get("ph"),
+        d["danados"],
+        d["quebrados"],
+        d["materia_extrana"],
+        d["olor"],
+        d["moho"],
+        1 if d["insectos"] else 0,
+        d["chamico"],
+        grado,
+        factor,
+        tas
+    )
+
+    if existente:
+        cur.execute("""
+            UPDATE analisis SET
+                temperatura=?, humedad=?, ph=?,
+                danados=?, quebrados=?, materia_extrana=?,
+                olor=?, moho=?, insectos=?, chamico=?,
+                grado=?, factor=?, tas=?
+            WHERE id_muestreo=? AND seccion=?
+        """, valores[2:] + valores[:2])
+    else:
+        cur.execute("""
+            INSERT INTO analisis (
+                id_muestreo, seccion,
+                temperatura, humedad, ph,
+                danados, quebrados, materia_extrana,
+                olor, moho, insectos, chamico,
+                grado, factor, tas
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, valores)
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
 # ======================
 # EXPORT CSV
 # ======================
