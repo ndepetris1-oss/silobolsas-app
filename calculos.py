@@ -2,6 +2,17 @@
 # CALCULOS COMERCIALES – SILO BOLSA
 # ======================================================
 
+# ======================================================
+# UTILIDADES GENERALES
+# ======================================================
+
+def _tas_tabla(tabla, temp, hum):
+    if temp is None or hum is None:
+        return None
+    t = min(tabla.keys(), key=lambda x: abs(x - temp))
+    h = min(tabla[t].keys(), key=lambda x: abs(x - hum))
+    return tabla[t][h]
+
 
 # ======================================================
 # MAÍZ
@@ -21,22 +32,16 @@ def grado_maiz(d):
 
 def factor_maiz(d):
     f = 1.0
-
     if d["danados"] > 8:
         f -= (d["danados"] - 8) * 0.01
-
     if d["quebrados"] > 5:
         f -= (d["quebrados"] - 5) * 0.0025
-
     if d["materia_extrana"] > 2:
         f -= (d["materia_extrana"] - 2) * 0.01
-
     if d.get("ph") is not None and d["ph"] < 69:
         f -= (69 - d["ph"]) * 0.01
-
     f -= d.get("olor", 0) / 100
     f -= d.get("moho", 0) / 100
-
     return round(max(f, 0), 4)
 
 
@@ -58,22 +63,92 @@ def grado_trigo(d):
 
 def factor_trigo(d):
     f = 1.0
-
     if d["materia_extrana"] > 1.5:
         f -= (d["materia_extrana"] - 1.5) * 0.01
-
     if d["danados"] > 3:
         f -= (d["danados"] - 3) * 0.01
-
     if d["quebrados"] > 2:
         f -= (d["quebrados"] - 2) * 0.005
-
     if d.get("ph") is not None and d["ph"] < 73:
         f -= (73 - d["ph"]) * 0.02
-
     f -= d.get("olor", 0) / 100
     f -= d.get("moho", 0) / 100
+    return round(max(f, 0), 4)
 
+
+# ======================================================
+# AVENA / CENTENO (mismo esquema comercial)
+# ======================================================
+
+def grado_avena(d):
+    if d["danados"] > 6 or d["quebrados"] > 7:
+        return None
+    if d["danados"] > 4 or d["quebrados"] > 5:
+        return 3
+    if d["danados"] > 2 or d["quebrados"] > 3:
+        return 2
+    return 1
+
+
+def factor_avena(d):
+    f = 1.0
+    f -= d.get("danados", 0) * 0.01
+    f -= d.get("quebrados", 0) * 0.005
+    f -= d.get("olor", 0) / 100
+    return round(max(f, 0), 4)
+
+
+def grado_centeno(d):
+    if d["danados"] > 6 or d["quebrados"] > 7:
+        return None
+    if d["danados"] > 4 or d["quebrados"] > 5:
+        return 3
+    if d["danados"] > 2 or d["quebrados"] > 3:
+        return 2
+    return 1
+
+
+def factor_centeno(d):
+    return factor_trigo(d)
+
+
+# ======================================================
+# CEBADA
+# ======================================================
+
+def cumple_cebada_cervecera(d):
+    return (
+        d.get("germinacion", 100) >= 95 and
+        d["materia_extrana"] <= 1.0 and
+        d["danados"] <= 1.5 and
+        d["quebrados"] <= 4.0 and
+        d["humedad"] <= 12.5
+    )
+
+
+def grado_cebada_cervecera(d):
+    return 1
+
+
+def factor_cebada_cervecera(d):
+    f = 1.0
+    if d["humedad"] > 12:
+        f -= (d["humedad"] - 12) * 0.012
+    return round(max(f, 0), 4)
+
+
+def grado_cebada_forrajera(d):
+    if d["danados"] > 3 or d["quebrados"] > 8:
+        return 3
+    if d["danados"] > 2 or d["quebrados"] > 6:
+        return 2
+    return 1
+
+
+def factor_cebada_forrajera(d):
+    f = 1.0
+    f -= d.get("danados", 0) * 0.01
+    f -= d.get("quebrados", 0) * 0.005
     return round(max(f, 0), 4)
 
 
@@ -83,73 +158,40 @@ def factor_trigo(d):
 
 def factor_soja(d):
     f = 1.0
-
     if d["materia_extrana"] > 1:
         tramo1 = min(d["materia_extrana"], 3) - 1
         f -= tramo1 * 0.01
     if d["materia_extrana"] > 3:
         f -= (d["materia_extrana"] - 3) * 0.015
-
     if d["danados"] > 5:
         f -= (d["danados"] - 5) * 0.01
-
     q = d["quebrados"]
     if q > 20:
-        if q <= 25:
-            f -= (q - 20) * 0.0025
-        elif q <= 30:
-            f -= (5 * 0.0025) + (q - 25) * 0.005
-        else:
-            f -= (5 * 0.0025) + (5 * 0.005) + (q - 30) * 0.0075
-
+        f -= (q - 20) * 0.0025
     f -= d.get("olor", 0) / 100
     f -= d.get("moho", 0) / 100
-
     return round(max(f, 0), 4)
 
 
 # ======================================================
-# GIRASOL
+# GIRASOL / COLZA
 # ======================================================
 
 def factor_girasol(d):
     f = 1.0
-
-    if d.get("grasa") is not None:
-        f += (d["grasa"] - 42) * 0.02
-
     if d["materia_extrana"] > 0:
-        tramo1 = min(d["materia_extrana"], 3)
-        f -= tramo1 * 0.01
-    if d["materia_extrana"] > 3:
-        f -= (d["materia_extrana"] - 3) * 0.015
-
+        f -= d["materia_extrana"] * 0.01
     semillas = d.get("chamico", 0)
-    if semillas > 0:
+    if semillas:
         f -= semillas * 0.0012
-
-    f -= d.get("olor", 0) / 100
-    f -= d.get("moho", 0) / 100
-
     return round(max(f, 0), 4)
 
 
 # ======================================================
-# TAS – MAÍZ / TRIGO
+# TAS – TABLAS
 # ======================================================
 
-TAS_MAIZ = {
-    40:{24:1,22:3,20:4,18:9,16:17,14:27},
-    35:{24:2,22:3,20:5,18:11,16:19,14:32},
-    30:{24:2,22:4,20:7,18:15,16:23,14:48},
-    25:{24:4,22:7,20:12,18:28,16:45,14:90},
-    20:{24:8,22:12,20:22,18:49,16:80,14:170},
-    15:{24:16,22:22,20:39,18:85,16:160,14:320},
-    10:{24:26,22:35,20:60,18:140,16:265,14:500},
-    5:{24:50,22:90,20:150,18:350,16:650,14:1000}
-}
-
-TAS_TRIGO = {
+TAS_CEREALES_INVIERNO = {
     40:{24:1,22:1,20:2,18:2,16:3,14:4},
     35:{24:1,22:4,20:10,18:13,16:17,14:25},
     30:{24:1,22:5,20:11,18:15,16:21,14:30},
@@ -160,18 +202,33 @@ TAS_TRIGO = {
     5:{24:13,22:20,20:36,18:73,16:180,14:250}
 }
 
+TAS_SOJA = {
+    24:{40:1,35:1,30:1,25:1,20:3,15:8,10:10,5:13},
+    22:{40:1,35:4,30:5,25:7,20:8,15:10,10:15,5:20},
+    20:{40:2,35:10,30:11,25:12,20:13,15:20,10:29,5:36},
+    18:{40:2,35:13,30:15,25:18,20:30,15:41,10:50,5:73},
+    16:{40:3,35:17,30:21,25:36,20:54,15:56,10:100,5:180},
+    14:{40:4,35:25,30:30,25:40,20:80,15:105,10:200,5:250},
+}
 
-def _calcular_tas(tabla, temp, hum):
-    if temp is None or hum is None:
-        return None
-    t = min(tabla.keys(), key=lambda x: abs(x - temp))
-    h = min(tabla[t].keys(), key=lambda x: abs(x - hum))
-    return tabla[t][h]
+TAS_COLZA_GIRASOL = {
+    17.0:{25:4,20:4,15:6,10:11,5:20},
+    15.6:{25:4,20:6,15:6,10:11,5:28},
+    13.7:{25:4,20:6,15:11,10:20,5:46},
+    12.3:{25:8,20:6,15:18,10:25,5:109},
+    10.6:{25:11,20:18,15:42,10:42,5:238},
+    8.9:{25:23,20:48,15:116,10:279,5:300},
+    6.7:{25:29,20:180,15:300,10:300,5:300},
+}
 
 
-def tas_maiz(d):
-    return _calcular_tas(TAS_MAIZ, d["temperatura"], d["humedad"])
+def tas_cereales_invierno(d):
+    return _tas_tabla(TAS_CEREALES_INVIERNO, d["temperatura"], d["humedad"])
 
 
-def tas_trigo(d):
-    return _calcular_tas(TAS_TRIGO, d["temperatura"], d["humedad"])
+def tas_soja(d):
+    return _tas_tabla(TAS_SOJA, d["temperatura"], d["humedad"])
+
+
+def tas_colza_girasol(d):
+    return _tas_tabla(TAS_COLZA_GIRASOL, d["temperatura"], d["humedad"])
