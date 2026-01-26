@@ -228,11 +228,15 @@ def registrar_silo():
     return jsonify(ok=True)
 
 # ======================
-# NUEVO MUESTREO
+# API — NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
-def nuevo_muestreo():
-    qr = request.json["qr"]
+def api_nuevo_muestreo():
+    d = request.get_json(force=True, silent=True) or {}
+    qr = d.get("qr")
+
+    if not qr:
+        return jsonify(error="QR faltante"), 400
 
     conn = get_db()
     cur = conn.cursor()
