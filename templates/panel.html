@@ -103,15 +103,15 @@ th{background:#a5d6a7}
 </div>
 
 <script>
-const registros = {{ registros | tojson | safe }};
+/* ===== DATOS ===== */
+const registros = {{ registros | tojson }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
 /* ===== MAPA ===== */
 const map = L.map('map', { zoomControl: false });
-setTimeout(() => {
-map.invalidateSize();
-}, 300);
+map.setView([-34.6, -58.4], 6); // fallback Argentina
+
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { attribution: '© Esri' }
@@ -130,6 +130,7 @@ function icono(c){
   });
 }
 
+/* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
   markers.forEach(m=>map.removeLayer(m));
@@ -153,16 +154,17 @@ function render(){
       </tr>
     `;
 
-    if(r.lat && r.lon){
+    if(r.lat !== null && r.lon !== null){
       const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
       markers.push(m);
       bounds.push([r.lat,r.lon]);
     }
   });
 
-  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+  if(bounds.length){
+    map.fitBounds(bounds,{padding:[30,30]});
+  }
 }
-setTimeout(render, 100);
 
 /* ===== FILTROS ===== */
 function aplicarFiltros(){
@@ -186,6 +188,7 @@ function resetFiltros(){
 
 document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
 
+/* ===== INIT ===== */
 render();
 </script>
 
