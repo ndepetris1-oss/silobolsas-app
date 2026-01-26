@@ -170,24 +170,34 @@ def tas_trigo(d):
 # SELECTOR FINAL (LO QUE USA EL FORM)
 # ======================================================
 
-if cereal == "Maíz":
-    g = grado_maiz(d)
-    grado = normalizar_grado(g, usa_grado=True)
-    factor = factor_maiz(d)
-    tas = tas_maiz(d)
+def calcular_comercial(cereal, d):
+    if cereal == "Maíz":
+        g = grado_maiz(d)
+        grado = normalizar_grado(g, usa_grado=True)
+        factor = factor_maiz(d)
+        tas = tas_maiz(d)
 
-elif cereal == "Trigo":
-    g = grado_trigo(d)
-    grado = normalizar_grado(g, usa_grado=True)
-    factor = factor_trigo(d)
-    tas = tas_trigo(d)
+    elif cereal == "Trigo":
+        g = grado_trigo(d)
+        grado = normalizar_grado(g, usa_grado=True)
+        factor = factor_trigo(d)
+        tas = tas_trigo(d)
 
-elif cereal == "Soja":
-    grado = None
-    factor = factor_soja(d)
-    tas = tas_soja(d)
+    elif cereal == "Soja":
+        grado = None
+        factor = factor_soja(d)
+        tas = tas_soja(d)
 
-elif cereal == "Girasol":
-    grado = None
-    factor = factor_girasol(d)
-    tas = tas_colza_girasol(d)
+    elif cereal == "Girasol":
+        grado = None
+        factor = factor_girasol(d)
+        tas = tas_colza_girasol(d)
+
+    else:
+        raise ValueError(f"Cereal no soportado: {cereal}")
+
+    return {
+        "grado": grado,
+        "factor": factor,
+        "tas": tas
+    }
