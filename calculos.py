@@ -8,8 +8,8 @@
 
 def _tas_tabla_temp_hum(tabla, temp, hum):
     """
-    Tablas del tipo TABLA[TEMPERATURA][HUMEDAD]
-    (Trigo, Avena, Cebada, Centeno)
+    TABLA[TEMPERATURA][HUMEDAD]
+    (Trigo)
     """
     if temp is None or hum is None:
         return None
@@ -20,8 +20,8 @@ def _tas_tabla_temp_hum(tabla, temp, hum):
 
 def _tas_tabla_hum_temp(tabla, temp, hum):
     """
-    Tablas del tipo TABLA[HUMEDAD][TEMPERATURA]
-    (Maíz, Soja, Girasol, Colza)
+    TABLA[HUMEDAD][TEMPERATURA]
+    (Maíz)
     """
     if temp is None or hum is None:
         return None
@@ -32,8 +32,8 @@ def _tas_tabla_hum_temp(tabla, temp, hum):
 
 def normalizar_grado(grado, usa_grado=True):
     """
-    - Si el cereal usa grado comercial y no cumple → 'F/E'
-    - Si no usa grado → None
+    - Cereales con grado: None → 'F/E'
+    - Cereales sin grado: siempre None
     """
     if not usa_grado:
         return None
@@ -66,8 +66,6 @@ def factor_maiz(d):
         f -= (d["materia_extrana"] - 2) * 0.01
     if d.get("ph") is not None and d["ph"] < 69:
         f -= (69 - d["ph"]) * 0.01
-    f -= d.get("olor", 0) / 100
-    f -= d.get("moho", 0) / 100
     return round(max(f, 0), 4)
 
 
@@ -97,83 +95,11 @@ def factor_trigo(d):
         f -= (d["quebrados"] - 2) * 0.005
     if d.get("ph") is not None and d["ph"] < 73:
         f -= (73 - d["ph"]) * 0.02
-    f -= d.get("olor", 0) / 100
-    f -= d.get("moho", 0) / 100
     return round(max(f, 0), 4)
 
 
 # ======================================================
-# AVENA / CENTENO
-# ======================================================
-
-def grado_avena(d):
-    if d["danados"] > 6 or d["quebrados"] > 7:
-        return None
-    if d["danados"] > 4 or d["quebrados"] > 5:
-        return 3
-    if d["danados"] > 2 or d["quebrados"] > 3:
-        return 2
-    return 1
-
-
-def factor_avena(d):
-    f = 1.0
-    f -= d.get("danados", 0) * 0.01
-    f -= d.get("quebrados", 0) * 0.005
-    f -= d.get("olor", 0) / 100
-    return round(max(f, 0), 4)
-
-
-def grado_centeno(d):
-    return grado_avena(d)
-
-
-def factor_centeno(d):
-    return factor_trigo(d)
-
-
-# ======================================================
-# CEBADA
-# ======================================================
-
-def cumple_cebada_cervecera(d):
-    return (
-        d.get("germinacion", 100) >= 95 and
-        d["materia_extrana"] <= 1.0 and
-        d["danados"] <= 1.5 and
-        d["quebrados"] <= 4.0 and
-        d["humedad"] <= 12.5
-    )
-
-
-def grado_cebada_cervecera(d):
-    return 1
-
-
-def factor_cebada_cervecera(d):
-    f = 1.0
-    if d["humedad"] > 12:
-        f -= (d["humedad"] - 12) * 0.012
-    return round(max(f, 0), 4)
-
-
-def grado_cebada_forrajera(d):
-    if d["danados"] > 3 or d["quebrados"] > 8:
-        return 3
-    if d["danados"] > 2 or d["quebrados"] > 6:
-        return 2
-    return 1
-
-
-def factor_cebada_forrajera(d):
-    f = 1.0
-    f -= d.get("danados", 0) * 0.01
-    f -= d.get("quebrados", 0) * 0.005
-    return round(max(f, 0), 4)
-
-
-# ======================================================
-# SOJA
+# SOJA (SIN GRADO / SIN TAS)
 # ======================================================
 
 def factor_soja(d):
@@ -185,26 +111,26 @@ def factor_soja(d):
         f -= (d["materia_extrana"] - 3) * 0.015
     if d["danados"] > 5:
         f -= (d["danados"] - 5) * 0.01
-    q = d["quebrados"]
-    if q > 20:
-        f -= (q - 20) * 0.0025
-    f -= d.get("olor", 0) / 100
-    f -= d.get("moho", 0) / 100
     return round(max(f, 0), 4)
 
 
+def tas_soja(d):
+    return None   # pendiente
+
+
 # ======================================================
-# GIRASOL / COLZA
+# GIRASOL (SIN GRADO / SIN TAS)
 # ======================================================
 
 def factor_girasol(d):
     f = 1.0
     if d["materia_extrana"] > 0:
         f -= d["materia_extrana"] * 0.01
-    semillas = d.get("chamico", 0)
-    if semillas:
-        f -= semillas * 0.0012
     return round(max(f, 0), 4)
+
+
+def tas_colza_girasol(d):
+    return None   # pendiente
 
 
 # ======================================================
@@ -220,7 +146,7 @@ TAS_MAIZ = {
     14:{40:27,35:32,30:48,25:90,20:170,15:320,10:500,5:1000},
 }
 
-TAS_CEREALES_INVIERNO = {
+TAS_TRIGO = {
     40:{24:1,22:1,20:2,18:2,16:3,14:4},
     35:{24:1,22:4,20:10,18:13,16:17,14:25},
     30:{24:1,22:5,20:11,18:15,16:21,14:30},
@@ -236,12 +162,12 @@ def tas_maiz(d):
     return _tas_tabla_hum_temp(TAS_MAIZ, d["temperatura"], d["humedad"])
 
 
-def tas_cereales_invierno(d):
-    return _tas_tabla_temp_hum(TAS_CEREALES_INVIERNO, d["temperatura"], d["humedad"])
+def tas_trigo(d):
+    return _tas_tabla_temp_hum(TAS_TRIGO, d["temperatura"], d["humedad"])
 
 
 # ======================================================
-# SELECTOR FINAL POR CEREAL
+# SELECTOR FINAL (LO QUE USA EL FORM)
 # ======================================================
 
 if cereal == "Maíz":
@@ -254,36 +180,14 @@ elif cereal == "Trigo":
     g = grado_trigo(d)
     grado = normalizar_grado(g, usa_grado=True)
     factor = factor_trigo(d)
-    tas = tas_cereales_invierno(d)
-
-elif cereal == "Avena":
-    g = grado_avena(d)
-    grado = normalizar_grado(g, usa_grado=True)
-    factor = factor_avena(d)
-    tas = tas_cereales_invierno(d)
-
-elif cereal == "Centeno":
-    g = grado_centeno(d)
-    grado = normalizar_grado(g, usa_grado=True)
-    factor = factor_centeno(d)
-    tas = tas_cereales_invierno(d)
-
-elif cereal == "Cebada":
-    if cumple_cebada_cervecera(d):
-        g = grado_cebada_cervecera(d)
-        factor = factor_cebada_cervecera(d)
-    else:
-        g = grado_cebada_forrajera(d)
-        factor = factor_cebada_forrajera(d)
-    grado = normalizar_grado(g, usa_grado=True)
-    tas = tas_cereales_invierno(d)
+    tas = tas_trigo(d)
 
 elif cereal == "Soja":
     grado = None
     factor = factor_soja(d)
     tas = tas_soja(d)
 
-elif cereal in ("Girasol", "Colza"):
+elif cereal == "Girasol":
     grado = None
     factor = factor_girasol(d)
     tas = tas_colza_girasol(d)
