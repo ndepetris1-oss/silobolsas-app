@@ -224,11 +224,12 @@ def registrar_silo():
     return jsonify(ok=True)
 
 # ======================
-# NUEVO MUESTREO  ✅ (ESTO FALTABA)
+# NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
 def nuevo_muestreo():
     qr = request.json["qr"]
+
     conn = get_db()
     cur = conn.cursor()
 
@@ -243,61 +244,6 @@ def nuevo_muestreo():
 
     return jsonify(id_muestreo=mid)
 
-# ======================
-# MONITOREO — NUEVO EVENTO
-# ======================
-@app.route("/api/monitoreo", methods=["POST"])
-def nuevo_monitoreo():
-    qr = request.form.get("numero_qr")
-    tipo = request.form.get("tipo")
-    detalle = request.form.get("detalle")
-
-    foto_evento = request.files.get("foto")
-    path_evento = None
-
-    if foto_evento:
-        os.makedirs("static/monitoreos", exist_ok=True)
-        path_evento = f"static/monitoreos/{datetime.now().timestamp()}_{foto_evento.filename}"
-        foto_evento.save(path_evento)
-
-    conn = get_db()
-    conn.execute("""
-        INSERT INTO monitoreos (
-            numero_qr, fecha_evento, tipo, detalle, foto_evento
-        ) VALUES (?,?,?,?,?)
-    """, (
-        qr,
-        ahora().strftime("%Y-%m-%d %H:%M"),
-        tipo,
-        detalle,
-        path_evento
-    ))
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
-
-# ======================
-# SILO
-# ======================
-@app.route("/silo/<qr>")
-def ver_silo(qr):
-    conn = get_db()
-
-    silo = conn.execute(
-        "SELECT * FROM silos WHERE numero_qr=?",
-        (qr,)
-    ).fetchone()
-
-    muestreos = conn.execute("""
-        SELECT id, fecha_muestreo,
-        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
-        FROM muestreos
-        WHERE numero_qr=?
-        ORDER BY fecha_muestreo DESC
-    """, (qr,)).fetchall()
-
-    conn.close()
-    return render_template("silo.html", silo=silo, muestreos=muestreos)
 # ======================
 # MUESTREO
 # ======================
@@ -326,7 +272,8 @@ def ver_muestreo(id):
         muestreo=muestreo,
         analisis=analisis
     )
-    # ======================
+
+# ======================
 # ANALISIS — GUARDAR / EDITAR SECCION
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
@@ -336,13 +283,11 @@ def guardar_analisis_seccion():
     conn = get_db()
     cur = conn.cursor()
 
-    # Si ya existe análisis para esa sección → UPDATE
     existente = cur.execute("""
         SELECT id FROM analisis
         WHERE id_muestreo=? AND seccion=?
     """, (d["id_muestreo"], d["seccion"])).fetchone()
 
-    # Cálculos según cereal
     grado = None
     factor = None
     tas = None
@@ -402,8 +347,87 @@ def guardar_analisis_seccion():
 
     conn.commit()
     conn.close()
-
     return jsonify(ok=True)
+
+# ======================
+# MONITOREO — NUEVO EVENTO
+# ======================
+@app.route("/api/monitoreo", methods=["POST"])
+def nuevo_monitoreo():
+    qr = request.form.get("numero_qr")
+    tipo = request.form.get("tipo")
+    detalle = request.form.get("detalle")
+
+    foto_evento = request.files.get("foto")
+    path_evento = None
+
+    if foto_evento:
+        os.makedirs("static/monitoreos", exist_ok=True)
+        path_evento = f"static/monitoreos/{datetime.now().timestamp()}_{foto_evento.filename}"
+        foto_evento.save(path_evento)
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO monitoreos (
+            numero_qr, fecha_evento, tipo, detalle, foto_evento
+        ) VALUES (?,?,?,?,?)
+    """, (
+        qr,
+        ahora().strftime("%Y-%m-%d %H:%M"),
+        tipo,
+        detalle,
+        path_evento
+    ))
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
+
+# ======================
+# EXTRACCION
+# ======================
+@app.route("/api/extraccion", methods=["POST"])
+def registrar_extraccion():
+    d = request.get_json()
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE silos SET
+            estado_silo=?,
+            fecha_extraccion=?
+        WHERE numero_qr=?
+    """, (
+        d["estado_silo"],
+        ahora().strftime("%Y-%m-%d %H:%M"),
+        d["numero_qr"]
+    ))
+
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
+
+# ======================
+# SILO
+# ======================
+@app.route("/silo/<qr>")
+def ver_silo(qr):
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT * FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    muestreos = conn.execute("""
+        SELECT id, fecha_muestreo,
+        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
+        FROM muestreos
+        WHERE numero_qr=?
+        ORDER BY fecha_muestreo DESC
+    """, (qr,)).fetchall()
+
+    conn.close()
+    return render_template("silo.html", silo=silo, muestreos=muestreos)
+
 # ======================
 # EXPORT CSV
 # ======================
