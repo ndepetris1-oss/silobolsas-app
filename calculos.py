@@ -29,6 +29,14 @@ def _tas_tabla_hum_temp(tabla, temp, hum):
     t = min(tabla[h].keys(), key=lambda x: abs(x - temp))
     return tabla[h][t]
 
+def normalizar_grado(grado, usa_grado=True):
+    """
+    - Si el cereal usa grado comercial y no cumple → 'F/E'
+    - Si no usa grado → None
+    """
+    if not usa_grado:
+        return None
+    return grado if grado is not None else "F/E"
 
 # ======================================================
 # MAÍZ
