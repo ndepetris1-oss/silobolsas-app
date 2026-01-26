@@ -21,13 +21,14 @@ def _tas_tabla_temp_hum(tabla, temp, hum):
 def _tas_tabla_hum_temp(tabla, temp, hum):
     """
     Tablas del tipo TABLA[HUMEDAD][TEMPERATURA]
-    (Soja, Girasol, Colza)
+    (Maíz, Soja, Girasol, Colza)
     """
     if temp is None or hum is None:
         return None
     h = min(tabla.keys(), key=lambda x: abs(x - hum))
     t = min(tabla[h].keys(), key=lambda x: abs(x - temp))
     return tabla[h][t]
+
 
 def normalizar_grado(grado, usa_grado=True):
     """
@@ -37,6 +38,7 @@ def normalizar_grado(grado, usa_grado=True):
     if not usa_grado:
         return None
     return grado if grado is not None else "F/E"
+
 
 # ======================================================
 # MAÍZ
@@ -209,6 +211,15 @@ def factor_girasol(d):
 # TAS – TABLAS
 # ======================================================
 
+TAS_MAIZ = {
+    24:{40:1,35:2,30:2,25:4,20:8,15:16,10:26,5:50},
+    22:{40:3,35:3,30:4,25:7,20:12,15:22,10:35,5:90},
+    20:{40:4,35:5,30:7,25:12,20:22,15:39,10:60,5:150},
+    18:{40:9,35:11,30:15,25:28,20:49,15:85,10:140,5:350},
+    16:{40:17,35:17,30:23,25:45,20:80,15:160,10:265,5:650},
+    14:{40:27,35:32,30:48,25:90,20:170,15:320,10:500,5:1000},
+}
+
 TAS_CEREALES_INVIERNO = {
     40:{24:1,22:1,20:2,18:2,16:3,14:4},
     35:{24:1,22:4,20:10,18:13,16:17,14:25},
@@ -220,33 +231,59 @@ TAS_CEREALES_INVIERNO = {
     5:{24:13,22:20,20:36,18:73,16:180,14:250}
 }
 
-TAS_SOJA = {
-    24:{40:1,35:1,30:1,25:1,20:3,15:8,10:10,5:13},
-    22:{40:1,35:4,30:5,25:7,20:8,15:10,10:15,5:20},
-    20:{40:2,35:10,30:11,25:12,20:13,15:20,10:29,5:36},
-    18:{40:2,35:13,30:15,25:18,20:30,15:41,10:50,5:73},
-    16:{40:3,35:17,30:21,25:36,20:54,15:56,10:100,5:180},
-    14:{40:4,35:25,30:30,25:40,20:80,15:105,10:200,5:250},
-}
 
-TAS_COLZA_GIRASOL = {
-    17.0:{25:4,20:4,15:6,10:11,5:20},
-    15.6:{25:4,20:6,15:6,10:11,5:28},
-    13.7:{25:4,20:6,15:11,10:20,5:46},
-    12.3:{25:8,20:6,15:18,10:25,5:109},
-    10.6:{25:11,20:18,15:42,10:42,5:238},
-    8.9:{25:23,20:48,15:116,10:279,5:300},
-    6.7:{25:29,20:180,15:300,10:300,5:300},
-}
+def tas_maiz(d):
+    return _tas_tabla_hum_temp(TAS_MAIZ, d["temperatura"], d["humedad"])
 
 
 def tas_cereales_invierno(d):
     return _tas_tabla_temp_hum(TAS_CEREALES_INVIERNO, d["temperatura"], d["humedad"])
 
 
-def tas_soja(d):
-    return _tas_tabla_hum_temp(TAS_SOJA, d["temperatura"], d["humedad"])
+# ======================================================
+# SELECTOR FINAL POR CEREAL
+# ======================================================
 
+if cereal == "Maíz":
+    g = grado_maiz(d)
+    grado = normalizar_grado(g, usa_grado=True)
+    factor = factor_maiz(d)
+    tas = tas_maiz(d)
 
-def tas_colza_girasol(d):
-    return _tas_tabla_hum_temp(TAS_COLZA_GIRASOL, d["temperatura"], d["humedad"])
+elif cereal == "Trigo":
+    g = grado_trigo(d)
+    grado = normalizar_grado(g, usa_grado=True)
+    factor = factor_trigo(d)
+    tas = tas_cereales_invierno(d)
+
+elif cereal == "Avena":
+    g = grado_avena(d)
+    grado = normalizar_grado(g, usa_grado=True)
+    factor = factor_avena(d)
+    tas = tas_cereales_invierno(d)
+
+elif cereal == "Centeno":
+    g = grado_centeno(d)
+    grado = normalizar_grado(g, usa_grado=True)
+    factor = factor_centeno(d)
+    tas = tas_cereales_invierno(d)
+
+elif cereal == "Cebada":
+    if cumple_cebada_cervecera(d):
+        g = grado_cebada_cervecera(d)
+        factor = factor_cebada_cervecera(d)
+    else:
+        g = grado_cebada_forrajera(d)
+        factor = factor_cebada_forrajera(d)
+    grado = normalizar_grado(g, usa_grado=True)
+    tas = tas_cereales_invierno(d)
+
+elif cereal == "Soja":
+    grado = None
+    factor = factor_soja(d)
+    tas = tas_soja(d)
+
+elif cereal in ("Girasol", "Colza"):
+    grado = None
+    factor = factor_girasol(d)
+    tas = tas_colza_girasol(d)
