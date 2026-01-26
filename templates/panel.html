@@ -154,11 +154,14 @@ function render(){
       </tr>
     `;
 
-    if(r.lat !== null && r.lon !== null){
-      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
-      markers.push(m);
-      bounds.push([r.lat,r.lon]);
-    }
+const lat = Number(r.lat);
+const lon = Number(r.lon);
+
+if(!isNaN(lat) && !isNaN(lon)){
+  const m = L.marker([lat, lon], { icon: icono(r.cereal) }).addTo(map);
+  markers.push(m);
+  bounds.push([lat, lon]);
+}    
   });
 
   if(bounds.length){
