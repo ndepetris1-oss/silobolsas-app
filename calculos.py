@@ -50,7 +50,7 @@ def normalizar_grado(grado, usa_grado=True):
 def grado_maiz(d):
     if d.get("ph") is not None and d["ph"] < 69:
         return None
-    if d["danados"] > 8 or d["quebrados"] > 5 or d["materia_extrana"] > 2:
+    if v(d, "danados") > 8: or d["quebrados"] > 5 or d["materia_extrana"] > 2:
         return None
     if d["danados"] > 5 or d["quebrados"] > 3 or d["materia_extrana"] > 1.5:
         return 3
