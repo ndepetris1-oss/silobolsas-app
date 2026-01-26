@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import sqlite3, os
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+def ahora():
+    return datetime.now()
 import csv, io
 
 # ======================
