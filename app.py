@@ -197,7 +197,7 @@ def form():
 # ======================
 @app.route("/api/registrar_silo", methods=["POST"])
 def registrar_silo():
-    d = request.get_json()
+    d = request.get_json(silent=True) or {}
     conn = get_db()
 
     conn.execute("""
