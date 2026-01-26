@@ -186,17 +186,20 @@ factor = round(sum(factores) / len(factores), 4) if factores else None
 tas_min = min(tass) if tass else None
                
 
-                if tas_min:
-                    fm = datetime.strptime(
-                        conn.execute(
-                            "SELECT fecha_muestreo FROM muestreos WHERE id=?",
-                            (s["ultimo_muestreo"],)
-                        ).fetchone()["fecha_muestreo"],
-                        "%Y-%m-%d %H:%M"
-                    )
-                    fecha_extraccion_estimada = (
-                        fm + timedelta(days=tas_min)
-                    ).strftime("%Y-%m-%d")
+                if tas_min is not None:
+    row = conn.execute(
+        "SELECT fecha_muestreo FROM muestreos WHERE id=?",
+        (s["ultimo_muestreo"],)
+    ).fetchone()
+
+    if row and row["fecha_muestreo"]:
+        try:
+            fm = datetime.strptime(row["fecha_muestreo"], "%Y-%m-%d %H:%M")
+            fecha_extraccion_estimada = (
+                fm + timedelta(days=int(tas_min))
+            ).strftime("%Y-%m-%d")
+        except:
+            fecha_extraccion_estimada = None
 
         registros.append({
             **dict(s),
