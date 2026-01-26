@@ -83,6 +83,11 @@ def factor_maiz(d):
     if d.get("ph") is not None and d["ph"] < 69:
         f -= (69 - d["ph"]) * 0.01
 
+    # ===== ARBITRAJES DIRECTOS =====
+    olor = d.get("olor") or 0
+    moho = d.get("moho") or 0
+    f -= (olor + moho) / 100
+
     return round(max(f, 0), 4)
 
 
@@ -133,6 +138,11 @@ def factor_trigo(d):
     if d.get("ph") is not None and d["ph"] < 73:
         f -= (73 - d["ph"]) * 0.02
 
+    # ===== ARBITRAJES DIRECTOS =====
+    olor = d.get("olor") or 0
+    moho = d.get("moho") or 0
+    f -= (olor + moho) / 100
+
     return round(max(f, 0), 4)
 
 
@@ -153,6 +163,11 @@ def factor_soja(d):
     if d.get("danados", 0) > 5:
         f -= (d["danados"] - 5) * 0.01
 
+    # ===== ARBITRAJES DIRECTOS =====
+    olor = d.get("olor") or 0
+    moho = d.get("moho") or 0
+    f -= (olor + moho) / 100
+
     return round(max(f, 0), 4)
 
 
@@ -169,6 +184,11 @@ def factor_girasol(d):
     semillas = d.get("chamico", 0)
     if semillas:
         f -= semillas * 0.0012
+
+    # ===== ARBITRAJES DIRECTOS =====
+    olor = d.get("olor") or 0
+    moho = d.get("moho") or 0
+    f -= (olor + moho) / 100
 
     return round(max(f, 0), 4)
 
