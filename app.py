@@ -157,29 +157,34 @@ def panel():
             """, (s["ultimo_muestreo"],)).fetchall()
 
             if analisis:
-                grados = [a["grado"] for a in analisis if a["grado"] is not None]
+grados = []
+factores = []
+tass = []
 
-factores = [
-    float(a["factor"])
-    for a in analisis
-    if a["factor"] is not None and float(a["factor"]) > 0
-]
+for a in analisis:
+    if a["grado"] is not None:
+        grados.append(a["grado"])
 
-tass = [
-    int(a["tas"])
-    for a in analisis
-    if a["tas"] is not None and int(a["tas"]) > 0
-]
+    if a["factor"] is not None:
+        try:
+            f = float(a["factor"])
+            if f > 0:
+                factores.append(f)
+        except:
+            pass
+
+    if a["tas"] is not None:
+        try:
+            t = int(a["tas"])
+            if t > 0:
+                tass.append(t)
+        except:
+            pass
 
 grado = max(grados) if grados else None
-
-factor = (
-    round(sum(factores) / len(factores), 4)
-    if len(factores) > 0
-    else None
-)
-
+factor = round(sum(factores) / len(factores), 4) if factores else None
 tas_min = min(tass) if tass else None
+               
 
                 if tas_min:
                     fm = datetime.strptime(
