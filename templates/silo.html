@@ -116,33 +116,3 @@ th{background:#a5d6a7}
 
 </div>
 
-<script>
-async function nuevoMuestreo(){
-  try{
-    const res = await fetch("/api/nuevo_muestreo",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        qr: "{{ silo.numero_qr }}"
-      })
-    });
-
-    if(!res.ok){
-      alert("Error al crear muestreo");
-      return;
-    }
-
-    const data = await res.json();
-
-    if(data.id_muestreo){
-      window.location.href = "/muestreo/" + data.id_muestreo;
-    }else{
-      alert("No se pudo crear el muestreo");
-    }
-
-  }catch(e){
-    alert("Error de conexión");
-    console.error(e);
-  }
-}
-</script>
