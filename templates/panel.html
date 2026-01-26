@@ -108,7 +108,10 @@ let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
 /* ===== MAPA ===== */
-const map = L.map('map');
+const map = L.map('map', { zoomControl: false });
+setTimeout(() => {
+map.invalidateSize();
+}, 300);
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { attribution: '© Esri' }
@@ -159,6 +162,7 @@ function render(){
 
   if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 }
+setTimeout(render, 100);
 
 /* ===== FILTROS ===== */
 function aplicarFiltros(){
