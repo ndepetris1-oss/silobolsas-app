@@ -158,12 +158,28 @@ def panel():
 
             if analisis:
                 grados = [a["grado"] for a in analisis if a["grado"] is not None]
-                factores = [a["factor"] for a in analisis if a["factor"] is not None]
-                tass = [a["tas"] for a in analisis if a["tas"] is not None]
 
-                grado = max(grados) if grados else None
-                factor = round(sum(factores) / len(factores), 4) if factores else None
-                tas_min = min(tass) if tass else None
+factores = [
+    float(a["factor"])
+    for a in analisis
+    if a["factor"] is not None and float(a["factor"]) > 0
+]
+
+tass = [
+    int(a["tas"])
+    for a in analisis
+    if a["tas"] is not None and int(a["tas"]) > 0
+]
+
+grado = max(grados) if grados else None
+
+factor = (
+    round(sum(factores) / len(factores), 4)
+    if len(factores) > 0
+    else None
+)
+
+tas_min = min(tass) if tass else None
 
                 if tas_min:
                     fm = datetime.strptime(
