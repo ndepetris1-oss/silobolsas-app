@@ -276,9 +276,6 @@ def ver_muestreo(id):
 def guardar_analisis_seccion():
     d = request.get_json()
 
-    # ======================
-    # NORMALIZAR TIPOS (CLAVE)
-    # ======================
     def to_float(x):
         try:
             return float(x)
@@ -305,10 +302,9 @@ def guardar_analisis_seccion():
     """, (d["id_muestreo"], d["seccion"])).fetchone()
 
     res = calcular_comercial(d["cereal"], d)
-
-grado = res["grado"]
-factor = res["factor"]
-tas = res["tas"]
+    grado = res["grado"]
+    factor = res["factor"]
+    tas = res["tas"]
 
     valores = (
         d["id_muestreo"],
