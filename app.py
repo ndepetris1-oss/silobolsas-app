@@ -7,11 +7,7 @@ import csv, io
 # ======================
 # IMPORTAR CALCULOS
 # ======================
-from calculos import (
-    grado_maiz, factor_maiz, tas_maiz,
-    grado_trigo, factor_trigo, tas_trigo,
-    factor_soja, factor_girasol
-)
+from calculos import calcular_comercial
 
 # ======================
 # APP
@@ -308,27 +304,11 @@ def guardar_analisis_seccion():
         WHERE id_muestreo=? AND seccion=?
     """, (d["id_muestreo"], d["seccion"])).fetchone()
 
-    grado = None
-    factor = None
-    tas = None
+    res = calcular_comercial(d["cereal"], d)
 
-    cereal = d["cereal"]
-
-    # ======================
-    # CALCULOS CORRECTOS
-    # ======================
-    if cereal == "Maíz":
-        grado = grado_maiz(d)
-        factor = factor_maiz(d)
-        tas = tas_maiz(d)
-    elif cereal == "Trigo":
-        grado = grado_trigo(d)
-        factor = factor_trigo(d)
-        tas = tas_trigo(d)
-    elif cereal == "Soja":
-        factor = factor_soja(d)
-    elif cereal == "Girasol":
-        factor = factor_girasol(d)
+grado = res["grado"]
+factor = res["factor"]
+tas = res["tas"]
 
     valores = (
         d["id_muestreo"],
