@@ -427,6 +427,38 @@ def nuevo_muestreo_desde_silo(qr):
 
     return redirect(f"/muestreo/{mid}")
 # ======================
+# VER MUESTREO
+# ======================
+@app.route("/muestreo/<int:id>")
+def ver_muestreo(id):
+    conn = get_db()
+
+    muestreo = conn.execute("""
+        SELECT m.*, s.numero_qr, s.cereal
+        FROM muestreos m
+        JOIN silos s ON s.numero_qr = m.numero_qr
+        WHERE m.id=?
+    """, (id,)).fetchone()
+
+    if not muestreo:
+        conn.close()
+        return "Muestreo no encontrado", 404
+
+    analisis = conn.execute("""
+        SELECT *
+        FROM analisis
+        WHERE id_muestreo=?
+        ORDER BY seccion
+    """, (id,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "muestreo.html",
+        muestreo=muestreo,
+        analisis=analisis
+    )
+# ======================
 # EXPORT CSV
 # ======================
 @app.route("/api/export")
