@@ -3,15 +3,31 @@
 # ======================================================
 
 # ======================================================
-# UTILIDADES GENERALES
+# UTILIDADES TAS
 # ======================================================
 
-def _tas_tabla(tabla, temp, hum):
+def _tas_tabla_temp_hum(tabla, temp, hum):
+    """
+    Tablas del tipo TABLA[TEMPERATURA][HUMEDAD]
+    (Trigo, Avena, Cebada, Centeno)
+    """
     if temp is None or hum is None:
         return None
     t = min(tabla.keys(), key=lambda x: abs(x - temp))
     h = min(tabla[t].keys(), key=lambda x: abs(x - hum))
     return tabla[t][h]
+
+
+def _tas_tabla_hum_temp(tabla, temp, hum):
+    """
+    Tablas del tipo TABLA[HUMEDAD][TEMPERATURA]
+    (Soja, Girasol, Colza)
+    """
+    if temp is None or hum is None:
+        return None
+    h = min(tabla.keys(), key=lambda x: abs(x - hum))
+    t = min(tabla[h].keys(), key=lambda x: abs(x - temp))
+    return tabla[h][t]
 
 
 # ======================================================
@@ -77,7 +93,7 @@ def factor_trigo(d):
 
 
 # ======================================================
-# AVENA / CENTENO (mismo esquema comercial)
+# AVENA / CENTENO
 # ======================================================
 
 def grado_avena(d):
@@ -99,13 +115,7 @@ def factor_avena(d):
 
 
 def grado_centeno(d):
-    if d["danados"] > 6 or d["quebrados"] > 7:
-        return None
-    if d["danados"] > 4 or d["quebrados"] > 5:
-        return 3
-    if d["danados"] > 2 or d["quebrados"] > 3:
-        return 2
-    return 1
+    return grado_avena(d)
 
 
 def factor_centeno(d):
@@ -223,12 +233,12 @@ TAS_COLZA_GIRASOL = {
 
 
 def tas_cereales_invierno(d):
-    return _tas_tabla(TAS_CEREALES_INVIERNO, d["temperatura"], d["humedad"])
+    return _tas_tabla_temp_hum(TAS_CEREALES_INVIERNO, d["temperatura"], d["humedad"])
 
 
 def tas_soja(d):
-    return _tas_tabla(TAS_SOJA, d["temperatura"], d["humedad"])
+    return _tas_tabla_hum_temp(TAS_SOJA, d["temperatura"], d["humedad"])
 
 
 def tas_colza_girasol(d):
-    return _tas_tabla(TAS_COLZA_GIRASOL, d["temperatura"], d["humedad"])
+    return _tas_tabla_hum_temp(TAS_COLZA_GIRASOL, d["temperatura"], d["humedad"])
