@@ -373,7 +373,37 @@ def registrar_extraccion():
     conn.commit()
     conn.close()
     return jsonify(ok=True)
+# ======================
+# SILO (DETALLE)
+# ======================
+@app.route("/silo/<qr>")
+def ver_silo(qr):
+    conn = get_db()
 
+    silo = conn.execute(
+        "SELECT * FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    if not silo:
+        conn.close()
+        return "Silo no encontrado", 404
+
+    muestreos = conn.execute("""
+        SELECT id, fecha_muestreo,
+        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
+        FROM muestreos
+        WHERE numero_qr=?
+        ORDER BY fecha_muestreo DESC
+    """, (qr,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "silo.html",
+        silo=silo,
+        muestreos=muestreos
+    )
 # ======================
 # EXPORT CSV
 # ======================
