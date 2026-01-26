@@ -103,7 +103,7 @@ th{background:#a5d6a7}
 </div>
 
 <script>
-const registros = {{ registros | tojson }};
+const registros = {{ registros | tojson | safe }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
