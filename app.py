@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect
 import sqlite3, os
 from datetime import datetime, timedelta
 import csv, io
@@ -404,6 +404,24 @@ def ver_silo(qr):
         silo=silo,
         muestreos=muestreos
     )
+# ======================
+# NUEVO MUESTREO (DESDE SILO)
+# ======================
+@app.route("/nuevo_muestreo/<qr>")
+def nuevo_muestreo_desde_silo(qr):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO muestreos (numero_qr, fecha_muestreo)
+        VALUES (?,?)
+    """, (qr, ahora().strftime("%Y-%m-%d %H:%M")))
+
+    conn.commit()
+    mid = cur.lastrowid
+    conn.close()
+
+    return redirect(f"/muestreo/{mid}")
 # ======================
 # EXPORT CSV
 # ======================
