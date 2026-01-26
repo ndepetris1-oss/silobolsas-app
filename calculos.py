@@ -3,42 +3,39 @@
 # ======================================================
 
 # ======================================================
-# UTILIDADES TAS
+# TAS – FUNCIONES
 # ======================================================
 
-def _tas_tabla_temp_hum(tabla, temp, hum):
-    """
-    TABLA[TEMPERATURA][HUMEDAD]
-    (Trigo)
-    """
-    if temp is None or hum is None:
-        return None
-    t = min(tabla.keys(), key=lambda x: abs(x - temp))
-    h = min(tabla[t].keys(), key=lambda x: abs(x - hum))
-    return tabla[t][h]
+def tas_maiz(d):
+    return _tas_tabla_hum_temp(
+        TAS_MAIZ,
+        d["temperatura"],
+        d["humedad"]
+    )
 
 
-def _tas_tabla_hum_temp(tabla, temp, hum):
-    """
-    TABLA[HUMEDAD][TEMPERATURA]
-    (Maíz)
-    """
-    if temp is None or hum is None:
-        return None
-    h = min(tabla.keys(), key=lambda x: abs(x - hum))
-    t = min(tabla[h].keys(), key=lambda x: abs(x - temp))
-    return tabla[h][t]
+def tas_trigo(d):
+    return _tas_tabla_temp_hum(
+        TAS_TRIGO,
+        d["temperatura"],
+        d["humedad"]
+    )
 
 
-def normalizar_grado(grado, usa_grado=True):
-    """
-    - Cereales con grado: None → 'F/E'
-    - Cereales sin grado: siempre None
-    """
-    if not usa_grado:
-        return None
-    return grado if grado is not None else "F/E"
+def tas_soja(d):
+    return _tas_tabla_hum_temp(
+        TAS_SOJA,
+        d["temperatura"],
+        d["humedad"]
+    )
 
+
+def tas_colza_girasol(d):
+    return _tas_tabla_hum_temp(
+        TAS_COLZA_GIRASOL,
+        d["temperatura"],
+        d["humedad"]
+    )
 
 # ======================================================
 # MAÍZ
