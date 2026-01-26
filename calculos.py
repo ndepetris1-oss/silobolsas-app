@@ -197,6 +197,7 @@ def tas_trigo(d):
 # ======================================================
 
 def calcular_comercial(cereal, d):
+
     if cereal == "Maíz":
         g = grado_maiz(d)
         grado = normalizar_grado(g, usa_grado=True)
@@ -214,7 +215,7 @@ def calcular_comercial(cereal, d):
         factor = factor_soja(d)
         tas = tas_soja(d)
 
-    elif cereal == "Girasol":
+    elif cereal in ("Girasol", "Colza"):
         grado = None
         factor = factor_girasol(d)
         tas = tas_colza_girasol(d)
