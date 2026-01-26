@@ -5,7 +5,10 @@
 # ======================================================
 # UTILIDADES TAS
 # ======================================================
-
+def v(d, k):
+    """Devuelve 0 si el valor es None"""
+    return d.get(k) or 0
+    
 def _tas_tabla_temp_hum(tabla, temp, hum):
     """
     TABLA[TEMPERATURA][HUMEDAD]
