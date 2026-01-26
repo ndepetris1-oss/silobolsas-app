@@ -87,7 +87,9 @@ th{background:#a5d6a7}
   </div>
 {% endif %}
 
-<button onclick="nuevoMuestreo()">➕ Nuevo muestreo</button>
+<button onclick="location.href='/nuevo_muestreo/{{ silo.numero_qr }}'">
+  ➕ Nuevo muestreo
+</button>
 
 <table>
 <thead>
