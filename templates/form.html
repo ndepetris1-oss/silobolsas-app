@@ -158,7 +158,13 @@ button:disabled{background:#9ccc9c}
     <option>Extraído</option>
   </select>
 </div>
-
+  
+<!-- EVENTOS RESUELTOS -->
+<div id="bloqueEventosResueltos" class="card hidden">
+  <h3>✅ Eventos resueltos</h3>
+  <div id="listaEventosResueltos"></div>
+</div>
+  
 <button id="btnGuardar" onclick="guardar()">Guardar</button>
 
 <script>
@@ -255,16 +261,12 @@ function resolverEvento(id){
     listaEventosResueltos.appendChild(div);
   });
 }
-<!-- EVENTOS RESUELTOS -->
-<div id="bloqueEventosResueltos" class="card hidden">
-  <h3>✅ Eventos resueltos</h3>
-  <div id="listaEventosResueltos"></div>
-</div>
   
 /* OTROS */
 tipo_evento.onchange=e=>{
   detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
 };
+  
 
 /* GUARDAR */
 async function guardar(){
@@ -314,7 +316,6 @@ async function guardar(){
 
   alert("Evento resuelto correctamente");
   return;
-}
 }
 
   btn.disabled=false;
