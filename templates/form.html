@@ -111,6 +111,24 @@ button:disabled{background:#9ccc9c}
   >
 </div>
 
+  <!-- RESOLUCIÓN DE EVENTO -->
+<div id="bloqueResolucion" class="card hidden">
+  <h3>✅ Resolver evento</h3>
+
+  <label>
+    <input type="checkbox" id="resuelto">
+    Marcar evento como resuelto
+  </label>
+
+  <label>Foto de resolución</label>
+  <input
+    type="file"
+    id="foto_resolucion"
+    accept="image/*"
+    capture="environment"
+  >
+</div>
+  
 <!-- EXTRACCION -->
 <div id="bloqueExtraccion" class="card hidden">
   <h3>📦 Extracción</h3>
@@ -133,7 +151,8 @@ document.getElementById("qr").value = qr || "";
 let modo = null;
 let lat = null;
 let lon = null;
-
+  
+let eventoPendiente = null;
 /* ===== GPS ===== */
 async function obtenerGPS(){
   try{
@@ -175,7 +194,17 @@ async function init(){
     bloqueExtraccion.classList.remove("hidden");
   }
 }
+const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
+const mon = await resMon.json();
 
+if(mon.pendiente){
+  eventoPendiente = mon;
+  bloqueResolucion.classList.remove("hidden");
+
+  infoSilo.innerHTML += `
+    <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
+  `;
+}
 /* ===== OTROS ===== */
 tipo_evento.onchange = e=>{
   detalle_evento.classList.toggle(
@@ -217,24 +246,40 @@ async function guardar(){
     return;
   }
 
-  /* MONITOREO */
-  if(tipo_evento.value){
-    const fd = new FormData();
-    fd.append("numero_qr", qr);
-    fd.append("tipo", tipo_evento.value);
-    fd.append("detalle", detalle_evento.value);
-    if(foto.files[0]) fd.append("foto", foto.files[0]);
+  /* MONITOREO – NUEVO EVENTO */
+if(tipo_evento.value && !eventoPendiente){
+  const fd = new FormData();
+  fd.append("numero_qr", qr);
+  fd.append("tipo", tipo_evento.value);
+  fd.append("detalle", detalle_evento.value);
+  if(foto.files[0]) fd.append("foto", foto.files[0]);
 
-    await fetch("/api/monitoreo",{
-      method:"POST",
-      body: fd
-    });
+  await fetch("/api/monitoreo",{
+    method:"POST",
+    body: fd
+  });
 
-    alert("Monitoreo guardado");
-    location.reload();
-    return;
+  alert("Evento registrado");
+  location.reload();
+  return;
+}
+  /* RESOLVER EVENTO */
+if(eventoPendiente && resuelto.checked){
+  const fd = new FormData();
+  fd.append("id_monitoreo", eventoPendiente.id);
+  if(foto_resolucion.files[0]){
+    fd.append("foto", foto_resolucion.files[0]);
   }
 
+  await fetch("/api/monitoreo/resolver",{
+    method:"POST",
+    body: fd
+  });
+
+  alert("Evento resuelto correctamente");
+  location.reload();
+  return;
+}
   /* EXTRACCION */
   if(estado_silo.value){
     await fetch("/api/extraccion",{
