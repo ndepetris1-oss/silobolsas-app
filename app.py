@@ -157,54 +157,57 @@ def panel():
             """, (s["ultimo_muestreo"],)).fetchall()
 
             if analisis:
-grados = []
-factores = []
-tass = []
+                grados = []
+                factores = []
+                tass = []
 
-for a in analisis:
-    if a["grado"] is not None:
-        grados.append(a["grado"])
+                for a in analisis:
+                    if a["grado"] is not None:
+                        grados.append(a["grado"])
 
-    if a["factor"] is not None:
-        try:
-            f = float(a["factor"])
-            if f > 0:
-                factores.append(f)
-        except:
-            pass
+                    if a["factor"] is not None:
+                        try:
+                            f = float(a["factor"])
+                            if f > 0:
+                                factores.append(f)
+                        except:
+                            pass
 
-    if a["tas"] is not None:
-        try:
-            t = int(a["tas"])
-            if t > 0:
-                tass.append(t)
-        except:
-            pass
+                    if a["tas"] is not None:
+                        try:
+                            t = int(float(a["tas"]))
+                            if t > 0:
+                                tass.append(t)
+                        except:
+                            pass
 
-grado = max(grados) if grados else None
-factor = round(sum(factores) / len(factores), 4) if factores else None
-tas_min = min(tass) if tass else None
-               
+                grado = max(grados) if grados else None
+                factor = round(sum(factores) / len(factores), 4) if factores else None
+                tas_min = min(tass) if tass else None
 
-                # fecha estimada de extracción (robusto)
-fecha_extraccion_estimada = None
+                # Fecha estimada de extracción
+                if tas_min is not None:
+                    row = conn.execute(
+                        "SELECT fecha_muestreo FROM muestreos WHERE id=?",
+                        (s["ultimo_muestreo"],)
+                    ).fetchone()
 
-if tas_min is not None:
-    row = conn.execute(
-        "SELECT fecha_muestreo FROM muestreos WHERE id=?",
-        (s["ultimo_muestreo"],)
-    ).fetchone()
+                    if row and row["fecha_muestreo"]:
+                        try:
+                            fm = datetime.strptime(row["fecha_muestreo"], "%Y-%m-%d %H:%M")
+                            fecha_extraccion_estimada = (
+                                fm + timedelta(days=int(tas_min))
+                            ).strftime("%Y-%m-%d")
+                        except Exception as e:
+                            print("Error fecha extracción:", e)
+                            fecha_extraccion_estimada = None
 
-    if row and row["fecha_muestreo"]:
-        try:
-            fm = datetime.strptime(row["fecha_muestreo"], "%Y-%m-%d %H:%M")
-            dias = int(float(tas_min))
-            fecha_extraccion_estimada = (
-                fm + timedelta(days=dias)
-            ).strftime("%Y-%m-%d")
-        except Exception as e:
-            print("Error fecha extracción:", e)
-            fecha_extraccion_estimada = None
+        registros.append({
+            **dict(s),
+            "grado": grado,
+            "factor": factor,
+            "tas_min": tas_min,
+            "fecha_extraccion_estimada": fecha_extraccion_estimada
         })
 
     conn.close()
