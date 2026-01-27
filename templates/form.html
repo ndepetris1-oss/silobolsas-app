@@ -294,35 +294,27 @@ async function guardar(){
   }
 
   if(eventoPendiente && resuelto.checked){
-    const fd=new FormData();
-    fd.append("id_monitoreo",eventoPendiente.id);
-    foto_resolucion.files[0] && fd.append("foto",foto_resolucion.files[0]);
-    await fetch("/api/monitoreo/resolver",{method:"POST",body:fd});
-    location.reload(); return;
-  }
-
- if(eventoPendiente && resuelto.checked){
   const fd = new FormData();
   fd.append("id_monitoreo", eventoPendiente.id);
-  if(foto_resolucion.files[0]){
-    fd.append("foto", foto_resolucion.files[0]);
-  }
+  foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
 
   await fetch("/api/monitoreo/resolver", {
     method: "POST",
     body: fd
   });
 
-  // limpiar estado
+  // limpiar estado visual
   eventoPendiente = null;
   resuelto.checked = false;
   bloqueResolucion.classList.add("hidden");
 
-  // 🔑 recargar lista de eventos pendientes
+  // 🔄 actualizar listas
   await cargarEventosPendientes();
+  await cargarEventosResueltos();
 
   alert("Evento resuelto correctamente");
   return;
+}
 }
 
   btn.disabled=false;
