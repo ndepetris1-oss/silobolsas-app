@@ -178,7 +178,7 @@ function render(){
     const lat = Number(r.lat);
     const lon = Number(r.lon);
 
-    if(!isNaN(lat) && !isNaN(lon)){
+    if(!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0){
       const m = L.marker([lat, lon], { icon: icono(r.cereal) }).addTo(map);
       markers.push(m);
       bounds.push([lat, lon]);
