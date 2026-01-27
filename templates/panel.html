@@ -117,10 +117,10 @@ const map = L.map('map', {
 map.setView([-34.6, -58.4], 6);
 
 L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
   {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
+    maxZoom: 17,
+    attribution: '© OpenTopoMap (CC-BY-SA)'
   }
 ).addTo(map);
 
