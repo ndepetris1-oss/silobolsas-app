@@ -46,54 +46,34 @@ button:disabled{background:#9ccc9c}
   margin-top:10px;
   font-weight:bold;
 }
-  .switch {
+
+/* Switch móvil */
+.switch {
   position: relative;
   display: inline-block;
   width: 56px;
   height: 32px;
   margin-right: 10px;
-  vertical-align: middle;
 }
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
+.switch input { display:none }
 .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
-  transition: .3s;
-  border-radius: 34px;
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  background:#ccc;
+  border-radius:34px;
+  transition:.3s;
 }
-
 .slider:before {
-  position: absolute;
-  content: "";
-  height: 24px;
-  width: 24px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
+  content:"";
+  position:absolute;
+  width:24px; height:24px;
+  left:4px; bottom:4px;
+  background:white;
+  border-radius:50%;
+  transition:.3s;
 }
-
-.switch input:checked + .slider {
-  background-color: #4caf50;
-}
-
-.switch input:checked + .slider:before {
-  transform: translateX(24px);
-}
-
-.switch-label {
-  font-weight: bold;
-  vertical-align: middle;
-}
+.switch input:checked + .slider { background:#4caf50 }
+.switch input:checked + .slider:before { transform:translateX(24px) }
 </style>
 </head>
 
@@ -106,10 +86,15 @@ button:disabled{background:#9ccc9c}
 
 <div id="infoSilo" class="alert hidden"></div>
 
+<!-- EVENTOS PENDIENTES -->
+<div id="bloqueEventosPendientes" class="card hidden">
+  <h3>⚠️ Eventos pendientes</h3>
+  <div id="listaEventos"></div>
+</div>
+
 <!-- REGISTRO -->
 <div id="bloqueRegistro" class="card hidden">
   <h3>🆕 Registro de silo</h3>
-
   <label>Cereal</label>
   <select id="cereal">
     <option value="">Seleccione…</option>
@@ -133,7 +118,6 @@ button:disabled{background:#9ccc9c}
 <!-- MONITOREO -->
 <div id="bloqueMonitoreo" class="card hidden">
   <h3>📸 Monitoreo en campo</h3>
-
   <label>Tipo de evento</label>
   <select id="tipo_evento">
     <option value="">Seleccione…</option>
@@ -144,45 +128,29 @@ button:disabled{background:#9ccc9c}
     <option>Otros</option>
   </select>
 
-  <input
-    id="detalle_evento"
-    class="hidden"
-    placeholder="Detalle (solo si es Otros)"
-  >
+  <input id="detalle_evento" class="hidden" placeholder="Detalle (solo si es Otros)">
 
   <label>Foto del evento</label>
-  <input
-    type="file"
-    id="foto"
-    accept="image/*"
-    capture="environment"
-  >
+  <input type="file" id="foto" accept="image/*" capture="environment">
 </div>
 
-  <!-- RESOLUCIÓN DE EVENTO -->
+<!-- RESOLVER -->
 <div id="bloqueResolucion" class="card hidden">
   <h3>✅ Resolver evento</h3>
 
   <label class="switch">
-  <input type="checkbox" id="resuelto">
-  <span class="slider"></span>
-</label>
-<span class="switch-label">Marcar evento como resuelto</span>
+    <input type="checkbox" id="resuelto">
+    <span class="slider"></span>
   </label>
+  Marcar evento como resuelto
 
   <label>Foto de resolución</label>
-  <input
-    type="file"
-    id="foto_resolucion"
-    accept="image/*"
-    capture="environment"
-  >
+  <input type="file" id="foto_resolucion" accept="image/*" capture="environment">
 </div>
-  
-<!-- EXTRACCION -->
+
+<!-- EXTRACCIÓN -->
 <div id="bloqueExtraccion" class="card hidden">
   <h3>📦 Extracción</h3>
-
   <label>Tipo de extracción</label>
   <select id="estado_silo">
     <option value="">Seleccione…</option>
@@ -196,66 +164,50 @@ button:disabled{background:#9ccc9c}
 <script>
 const params = new URLSearchParams(window.location.search);
 const qr = params.get("id");
-document.getElementById("qr").value = qr || "";
+qr && (document.getElementById("qr").value = qr);
 
 let modo = null;
 let lat = null;
 let lon = null;
 let eventoPendiente = null;
 
-/* ===== GPS ===== */
+/* GPS */
 async function obtenerGPS(){
   try{
-    const pos = await new Promise((ok, err) =>
-      navigator.geolocation.getCurrentPosition(ok, err, {
-        enableHighAccuracy: true,
-        timeout: 8000
-      })
+    const pos = await new Promise((ok,err)=>
+      navigator.geolocation.getCurrentPosition(ok,err)
     );
     lat = pos.coords.latitude;
     lon = pos.coords.longitude;
-  }catch(e){
-    console.warn("GPS no disponible");
-  }
+  }catch{}
 }
 
-/* ===== INIT ===== */
+/* INIT */
 async function init(){
   if(!qr) return;
-
   await obtenerGPS();
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
 
-  /* ===== REGISTRO ===== */
   if(!data.existe){
-    modo = "registro";
+    modo="registro";
     bloqueRegistro.classList.remove("hidden");
     return;
   }
 
-  /* ===== OPERACIÓN ===== */
-  modo = "operacion";
-
-  infoSilo.innerHTML = `
-    🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
-    📅 <b>${data.fecha_confeccion}</b>
-  `;
+  modo="operacion";
+  infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
   infoSilo.classList.remove("hidden");
 
-  // estado base
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
-  bloqueResolucion.classList.add("hidden");
 
-  /* ===== EVENTO PENDIENTE ===== */
-  const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
-  const mon = await resMon.json();
+  await cargarEventosPendientes();
+}
 
-  console.log("MONITOREO PENDIENTE:", mon);
-
-  async function cargarEventosPendientes(){
+/* EVENTOS */
+async function cargarEventosPendientes(){
   const res = await fetch(`/api/monitoreo/pendiente/${qr}`);
   const eventos = await res.json();
 
@@ -265,124 +217,74 @@ async function init(){
   }
 
   bloqueEventosPendientes.classList.remove("hidden");
-  listaEventos.innerHTML = "";
+  listaEventos.innerHTML="";
 
   eventos.forEach(ev=>{
-    const div = document.createElement("div");
-    div.className = "alert";
-    div.innerHTML = `
-      <b>${ev.tipo}</b><br>
-      📅 ${ev.fecha}<br><br>
-      <button onclick="resolverEvento(${ev.id})">
-        Resolver este evento
-      </button>
-    `;
-    listaEventos.appendChild(div);
+    const d=document.createElement("div");
+    d.className="alert";
+    d.innerHTML=`<b>${ev.tipo}</b><br>📅 ${ev.fecha}<br><br>
+      <button onclick="resolverEvento(${ev.id})">Resolver</button>`;
+    listaEventos.appendChild(d);
   });
 }
 
-    infoSilo.innerHTML += `
-      <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
-      <div id="bloqueEventosPendientes" class="card hidden">
-  <h3>⚠️ Eventos pendientes</h3>
-  <div id="listaEventos"></div>
-</div>
-    `;
-  }
-} // 🔴 ESTE CIERRE FALTABA
-
-/* ===== OTROS ===== */
-tipo_evento.onchange = e=>{
-  detalle_evento.classList.toggle(
-    "hidden",
-    e.target.value !== "Otros"
-  );
-};
-
-/* ===== GUARDAR ===== */
-async function guardar(){
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = true;
-  btn.innerText = "Guardando…";
-
-  /* REGISTRO */
-  if(modo === "registro"){
-    if(!cereal.value || !estado_grano.value || !metros.value){
-      alert("Complete todos los campos");
-      btn.disabled=false;
-      btn.innerText="Guardar";
-      return;
-    }
-
-    await fetch("/api/registrar_silo",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        numero_qr: qr,
-        cereal: cereal.value,
-        estado_grano: estado_grano.value,
-        metros: metros.value,
-        lat: typeof lat === "number" ? lat : null,
-        lon: typeof lon === "number" ? lon : null
-      })
-    });
-
-    alert("Silo registrado correctamente");
-    location.reload();
-    return;
-  }
-
-  /* NUEVO EVENTO */
-  if(tipo_evento.value && !eventoPendiente){
-    const fd = new FormData();
-    fd.append("numero_qr", qr);
-    fd.append("tipo", tipo_evento.value);
-    fd.append("detalle", detalle_evento.value);
-    if(foto.files[0]) fd.append("foto", foto.files[0]);
-
-    await fetch("/api/monitoreo",{ method:"POST", body:fd });
-
-    alert("Evento registrado");
-    location.reload();
-    return;
-  }
-
-  /* RESOLVER EVENTO */
-  if(eventoPendiente && resuelto.checked){
-    const fd = new FormData();
-    fd.append("id_monitoreo", eventoPendiente.id);
-    if(foto_resolucion.files[0]){
-      fd.append("foto", foto_resolucion.files[0]);
-    }
-
-    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
-
-    alert("Evento resuelto correctamente");
-    location.reload();
-    return;
-  }
-
-  /* EXTRACCIÓN */
-  if(estado_silo.value){
-    await fetch("/api/extraccion",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        numero_qr: qr,
-        estado_silo: estado_silo.value
-      })
-    });
-
-    alert("Extracción registrada");
-    location.reload();
-    return;
-  }
-
-  alert("No hay datos para guardar");
-  btn.disabled=false;
-  btn.innerText="Guardar";
+function resolverEvento(id){
+  eventoPendiente={id};
+  bloqueResolucion.classList.remove("hidden");
 }
 
-/* ===== START ===== */
+/* OTROS */
+tipo_evento.onchange=e=>{
+  detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
+};
+
+/* GUARDAR */
+async function guardar(){
+  const btn=btnGuardar;
+  btn.disabled=true;
+
+  if(modo==="registro"){
+    await fetch("/api/registrar_silo",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        numero_qr:qr,cereal:cereal.value,
+        estado_grano:estado_grano.value,metros:metros.value,
+        lat,lon
+      })
+    });
+    location.reload(); return;
+  }
+
+  if(tipo_evento.value && !eventoPendiente){
+    const fd=new FormData();
+    fd.append("numero_qr",qr);
+    fd.append("tipo",tipo_evento.value);
+    fd.append("detalle",detalle_evento.value);
+    foto.files[0] && fd.append("foto",foto.files[0]);
+    await fetch("/api/monitoreo",{method:"POST",body:fd});
+    location.reload(); return;
+  }
+
+  if(eventoPendiente && resuelto.checked){
+    const fd=new FormData();
+    fd.append("id_monitoreo",eventoPendiente.id);
+    foto_resolucion.files[0] && fd.append("foto",foto_resolucion.files[0]);
+    await fetch("/api/monitoreo/resolver",{method:"POST",body:fd});
+    location.reload(); return;
+  }
+
+  if(estado_silo.value){
+    await fetch("/api/extraccion",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({numero_qr:qr,estado_silo:estado_silo.value})
+    });
+    location.reload(); return;
+  }
+
+  btn.disabled=false;
+}
+
 init();
 </script>
+</body>
+</html>
