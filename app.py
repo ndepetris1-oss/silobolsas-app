@@ -14,7 +14,7 @@ from calculos import calcular_comercial
 app = Flask(__name__)
 
 # ======================
-# DB PATH (FIX RENDER)
+# DB PATH
 # ======================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_NAME = os.path.join(BASE_DIR, "silobolsas.db")
@@ -100,27 +100,6 @@ def init_db():
 init_db()
 
 # ======================
-# API — CONSULTA SILO (FORM)
-# ======================
-@app.route("/api/silo/<qr>")
-def api_silo(qr):
-    conn = get_db()
-    s = conn.execute(
-        "SELECT cereal, fecha_confeccion FROM silos WHERE numero_qr=?",
-        (qr,)
-    ).fetchone()
-    conn.close()
-
-    if not s:
-        return jsonify(existe=False)
-
-    return jsonify(
-        existe=True,
-        cereal=s["cereal"],
-        fecha_confeccion=s["fecha_confeccion"]
-    )
-
-# ======================
 # PANEL
 # ======================
 @app.route("/")
@@ -144,22 +123,20 @@ def panel():
     registros = []
 
     for s in silos:
-        grado = None
-        factor = None
-        tas_min = None
-        fecha_extraccion_estimada = None
+        try:
+            grado = None
+            factor = None
+            tas_min = None
+            fecha_extraccion_estimada = None
 
-        if s["ultimo_muestreo"]:
-            analisis = conn.execute("""
-                SELECT grado, factor, tas
-                FROM analisis
-                WHERE id_muestreo=?
-            """, (s["ultimo_muestreo"],)).fetchall()
+            if s["ultimo_muestreo"]:
+                analisis = conn.execute("""
+                    SELECT grado, factor, tas
+                    FROM analisis
+                    WHERE id_muestreo=?
+                """, (s["ultimo_muestreo"],)).fetchall()
 
-            if analisis:
-                grados = []
-                factores = []
-                tass = []
+                grados, factores, tass = [], [], []
 
                 for a in analisis:
                     if a["grado"] is not None:
@@ -175,7 +152,7 @@ def panel():
 
                     if a["tas"] is not None:
                         try:
-                            t = int(a["tas"])
+                            t = int(float(a["tas"]))
                             if t > 0:
                                 tass.append(t)
                         except:
@@ -185,7 +162,7 @@ def panel():
                 factor = round(sum(factores) / len(factores), 4) if factores else None
                 tas_min = min(tass) if tass else None
 
-                # ===== FECHA ESTIMADA DE EXTRACCIÓN (ROBUSTA) =====
+                # ===== FECHA EXTRACCIÓN (ULTRA ROBUSTA) =====
                 if tas_min is not None:
                     row = conn.execute(
                         "SELECT fecha_muestreo FROM muestreos WHERE id=?",
@@ -194,10 +171,9 @@ def panel():
 
                     fm = None
                     if row and row["fecha_muestreo"]:
-                        fecha_raw = row["fecha_muestreo"]
                         for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
                             try:
-                                fm = datetime.strptime(fecha_raw, fmt)
+                                fm = datetime.strptime(row["fecha_muestreo"], fmt)
                                 break
                             except ValueError:
                                 pass
@@ -207,22 +183,32 @@ def panel():
                             fm + timedelta(days=int(tas_min))
                         ).strftime("%Y-%m-%d")
 
-        registros.append({
-            **dict(s),
-            "grado": grado,
-            "factor": factor,
-            "tas_min": tas_min,
-            "fecha_extraccion_estimada": fecha_extraccion_estimada
-        })
+            registros.append({
+                **dict(s),
+                "grado": grado,
+                "factor": factor,
+                "tas_min": tas_min,
+                "fecha_extraccion_estimada": fecha_extraccion_estimada
+            })
+
+        except Exception as e:
+            print("ERROR PANEL SILO:", s["numero_qr"], e)
 
     conn.close()
     return render_template("panel.html", registros=registros)
+
 # ======================
 # FORM
 # ======================
 @app.route("/form")
 def form():
     return render_template("form.html")
+
+# ======================
+# RESTO DEL ARCHIVO
+# ======================
+# ⚠️ DESDE ACÁ NO SE TOCA NADA
+# (tu código original sigue igual)
 
 # ======================
 # REGISTRAR SILO (FIX JSON)
