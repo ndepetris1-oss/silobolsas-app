@@ -115,13 +115,10 @@ const map = L.map('map', {
 
 map.setView([-34.6, -58.4], 6);
 
-L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {
-    attribution: '© Esri',
-    maxZoom: 19
-  }
-).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
 
 // FIX tamaño
 setTimeout(() => map.invalidateSize(true), 300);
