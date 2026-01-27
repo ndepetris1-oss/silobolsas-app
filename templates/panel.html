@@ -101,13 +101,13 @@ th{background:#a5d6a7}
 </table>
 
 </div>
-
+<script>
 /* ===== DATOS ===== */
 const registros = {{ registros | tojson }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
-<script>
+
 /* ===== MAPA ===== */
 const map = L.map('map', {
   zoomControl: false,
