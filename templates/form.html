@@ -170,6 +170,7 @@ async function obtenerGPS(){
 }
 
 /* ===== INIT ===== */
+<script>
 async function init(){
   if(!qr) return;
 
@@ -181,30 +182,36 @@ async function init(){
   if(!data.existe){
     modo = "registro";
     bloqueRegistro.classList.remove("hidden");
-  }else{
-    modo = "operacion";
+    return;
+  }
 
-    infoSilo.innerHTML = `
-      🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
-      📅 <b>${data.fecha_confeccion}</b>
+  // === MODO OPERACIÓN ===
+  modo = "operacion";
+
+  infoSilo.innerHTML = `
+    🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
+    📅 <b>${data.fecha_confeccion}</b>
+  `;
+  infoSilo.classList.remove("hidden");
+
+  bloqueMonitoreo.classList.remove("hidden");
+  bloqueExtraccion.classList.remove("hidden");
+
+  /* 🔔 CONSULTAR EVENTO PENDIENTE */
+  const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
+  const mon = await resMon.json();
+
+  if(mon.pendiente){
+    eventoPendiente = mon;
+    bloqueResolucion.classList.remove("hidden");
+    bloqueMonitoreo.classList.add("hidden");
+
+    infoSilo.innerHTML += `
+      <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
     `;
-    infoSilo.classList.remove("hidden");
-
-    bloqueMonitoreo.classList.remove("hidden");
-    bloqueExtraccion.classList.remove("hidden");
   }
 }
-const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
-const mon = await resMon.json();
-
-if(mon.pendiente){
-  eventoPendiente = mon;
-  bloqueResolucion.classList.remove("hidden");
-
-  infoSilo.innerHTML += `
-    <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
-  `;
-}
+</script>
 /* ===== OTROS ===== */
 tipo_evento.onchange = e=>{
   detalle_evento.classList.toggle(
