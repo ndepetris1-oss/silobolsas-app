@@ -233,7 +233,34 @@ function resolverEvento(id){
   bloqueResolucion.classList.remove("hidden");
   bloqueMonitoreo.classList.add("hidden"); // opcional
 }
+  async function cargarEventosResueltos(){
+  const res = await fetch(`/api/monitoreo/resueltos/${qr}`);
+  const eventos = await res.json();
 
+  if(!eventos.length){
+    bloqueEventosResueltos.classList.add("hidden");
+    return;
+  }
+
+  bloqueEventosResueltos.classList.remove("hidden");
+  listaEventosResueltos.innerHTML = "";
+
+  eventos.forEach(ev=>{
+    const div = document.createElement("div");
+    div.className = "alert";
+    div.innerHTML = `
+      <b>Evento resuelto: ${ev.tipo}</b><br>
+      📅 ${ev.fecha}
+    `;
+    listaEventosResueltos.appendChild(div);
+  });
+}
+<!-- EVENTOS RESUELTOS -->
+<div id="bloqueEventosResueltos" class="card hidden">
+  <h3>✅ Eventos resueltos</h3>
+  <div id="listaEventosResueltos"></div>
+</div>
+  
 /* OTROS */
 tipo_evento.onchange=e=>{
   detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
