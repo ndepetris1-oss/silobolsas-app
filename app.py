@@ -194,10 +194,23 @@ def panel():
 
                     if row and row["fecha_muestreo"]:
                         try:
-                            fm = datetime.strptime(row["fecha_muestreo"], "%Y-%m-%d %H:%M")
-                            fecha_extraccion_estimada = (
-                                fm + timedelta(days=int(tas_min))
-                            ).strftime("%Y-%m-%d")
+                            fm = None
+fecha_raw = row["fecha_muestreo"]
+
+if fecha_raw:
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            fm = datetime.strptime(fecha_raw, fmt)
+            break
+        except ValueError:
+            pass
+
+if fm:
+    fecha_extraccion_estimada = (
+        fm + timedelta(days=int(tas_min))
+    ).strftime("%Y-%m-%d")
+else:
+    fecha_extraccion_estimada = None
                         except Exception as e:
                             print("Error fecha extracción:", e)
                             fecha_extraccion_estimada = None
