@@ -175,7 +175,7 @@ def panel():
 
                     if a["tas"] is not None:
                         try:
-                            t = int(float(a["tas"]))
+                            t = int(a["tas"])
                             if t > 0:
                                 tass.append(t)
                         except:
@@ -185,35 +185,27 @@ def panel():
                 factor = round(sum(factores) / len(factores), 4) if factores else None
                 tas_min = min(tass) if tass else None
 
-                # Fecha estimada de extracción
+                # ===== FECHA ESTIMADA DE EXTRACCIÓN (ROBUSTA) =====
                 if tas_min is not None:
                     row = conn.execute(
                         "SELECT fecha_muestreo FROM muestreos WHERE id=?",
                         (s["ultimo_muestreo"],)
                     ).fetchone()
 
+                    fm = None
                     if row and row["fecha_muestreo"]:
-                        try:
-                            fm = None
-fecha_raw = row["fecha_muestreo"]
+                        fecha_raw = row["fecha_muestreo"]
+                        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+                            try:
+                                fm = datetime.strptime(fecha_raw, fmt)
+                                break
+                            except ValueError:
+                                pass
 
-if fecha_raw:
-    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
-        try:
-            fm = datetime.strptime(fecha_raw, fmt)
-            break
-        except ValueError:
-            pass
-
-if fm:
-    fecha_extraccion_estimada = (
-        fm + timedelta(days=int(tas_min))
-    ).strftime("%Y-%m-%d")
-else:
-    fecha_extraccion_estimada = None
-                        except Exception as e:
-                            print("Error fecha extracción:", e)
-                            fecha_extraccion_estimada = None
+                    if fm:
+                        fecha_extraccion_estimada = (
+                            fm + timedelta(days=int(tas_min))
+                        ).strftime("%Y-%m-%d")
 
         registros.append({
             **dict(s),
@@ -225,7 +217,6 @@ else:
 
     conn.close()
     return render_template("panel.html", registros=registros)
-
 # ======================
 # FORM
 # ======================
