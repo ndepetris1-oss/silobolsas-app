@@ -108,28 +108,51 @@ const registros = {{ registros | tojson }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
+<script>
 /* ===== MAPA ===== */
-const map = L.map('map', { zoomControl: false });
-map.setView([-34.6, -58.4], 6); // fallback Argentina
+const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: true
+});
+
+// vista inicial SIEMPRE válida
+map.setView([-34.6, -58.4], 6);
 
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '© Esri' }
+  {
+    attribution: '© Esri',
+    maxZoom: 19
+  }
 ).addTo(map);
 
-let markers=[];
+// 🔑 FIX CLAVE
+setTimeout(() => {
+  map.invalidateSize(true);
+}, 300);
+
+/* ===== MARKERS ===== */
+let markers = [];
 
 function icono(c){
-  let color="blue";
-  if(c==="Maíz") color="orange";
-  if(c==="Soja") color="yellow";
-  if(c==="Trigo") color="#bdbdbd";
-  if(c==="Girasol") color="black";
+  let color = "blue";
+  if(c === "Maíz") color = "orange";
+  if(c === "Soja") color = "yellow";
+  if(c === "Trigo") color = "#bdbdbd";
+  if(c === "Girasol") color = "black";
+
   return L.divIcon({
-    html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>`
+    html: `<div style="
+      background:${color};
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      border:2px solid white
+    "></div>`,
+    className: "" // 🔑 evita estilos raros de leaflet
   });
 }
-
+</script>
 /* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
