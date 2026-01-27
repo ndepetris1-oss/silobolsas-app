@@ -194,28 +194,28 @@ async function init(){
   `;
   infoSilo.classList.remove("hidden");
 
+  // estado base
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
   bloqueResolucion.classList.add("hidden");
 
   /* ===== EVENTO PENDIENTE ===== */
-const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
-const mon = await resMon.json();
+  const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
+  const mon = await resMon.json();
 
-bloqueMonitoreo.classList.remove("hidden");
-bloqueExtraccion.classList.remove("hidden");
-bloqueResolucion.classList.add("hidden");
+  console.log("MONITOREO PENDIENTE:", mon);
 
-if(mon.pendiente){
-  eventoPendiente = mon;
+  if(mon.pendiente){
+    eventoPendiente = mon;
 
-  bloqueMonitoreo.classList.add("hidden");
-  bloqueResolucion.classList.remove("hidden");
+    bloqueMonitoreo.classList.add("hidden");
+    bloqueResolucion.classList.remove("hidden");
 
-  infoSilo.innerHTML += `
-    <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
-  `;
-}
+    infoSilo.innerHTML += `
+      <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
+    `;
+  }
+} // 🔴 ESTE CIERRE FALTABA
 
 /* ===== OTROS ===== */
 tipo_evento.onchange = e=>{
@@ -231,7 +231,7 @@ async function guardar(){
   btn.disabled = true;
   btn.innerText = "Guardando…";
 
-  /* ===== REGISTRO ===== */
+  /* REGISTRO */
   if(modo === "registro"){
     if(!cereal.value || !estado_grano.value || !metros.value){
       alert("Complete todos los campos");
@@ -258,7 +258,7 @@ async function guardar(){
     return;
   }
 
-  /* ===== NUEVO EVENTO ===== */
+  /* NUEVO EVENTO */
   if(tipo_evento.value && !eventoPendiente){
     const fd = new FormData();
     fd.append("numero_qr", qr);
@@ -273,7 +273,7 @@ async function guardar(){
     return;
   }
 
-  /* ===== RESOLVER EVENTO ===== */
+  /* RESOLVER EVENTO */
   if(eventoPendiente && resuelto.checked){
     const fd = new FormData();
     fd.append("id_monitoreo", eventoPendiente.id);
@@ -288,7 +288,7 @@ async function guardar(){
     return;
   }
 
-  /* ===== EXTRACCIÓN ===== */
+  /* EXTRACCIÓN */
   if(estado_silo.value){
     await fetch("/api/extraccion",{
       method:"POST",
