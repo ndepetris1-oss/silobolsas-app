@@ -144,6 +144,7 @@ button:disabled{background:#9ccc9c}
 <button id="btnGuardar" onclick="guardar()">Guardar</button>
 
 <script>
+<script>
 const params = new URLSearchParams(window.location.search);
 const qr = params.get("id");
 document.getElementById("qr").value = qr || "";
@@ -151,8 +152,10 @@ document.getElementById("qr").value = qr || "";
 let modo = null;
 let lat = null;
 let lon = null;
-  
+
+/* 🔔 EVENTO PENDIENTE */
 let eventoPendiente = null;
+
 /* ===== GPS ===== */
 async function obtenerGPS(){
   try{
@@ -170,12 +173,12 @@ async function obtenerGPS(){
 }
 
 /* ===== INIT ===== */
-<script>
 async function init(){
   if(!qr) return;
 
   await obtenerGPS();
 
+  /* INFO SILO */
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
 
@@ -185,19 +188,14 @@ async function init(){
     return;
   }
 
-  // === MODO OPERACIÓN ===
   modo = "operacion";
-
   infoSilo.innerHTML = `
     🌽 <b>${data.cereal}</b> &nbsp;|&nbsp;
     📅 <b>${data.fecha_confeccion}</b>
   `;
   infoSilo.classList.remove("hidden");
 
-  bloqueMonitoreo.classList.remove("hidden");
-  bloqueExtraccion.classList.remove("hidden");
-
-  /* 🔔 CONSULTAR EVENTO PENDIENTE */
+  /* 🔔 EVENTO PENDIENTE */
   const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
   const mon = await resMon.json();
 
@@ -209,9 +207,13 @@ async function init(){
     infoSilo.innerHTML += `
       <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
     `;
+  }else{
+    bloqueMonitoreo.classList.remove("hidden");
   }
+
+  bloqueExtraccion.classList.remove("hidden");
 }
-</script>
+
 /* ===== OTROS ===== */
 tipo_evento.onchange = e=>{
   detalle_evento.classList.toggle(
@@ -220,6 +222,9 @@ tipo_evento.onchange = e=>{
   );
 };
 
+init();
+</script>
+  
 /* ===== GUARDAR ===== */
 async function guardar(){
   const btn = document.getElementById("btnGuardar");
