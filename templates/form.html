@@ -255,14 +255,38 @@ async function init(){
 
   console.log("MONITOREO PENDIENTE:", mon);
 
-  if(mon.pendiente){
-    eventoPendiente = mon;
+  async function cargarEventosPendientes(){
+  const res = await fetch(`/api/monitoreo/pendiente/${qr}`);
+  const eventos = await res.json();
 
-    bloqueMonitoreo.classList.add("hidden");
-    bloqueResolucion.classList.remove("hidden");
+  if(!eventos.length){
+    bloqueEventosPendientes.classList.add("hidden");
+    return;
+  }
+
+  bloqueEventosPendientes.classList.remove("hidden");
+  listaEventos.innerHTML = "";
+
+  eventos.forEach(ev=>{
+    const div = document.createElement("div");
+    div.className = "alert";
+    div.innerHTML = `
+      <b>${ev.tipo}</b><br>
+      📅 ${ev.fecha}<br><br>
+      <button onclick="resolverEvento(${ev.id})">
+        Resolver este evento
+      </button>
+    `;
+    listaEventos.appendChild(div);
+  });
+}
 
     infoSilo.innerHTML += `
       <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
+      <div id="bloqueEventosPendientes" class="card hidden">
+  <h3>⚠️ Eventos pendientes</h3>
+  <div id="listaEventos"></div>
+</div>
     `;
   }
 } // 🔴 ESTE CIERRE FALTABA
