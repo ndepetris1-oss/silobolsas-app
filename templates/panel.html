@@ -116,50 +116,10 @@ const map = L.map('map', {
 // Vista inicial segura (Argentina)
 map.setView([-34.6, -58.4], 6);
 
-<script>
-/* ===== CAPAS DE MAPA ===== */
-
-// Satélite
-const capaSatelite = L.tileLayer(
+L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {
-    attribution: '© Esri, Maxar',
-    maxZoom: 19
-  }
-);
-
-// Relieve + caminos
-const capaTopo = L.tileLayer(
-  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-  {
-    maxZoom: 17,
-    attribution: '© OpenTopoMap'
-  }
-);
-
-// Satélite + relieve
-const capaRelieve = L.layerGroup([
-  capaSatelite,
-  L.tileLayer(
-    'https://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png',
-    { opacity: 0.35 }
-  )
-]);
-
-// 👉 capa inicial
-capaSatelite.addTo(map);
-
-// Control de capas
-L.control.layers(
-  {
-    "🛰 Satélite": capaSatelite,
-    "🗺 Relieve": capaTopo,
-    "🌄 Satélite + relieve": capaRelieve
-  },
-  null,
-  { position: "topright" }
+  { attribution: '© Esri' }
 ).addTo(map);
-</script>
 
 // Fix tamaño mapa
 setTimeout(() => map.invalidateSize(true), 300);
