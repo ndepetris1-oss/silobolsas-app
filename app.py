@@ -3,14 +3,8 @@ import sqlite3, os
 from datetime import datetime, timedelta
 import csv, io
 
-# ======================
-# IMPORTAR CALCULOS
-# ======================
 from calculos import calcular_comercial
 
-# ======================
-# APP
-# ======================
 app = Flask(__name__)
 
 # ======================
@@ -100,7 +94,28 @@ def init_db():
 init_db()
 
 # ======================
-# PANEL
+# API — CONSULTA SILO
+# ======================
+@app.route("/api/silo/<qr>")
+def api_silo(qr):
+    conn = get_db()
+    s = conn.execute(
+        "SELECT cereal, fecha_confeccion FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+    conn.close()
+
+    if not s:
+        return jsonify(existe=False)
+
+    return jsonify(
+        existe=True,
+        cereal=s["cereal"],
+        fecha_confeccion=s["fecha_confeccion"]
+    )
+
+# ======================
+# PANEL (ULTRA ROBUSTO)
 # ======================
 @app.route("/")
 @app.route("/panel")
@@ -123,12 +138,12 @@ def panel():
     registros = []
 
     for s in silos:
-        try:
-            grado = None
-            factor = None
-            tas_min = None
-            fecha_extraccion_estimada = None
+        grado = None
+        factor = None
+        tas_min = None
+        fecha_extraccion_estimada = None
 
+        try:
             if s["ultimo_muestreo"]:
                 analisis = conn.execute("""
                     SELECT grado, factor, tas
@@ -142,28 +157,25 @@ def panel():
                     if a["grado"] is not None:
                         grados.append(a["grado"])
 
-                    if a["factor"] is not None:
-                        try:
-                            f = float(a["factor"])
-                            if f > 0:
-                                factores.append(f)
-                        except:
-                            pass
+                    try:
+                        f = float(a["factor"])
+                        if f > 0:
+                            factores.append(f)
+                    except:
+                        pass
 
-                    if a["tas"] is not None:
-                        try:
-                            t = int(float(a["tas"]))
-                            if t > 0:
-                                tass.append(t)
-                        except:
-                            pass
+                    try:
+                        t = int(float(a["tas"]))
+                        if t > 0:
+                            tass.append(t)
+                    except:
+                        pass
 
                 grado = max(grados) if grados else None
                 factor = round(sum(factores) / len(factores), 4) if factores else None
                 tas_min = min(tass) if tass else None
 
-                # ===== FECHA EXTRACCIÓN (ULTRA ROBUSTA) =====
-                if tas_min is not None:
+                if tas_min:
                     row = conn.execute(
                         "SELECT fecha_muestreo FROM muestreos WHERE id=?",
                         (s["ultimo_muestreo"],)
@@ -183,16 +195,16 @@ def panel():
                             fm + timedelta(days=int(tas_min))
                         ).strftime("%Y-%m-%d")
 
-            registros.append({
-                **dict(s),
-                "grado": grado,
-                "factor": factor,
-                "tas_min": tas_min,
-                "fecha_extraccion_estimada": fecha_extraccion_estimada
-            })
-
         except Exception as e:
             print("ERROR PANEL SILO:", s["numero_qr"], e)
+
+        registros.append({
+            **dict(s),
+            "grado": grado,
+            "factor": factor,
+            "tas_min": tas_min,
+            "fecha_extraccion_estimada": fecha_extraccion_estimada
+        })
 
     conn.close()
     return render_template("panel.html", registros=registros)
