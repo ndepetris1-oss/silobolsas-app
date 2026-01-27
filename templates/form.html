@@ -221,9 +221,6 @@ tipo_evento.onchange = e=>{
   );
 };
 
-init();
-</script>
-  
 /* ===== GUARDAR ===== */
 async function guardar(){
   const btn = document.getElementById("btnGuardar");
@@ -257,41 +254,43 @@ async function guardar(){
     return;
   }
 
-  /* MONITOREO – NUEVO EVENTO */
-if(tipo_evento.value && !eventoPendiente){
-  const fd = new FormData();
-  fd.append("numero_qr", qr);
-  fd.append("tipo", tipo_evento.value);
-  fd.append("detalle", detalle_evento.value);
-  if(foto.files[0]) fd.append("foto", foto.files[0]);
+  /* NUEVO EVENTO */
+  if(tipo_evento.value && !eventoPendiente){
+    const fd = new FormData();
+    fd.append("numero_qr", qr);
+    fd.append("tipo", tipo_evento.value);
+    fd.append("detalle", detalle_evento.value);
+    if(foto.files[0]) fd.append("foto", foto.files[0]);
 
-  await fetch("/api/monitoreo",{
-    method:"POST",
-    body: fd
-  });
+    await fetch("/api/monitoreo",{
+      method:"POST",
+      body: fd
+    });
 
-  alert("Evento registrado");
-  location.reload();
-  return;
-}
-  /* RESOLVER EVENTO */
-if(eventoPendiente && resuelto.checked){
-  const fd = new FormData();
-  fd.append("id_monitoreo", eventoPendiente.id);
-  if(foto_resolucion.files[0]){
-    fd.append("foto", foto_resolucion.files[0]);
+    alert("Evento registrado");
+    location.reload();
+    return;
   }
 
-  await fetch("/api/monitoreo/resolver",{
-    method:"POST",
-    body: fd
-  });
+  /* RESOLVER EVENTO */
+  if(eventoPendiente && resuelto.checked){
+    const fd = new FormData();
+    fd.append("id_monitoreo", eventoPendiente.id);
+    if(foto_resolucion.files[0]){
+      fd.append("foto", foto_resolucion.files[0]);
+    }
 
-  alert("Evento resuelto correctamente");
-  location.reload();
-  return;
-}
-  /* EXTRACCION */
+    await fetch("/api/monitoreo/resolver",{
+      method:"POST",
+      body: fd
+    });
+
+    alert("Evento resuelto correctamente");
+    location.reload();
+    return;
+  }
+
+  /* EXTRACCIÓN */
   if(estado_silo.value){
     await fetch("/api/extraccion",{
       method:"POST",
@@ -312,8 +311,6 @@ if(eventoPendiente && resuelto.checked){
   btn.innerText="Guardar";
 }
 
+/* ===== START ===== */
 init();
 </script>
-
-</body>
-</html>
