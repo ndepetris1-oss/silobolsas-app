@@ -186,7 +186,10 @@ factor = round(sum(factores) / len(factores), 4) if factores else None
 tas_min = min(tass) if tass else None
                
 
-                if tas_min is not None:
+                # fecha estimada de extracción (robusto)
+fecha_extraccion_estimada = None
+
+if tas_min is not None:
     row = conn.execute(
         "SELECT fecha_muestreo FROM muestreos WHERE id=?",
         (s["ultimo_muestreo"],)
@@ -195,18 +198,13 @@ tas_min = min(tass) if tass else None
     if row and row["fecha_muestreo"]:
         try:
             fm = datetime.strptime(row["fecha_muestreo"], "%Y-%m-%d %H:%M")
+            dias = int(float(tas_min))
             fecha_extraccion_estimada = (
-                fm + timedelta(days=int(tas_min))
+                fm + timedelta(days=dias)
             ).strftime("%Y-%m-%d")
-        except:
+        except Exception as e:
+            print("Error fecha extracción:", e)
             fecha_extraccion_estimada = None
-
-        registros.append({
-            **dict(s),
-            "grado": grado,
-            "factor": factor,
-            "tas_min": tas_min,
-            "fecha_extraccion_estimada": fecha_extraccion_estimada
         })
 
     conn.close()
