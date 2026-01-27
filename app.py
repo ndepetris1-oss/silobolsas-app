@@ -403,24 +403,7 @@ def monitoreos_pendientes(qr):
             "tipo": r["tipo"],
             "fecha": r["fecha_evento"]
         } for r in rows
-    ])
-    @app.route("/api/monitoreo/resueltos/<qr>")
-def monitoreos_resueltos(qr):
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT tipo, fecha_resolucion
-        FROM monitoreos
-        WHERE numero_qr = ?
-          AND resuelto = 1
-        ORDER BY fecha_resolucion DESC
-    """, (qr,)).fetchall()
-    conn.close()
-
-    return jsonify([
-        {
-            "tipo": r["tipo"],
-            "fecha": r["fecha_resolucion"]
-        } for r in rows
+    
     ])
 # ======================
 # EXTRACCION
