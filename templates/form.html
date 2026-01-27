@@ -46,6 +46,54 @@ button:disabled{background:#9ccc9c}
   margin-top:10px;
   font-weight:bold;
 }
+  .switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 32px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background-color: #4caf50;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.switch-label {
+  font-weight: bold;
+  vertical-align: middle;
+}
 </style>
 </head>
 
@@ -115,9 +163,11 @@ button:disabled{background:#9ccc9c}
 <div id="bloqueResolucion" class="card hidden">
   <h3>✅ Resolver evento</h3>
 
-  <label>
-    <input type="checkbox" id="resuelto">
-    Marcar evento como resuelto
+  <label class="switch">
+  <input type="checkbox" id="resuelto">
+  <span class="slider"></span>
+</label>
+<span class="switch-label">Marcar evento como resuelto</span>
   </label>
 
   <label>Foto de resolución</label>
