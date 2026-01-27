@@ -199,18 +199,22 @@ async function init(){
   bloqueResolucion.classList.add("hidden");
 
   /* ===== EVENTO PENDIENTE ===== */
-  const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
-  const mon = await resMon.json();
+const resMon = await fetch(`/api/monitoreo/pendiente/${qr}`);
+const mon = await resMon.json();
 
-  if(mon.pendiente){
-    eventoPendiente = mon;
-    bloqueMonitoreo.classList.add("hidden");
-    bloqueResolucion.classList.remove("hidden");
+bloqueMonitoreo.classList.remove("hidden");
+bloqueExtraccion.classList.remove("hidden");
+bloqueResolucion.classList.add("hidden");
 
-    infoSilo.innerHTML += `
-      <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
-    `;
-  }
+if(mon.pendiente){
+  eventoPendiente = mon;
+
+  bloqueMonitoreo.classList.add("hidden");
+  bloqueResolucion.classList.remove("hidden");
+
+  infoSilo.innerHTML += `
+    <br>⚠️ Evento pendiente: <b>${mon.tipo}</b>
+  `;
 }
 
 /* ===== OTROS ===== */
