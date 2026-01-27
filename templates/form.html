@@ -207,8 +207,8 @@ async function guardar(){
         cereal: cereal.value,
         estado_grano: estado_grano.value,
         metros: metros.value,
-        lat: lat,
-        lon: lon
+        lat: (typeof lat === "number" && !isNaN(lat)) ? lat : null,
+        lon: (typeof lon === "number" && !isNaN(lon)) ? lon : null
       })
     });
 
