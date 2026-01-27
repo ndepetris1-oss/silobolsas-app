@@ -386,26 +386,24 @@ def nuevo_monitoreo():
 # MONITOREO PENDIENTE
 # ======================
 @app.route("/api/monitoreo/pendiente/<qr>")
-def monitoreo_pendiente(qr):
+def monitoreos_pendientes(qr):
     conn = get_db()
-    m = conn.execute("""
-        SELECT id, tipo
+    rows = conn.execute("""
+        SELECT id, tipo, fecha_evento
         FROM monitoreos
         WHERE numero_qr = ?
           AND resuelto = 0
         ORDER BY fecha_evento DESC
-        LIMIT 1
-    """, (qr,)).fetchone()
+    """, (qr,)).fetchall()
     conn.close()
 
-    if not m:
-        return jsonify(pendiente=False)
-
-    return jsonify(
-        pendiente=True,
-        id=m["id"],
-        tipo=m["tipo"]
-    )
+    return jsonify([
+        {
+            "id": r["id"],
+            "tipo": r["tipo"],
+            "fecha": r["fecha_evento"]
+        } for r in rows
+    ])
 # ======================
 # EXTRACCION
 # ======================
