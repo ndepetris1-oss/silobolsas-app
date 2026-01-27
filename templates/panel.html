@@ -103,10 +103,9 @@ th{background:#a5d6a7}
 </div>
 <script>
 /* ===== DATOS ===== */
-const registros = {{ registros | tojson }};
+const registros = {{ registros | tojson | safe }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
-
 
 /* ===== MAPA ===== */
 const map = L.map('map', {
@@ -114,7 +113,6 @@ const map = L.map('map', {
   attributionControl: true
 });
 
-// vista inicial SIEMPRE válida
 map.setView([-34.6, -58.4], 6);
 
 L.tileLayer(
@@ -125,33 +123,27 @@ L.tileLayer(
   }
 ).addTo(map);
 
-// 🔑 FIX CLAVE
-setTimeout(() => {
-  map.invalidateSize(true);
-}, 300);
+// FIX tamaño
+setTimeout(() => map.invalidateSize(true), 300);
 
 /* ===== MARKERS ===== */
 let markers = [];
 
 function icono(c){
-  let color = "blue";
-  if(c === "Maíz") color = "orange";
-  if(c === "Soja") color = "yellow";
-  if(c === "Trigo") color = "#bdbdbd";
-  if(c === "Girasol") color = "black";
+  let color="blue";
+  if(c==="Maíz") color="orange";
+  if(c==="Soja") color="yellow";
+  if(c==="Trigo") color="#bdbdbd";
+  if(c==="Girasol") color="black";
 
   return L.divIcon({
-    html: `<div style="
-      background:${color};
-      width:14px;
-      height:14px;
-      border-radius:50%;
-      border:2px solid white
-    "></div>`,
-    className: "" // 🔑 evita estilos raros de leaflet
+    html:`<div style="background:${color};
+      width:14px;height:14px;border-radius:50%;
+      border:2px solid white"></div>`,
+    className:""
   });
 }
-</script>
+
 /* ===== RENDER ===== */
 function render(){
   tbody.innerHTML="";
@@ -165,8 +157,8 @@ function render(){
       <tr>
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
-        <td class="${r.estado_grano==='Humedo'?'humedo':''}">${r.estado_grano ?? '-'}</td>
-        <td class="estado-${(r.estado_silo||'activo').toLowerCase().replaceAll(' ','-')}">${r.estado_silo ?? 'Activo'}</td>
+        <td>${r.estado_grano ?? '-'}</td>
+        <td>${r.estado_silo ?? 'Activo'}</td>
         <td>${r.fecha_confeccion}</td>
         <td>${r.grado ?? '-'}</td>
         <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
@@ -176,14 +168,14 @@ function render(){
       </tr>
     `;
 
-const lat = Number(r.lat);
-const lon = Number(r.lon);
+    const lat = Number(r.lat);
+    const lon = Number(r.lon);
 
-if(!isNaN(lat) && !isNaN(lon)){
-  const m = L.marker([lat, lon], { icon: icono(r.cereal) }).addTo(map);
-  markers.push(m);
-  bounds.push([lat, lon]);
-}    
+    if(!isNaN(lat) && !isNaN(lon)){
+      const m = L.marker([lat,lon],{icon:icono(r.cereal)}).addTo(map);
+      markers.push(m);
+      bounds.push([lat,lon]);
+    }
   });
 
   if(bounds.length){
@@ -216,6 +208,5 @@ document.querySelectorAll("select").forEach(s=>s.onchange=aplicarFiltros);
 /* ===== INIT ===== */
 render();
 </script>
+}
 
-</body>
-</html>
