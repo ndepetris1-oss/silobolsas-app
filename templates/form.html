@@ -270,55 +270,70 @@ tipo_evento.onchange=e=>{
 
 /* GUARDAR */
 async function guardar(){
-  const btn=btnGuardar;
-  btn.disabled=true;
+  const btn = btnGuardar;
+  btn.disabled = true;
 
-  if(modo==="registro"){
-    await fetch("/api/registrar_silo",{method:"POST",
-      headers:{"Content-Type":"application/json"},
+  if(modo === "registro"){
+    await fetch("/api/registrar_silo",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
-        numero_qr:qr,cereal:cereal.value,
-        estado_grano:estado_grano.value,metros:metros.value,
-        lat,lon
+        numero_qr: qr,
+        cereal: cereal.value,
+        estado_grano: estado_grano.value,
+        metros: metros.value,
+        lat, lon
       })
     });
-    location.reload(); return;
+    location.reload();
+    return;
   }
 
   if(tipo_evento.value && !eventoPendiente){
-    const fd=new FormData();
-    fd.append("numero_qr",qr);
-    fd.append("tipo",tipo_evento.value);
-    fd.append("detalle",detalle_evento.value);
-    foto.files[0] && fd.append("foto",foto.files[0]);
-    await fetch("/api/monitoreo",{method:"POST",body:fd});
-    location.reload(); return;
+    const fd = new FormData();
+    fd.append("numero_qr", qr);
+    fd.append("tipo", tipo_evento.value);
+    fd.append("detalle", detalle_evento.value);
+    foto.files[0] && fd.append("foto", foto.files[0]);
+
+    await fetch("/api/monitoreo",{ method:"POST", body:fd });
+    location.reload();
+    return;
   }
 
   if(eventoPendiente && resuelto.checked){
-  const fd = new FormData();
-  fd.append("id_monitoreo", eventoPendiente.id);
-  foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
+    const fd = new FormData();
+    fd.append("id_monitoreo", eventoPendiente.id);
+    foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
 
-  await fetch("/api/monitoreo/resolver", {
-    method: "POST",
-    body: fd
-  });
+    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
 
-  // limpiar estado visual
-  eventoPendiente = null;
-  resuelto.checked = false;
-  bloqueResolucion.classList.add("hidden");
+    eventoPendiente = null;
+    resuelto.checked = false;
+    bloqueResolucion.classList.add("hidden");
 
-  // 🔄 actualizar listas
-  await cargarEventosPendientes();
-  await cargarEventosResueltos();
+    await cargarEventosPendientes();
+    await cargarEventosResueltos();
 
-  alert("Evento resuelto correctamente");
-  return;
-}
+    alert("Evento resuelto correctamente");
+    btn.disabled = false;
+    return;
+  }
 
-  btn.disabled=false;
+  if(estado_silo.value){
+    await fetch("/api/extraccion",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        estado_silo: estado_silo.value
+      })
+    });
+    location.reload();
+    return;
+  }
+
+  btn.disabled = false;
 }
 
 init();
