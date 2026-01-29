@@ -136,6 +136,14 @@ def panel():
     """).fetchall()
 
     registros = []
+    
+        # Conteo de eventos pendientes
+        eventos_pendientes = conn.execute("""
+            SELECT COUNT(*) AS cant
+            FROM monitoreos
+            WHERE numero_qr = ?
+              AND resuelto = 0
+        """, (s["numero_qr"],)).fetchone()["cant"]
 
     for s in silos:
         grado = None
@@ -204,6 +212,7 @@ def panel():
             "factor": factor,
             "tas_min": tas_min,
             "fecha_extraccion_estimada": fecha_extraccion_estimada
+            "eventos": eventos_pendientes
         })
 
     conn.close()
