@@ -137,7 +137,7 @@ def panel():
 
     registros = []
     
-for s in silos:
+    for s in silos:
         # Conteo de eventos pendientes
         eventos_pendientes = conn.execute("""
             SELECT COUNT(*) AS cant
@@ -508,7 +508,7 @@ def ver_silo(qr):
         conn.close()
         return "Silo no encontrado", 404
 
-    muestreos = conn.execute("""
+        muestreos = conn.execute("""
         SELECT id, fecha_muestreo,
         CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
         FROM muestreos
@@ -516,7 +516,7 @@ def ver_silo(qr):
         ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
 
-        eventos_pendientes = conn.execute("""
+    eventos_pendientes = conn.execute("""
         SELECT tipo, fecha_evento, foto_evento
         FROM monitoreos
         WHERE numero_qr = ?
@@ -534,12 +534,13 @@ def ver_silo(qr):
 
     conn.close()
 
-    return render_template(
-    "silo.html",
-    silo=silo,
-    muestreos=muestreos,
-    eventos_pendientes=eventos_pendientes,
-    eventos_resueltos=eventos_resueltos
+        return render_template(
+        "silo.html",
+        silo=silo,
+        muestreos=muestreos,
+        eventos_pendientes=eventos_pendientes,
+        eventos_resueltos=eventos_resueltos
+    )
 )
 # ======================
 # NUEVO MUESTREO (DESDE SILO)
