@@ -162,8 +162,11 @@ def panel():
                 grados, factores, tass = [], [], []
 
                 for a in analisis:
-                    if a["grado"] is not None:
-                        grados.append(a["grado"])
+                    try:
+                        g = int(a["grado"])
+                        grados.append(g)
+                    except:
+                        pass
 
                     try:
                         f = float(a["factor"])
