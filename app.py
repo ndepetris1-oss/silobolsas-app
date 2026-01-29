@@ -405,6 +405,62 @@ def monitoreos_pendientes(qr):
         } for r in rows
     
     ])
+    
+# ======================
+# RESOLVER MONITOREO
+# ======================
+@app.route("/api/monitoreo/resolver", methods=["POST"])
+def resolver_monitoreo():
+    id_monitoreo = request.form.get("id_monitoreo")
+    foto = request.files.get("foto")
+
+    if not id_monitoreo:
+        return jsonify(ok=False, error="ID faltante"), 400
+
+    path_resolucion = None
+    if foto:
+        os.makedirs("static/monitoreos", exist_ok=True)
+        path_resolucion = f"static/monitoreos/resuelto_{datetime.now().timestamp()}_{foto.filename}"
+        foto.save(path_resolucion)
+
+    conn = get_db()
+    conn.execute("""
+        UPDATE monitoreos SET
+            resuelto = 1,
+            fecha_resolucion = ?,
+            foto_resolucion = ?
+        WHERE id = ?
+    """, (
+        ahora().strftime("%Y-%m-%d %H:%M"),
+        path_resolucion,
+        id_monitoreo
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
+    
+ # ======================
+# MONITOREOS RESUELTOS
+# ======================
+@app.route("/api/monitoreo/resueltos/<qr>")
+def monitoreos_resueltos(qr):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT tipo, fecha_resolucion
+        FROM monitoreos
+        WHERE numero_qr = ?
+          AND resuelto = 1
+        ORDER BY fecha_resolucion DESC
+    """, (qr,)).fetchall()
+    conn.close()
+
+    return jsonify([
+        {
+            "tipo": r["tipo"],
+            "fecha": r["fecha_resolucion"]
+        } for r in rows
+    ])
 # ======================
 # EXTRACCION
 # ======================
