@@ -56,28 +56,6 @@ th{background:#a5d6a7}
   <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
 
-  <select id="filtroCereal">
-    <option value="">Cereal</option>
-    <option>Maíz</option>
-    <option>Soja</option>
-    <option>Trigo</option>
-    <option>Girasol</option>
-  </select>
-
-  <select id="filtroEstadoGrano">
-    <option value="">Estado grano</option>
-    <option>Seco</option>
-    <option>Humedo</option>
-  </select>
-
-  <select id="filtroEstadoSilo">
-    <option value="">Estado silo</option>
-    <option>Activo</option>
-    <option>Extracción parcial</option>
-    <option>Extraído</option>
-  </select>
-
-  <button onclick="resetFiltros()">♻ Reset</button>
 </div>
 
 <div id="map"></div>
@@ -97,12 +75,74 @@ th{background:#a5d6a7}
   <th>Eventos</th>
   <th>Acción</th>
 </tr>
+  <tr>
+  <th></th>
+
+  <th>
+    <select onchange="filtrarColumna('cereal', this.value)">
+      <option value="">Todos</option>
+      <option>Maíz</option>
+      <option>Soja</option>
+      <option>Trigo</option>
+      <option>Girasol</option>
+    </select>
+  </th>
+
+  <th>
+    <select onchange="filtrarColumna('estado_grano', this.value)">
+      <option value="">Todos</option>
+      <option>Seco</option>
+      <option>Humedo</option>
+    </select>
+  </th>
+
+  <th>
+    <select onchange="filtrarColumna('estado_silo', this.value)">
+      <option value="">Todos</option>
+      <option>Activo</option>
+      <option>Extracción parcial</option>
+      <option>Extraído</option>
+    </select>
+  </th>
+
+  <th></th> <!-- Confección -->
+  <th></th> <!-- Grado -->
+  <th></th> <!-- Factor -->
+  <th></th> <!-- TAS -->
+  <th></th> <!-- Extracción -->
+
+  <th>
+    <select onchange="filtrarEventos(this.value)">
+      <option value="">Todos</option>
+      <option value="no">No</option>
+      <option value="si">Con eventos</option>
+    </select>
+  </th>
+
+  <th></th>
+</tr>
 </thead>
+  
 <tbody id="tabla"></tbody>
 </table>
 
 </div>
 <script>
+function filtrarColumna(campo, valor){
+  visibles = registros.filter(r =>
+    !valor || r[campo] === valor
+  );
+  render();
+}
+
+function filtrarEventos(valor){
+  visibles = registros.filter(r => {
+    if(!valor) return true;
+    if(valor === "no") return r.eventos === 0;
+    if(valor === "si") return r.eventos > 0;
+  });
+  render();
+}  
 /* ===== DATOS ===== */
 const registros = {{ registros | tojson | safe }};
 let visibles = [...registros];
