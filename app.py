@@ -449,7 +449,7 @@ def resolver_monitoreo():
 
     return jsonify(ok=True)
     
- # ======================
+# ======================
 # MONITOREOS RESUELTOS
 # ======================
 @app.route("/api/monitoreo/resueltos/<qr>")
@@ -516,13 +516,31 @@ def ver_silo(qr):
         ORDER BY fecha_muestreo DESC
     """, (qr,)).fetchall()
 
+        eventos_pendientes = conn.execute("""
+        SELECT tipo, fecha_evento, foto_evento
+        FROM monitoreos
+        WHERE numero_qr = ?
+          AND resuelto = 0
+        ORDER BY fecha_evento DESC
+    """, (qr,)).fetchall()
+
+    eventos_resueltos = conn.execute("""
+        SELECT tipo, fecha_resolucion, foto_resolucion
+        FROM monitoreos
+        WHERE numero_qr = ?
+          AND resuelto = 1
+        ORDER BY fecha_resolucion DESC
+    """, (qr,)).fetchall()
+
     conn.close()
 
     return render_template(
-        "silo.html",
-        silo=silo,
-        muestreos=muestreos
-    )
+    "silo.html",
+    silo=silo,
+    muestreos=muestreos,
+    eventos_pendientes=eventos_pendientes,
+    eventos_resueltos=eventos_resueltos
+)
 # ======================
 # NUEVO MUESTREO (DESDE SILO)
 # ======================
