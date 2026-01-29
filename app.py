@@ -137,8 +137,8 @@ def panel():
 
     registros = []
     
-    for s in silos:
-                # Conteo de eventos pendientes
+for s in silos:
+        # Conteo de eventos pendientes
         eventos_pendientes = conn.execute("""
             SELECT COUNT(*) AS cant
             FROM monitoreos
