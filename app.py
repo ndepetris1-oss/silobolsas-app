@@ -508,7 +508,7 @@ def ver_silo(qr):
         conn.close()
         return "Silo no encontrado", 404
 
-        muestreos = conn.execute("""
+    muestreos = conn.execute("""
         SELECT id, fecha_muestreo,
         CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
         FROM muestreos
@@ -534,14 +534,13 @@ def ver_silo(qr):
 
     conn.close()
 
-        return render_template(
+    return render_template(
         "silo.html",
         silo=silo,
         muestreos=muestreos,
         eventos_pendientes=eventos_pendientes,
         eventos_resueltos=eventos_resueltos
     )
-)
 # ======================
 # NUEVO MUESTREO (DESDE SILO)
 # ======================
