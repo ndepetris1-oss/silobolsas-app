@@ -198,15 +198,15 @@ function render(){
   visibles.forEach(r => {
     tbody.innerHTML += `
       <tr>
-        <th onclick="filtrosExcel.orden='qr'; aplicarFiltrosExcel()">QR ⬍</th>
+        <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
         <td>${r.estado_grano ?? '-'}</td>
         <td>${r.estado_silo ?? 'Activo'}</td>
-        <th onclick="filtrosExcel.orden='confeccion'; aplicarFiltrosExcel()">Confección ⬍</th>
-        <th onclick="filtrosExcel.orden='grado'; aplicarFiltrosExcel()">Grado ⬍</th>
-        <th onclick="filtrosExcel.orden='factor'; aplicarFiltrosExcel()">Factor ⬍</th>
-        <th onclick="filtrosExcel.orden='tas'; aplicarFiltrosExcel()">TAS mín ⬍</th>
-        <th onclick="filtrosExcel.orden='extraccion'; aplicarFiltrosExcel()">Extracción estimada ⬍</th>
+        <td>${r.fecha_confeccion}</td>
+        <td>${r.grado ?? '-'}</td>
+        <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
+        <td>${r.tas_min ?? '-'}</td>
+        <td>${r.fecha_extraccion_estimada ?? '-'}</td>
         <td>${r.eventos > 0 ? r.eventos : 'No'}</td>
         <td>
           <button onclick="location.href='/silo/${r.numero_qr}'">Ver</button>
@@ -265,10 +265,8 @@ function aplicarFiltrosExcel(){
     if(filtrosExcel.cereal && r.cereal !== filtrosExcel.cereal) return false;
     if(filtrosExcel.estado_grano && r.estado_grano !== filtrosExcel.estado_grano) return false;
     if(filtrosExcel.estado_silo && r.estado_silo !== filtrosExcel.estado_silo) return false;
-
     if(filtrosExcel.eventos === "si" && r.eventos === 0) return false;
     if(filtrosExcel.eventos === "no" && r.eventos > 0) return false;
-
     return true;
   });
 
@@ -281,30 +279,23 @@ function aplicarOrdenExcel(){
     case "qr":
       visibles.sort((a,b)=>a.numero_qr.localeCompare(b.numero_qr));
       break;
-
     case "confeccion":
-      visibles.sort((a,b)=>
-        new Date(a.fecha_confeccion) - new Date(b.fecha_confeccion)
-      );
+      visibles.sort((a,b)=>new Date(a.fecha_confeccion)-new Date(b.fecha_confeccion));
       break;
-
     case "grado":
-      visibles.sort((a,b)=>(a.grado ?? 99) - (b.grado ?? 99));
+      visibles.sort((a,b)=>(a.grado ?? 99)-(b.grado ?? 99));
       break;
-
     case "factor":
-      visibles.sort((a,b)=>(a.factor ?? 999) - (b.factor ?? 999));
+      visibles.sort((a,b)=>(a.factor ?? 999)-(b.factor ?? 999));
       break;
-
     case "tas":
-      visibles.sort((a,b)=>(a.tas_min ?? 9999) - (b.tas_min ?? 9999));
+      visibles.sort((a,b)=>(a.tas_min ?? 9999)-(b.tas_min ?? 9999));
       break;
-
     case "extraccion":
       visibles.sort((a,b)=>{
         if(!a.fecha_extraccion_estimada) return 1;
         if(!b.fecha_extraccion_estimada) return -1;
-        return new Date(a.fecha_extraccion_estimada) - new Date(b.fecha_extraccion_estimada);
+        return new Date(a.fecha_extraccion_estimada)-new Date(b.fecha_extraccion_estimada);
       });
       break;
   }
