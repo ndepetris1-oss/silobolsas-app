@@ -78,7 +78,57 @@ th{background:#a5d6a7}
 </div>
 
 <hr>
+  
+<h3>📸 Eventos</h3>
 
+{% if not eventos_pendientes and not eventos_resueltos %}
+  <div class="alerta">
+    ✔ Este silo no tiene eventos registrados.
+  </div>
+{% endif %}
+
+{% if eventos_pendientes %}
+  <h4>⚠️ Eventos pendientes</h4>
+  {% for e in eventos_pendientes %}
+    <div class="alerta">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_evento }}<br><br>
+
+      {% if e.foto_evento %}
+        <a href="/{{ e.foto_evento }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="/{{ e.foto_evento }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+{% if eventos_resueltos %}
+  <h4>✅ Eventos resueltos</h4>
+  {% for e in eventos_resueltos %}
+    <div class="alerta" style="background:#e8f5e9">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_resolucion }}<br><br>
+
+      {% if e.foto_resolucion %}
+        <a href="/{{ e.foto_resolucion }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="/{{ e.foto_resolucion }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+  
 <h3>📊 Muestreos</h3>
 
 {% if not muestreos %}
