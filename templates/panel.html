@@ -43,6 +43,17 @@ th{background:#a5d6a7;cursor:pointer}
 .estado-activo{color:#2e7d32;font-weight:bold}
 .estado-extracción-parcial{color:#f9a825;font-weight:bold}
 .estado-extraído{color:#b71c1c;font-weight:bold}
+.estado-humedo{
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
+
+.tas-alerta{
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -169,12 +180,16 @@ function render(){
       <tr>
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
-        <td>${r.estado_grano ?? '-'}</td>
+        <td class="${r.estado_grano === 'Humedo' ? 'estado-humedo' : ''}">
+          ${r.estado_grano ?? '-'}
+        </td>
         <td>${r.estado_silo ?? 'Activo'}</td>
         <td>${r.fecha_confeccion}</td>
         <td>${r.grado ?? '-'}</td>
         <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
-        <td>${r.tas_min ?? '-'}</td>
+        <td class="${r.tas_min !== null && r.tas_min <= 30 ? 'tas-alerta' : ''}">
+          ${r.tas_min ?? '-'}
+        </td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
         <td>${r.eventos>0 ? r.eventos : 'No'}</td>
         <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
