@@ -37,7 +37,7 @@ button:hover{background:#2e7d32}
 
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
-th{background:#a5d6a7}
+th{background:#a5d6a7;cursor:pointer}
 
 .humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
 .estado-activo{color:#2e7d32;font-weight:bold}
@@ -55,7 +55,6 @@ th{background:#a5d6a7}
 <div class="toolbar">
   <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-
 </div>
 
 <div id="map"></div>
@@ -63,19 +62,20 @@ th{background:#a5d6a7}
 <table>
 <thead>
 <tr>
-  <th>QR</th>
+  <th onclick="ordenar('qr')">QR ⬍</th>
   <th>Cereal</th>
   <th>Estado grano</th>
   <th>Estado silo</th>
-  <th>Confección</th>
-  <th>Grado</th>
-  <th>Factor</th>
-  <th>TAS mín</th>
-  <th>Extracción estimada</th>
+  <th onclick="ordenar('confeccion')">Confección ⬍</th>
+  <th onclick="ordenar('grado')">Grado ⬍</th>
+  <th onclick="ordenar('factor')">Factor ⬍</th>
+  <th onclick="ordenar('tas')">TAS mín ⬍</th>
+  <th onclick="ordenar('extraccion')">Extracción estimada ⬍</th>
   <th>Eventos</th>
   <th>Acción</th>
 </tr>
-  <tr>
+
+<tr>
   <th></th>
 
   <th>
@@ -105,11 +105,11 @@ th{background:#a5d6a7}
     </select>
   </th>
 
-  <th></th> <!-- Confección -->
-  <th></th> <!-- Grado -->
-  <th></th> <!-- Factor -->
-  <th></th> <!-- TAS -->
-  <th></th> <!-- Extracción -->
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
 
   <th>
     <select onchange="setFiltro('eventos', this.value)">
@@ -122,81 +122,50 @@ th{background:#a5d6a7}
   <th></th>
 </tr>
 </thead>
-  
+
 <tbody id="tabla"></tbody>
 </table>
 
 </div>
-<script>
-function filtrarColumna(campo, valor){
-  visibles = registros.filter(r =>
-    !valor || r[campo] === valor
-  );
-  render();
-}
 
-function filtrarEventos(valor){
-  visibles = registros.filter(r => {
-    if(!valor) return true;
-    if(valor === "no") return r.eventos === 0;
-    if(valor === "si") return r.eventos > 0;
-  });
-  render();
-}  
+<script>
 /* ===== DATOS ===== */
 const registros = {{ registros | tojson | safe }};
 let visibles = [...registros];
 const tbody = document.getElementById("tabla");
 
 /* ===== MAPA ===== */
-const map = L.map('map', {
-  zoomControl: false,
-  attributionControl: true
-});
-
-// Vista inicial segura (Argentina)
+const map = L.map('map', { zoomControl:false });
 map.setView([-34.6, -58.4], 6);
 
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '© Esri' }
+  { attribution:'© Esri' }
 ).addTo(map);
 
-// Fix tamaño mapa
 setTimeout(() => map.invalidateSize(true), 300);
 
-/* ===== MARKERS ===== */
 let markers = [];
 
 function icono(c){
-  let color = "blue";
-  if(c === "Maíz") color = "orange";
-  if(c === "Soja") color = "yellow";
-  if(c === "Trigo") color = "#bdbdbd";
-  if(c === "Girasol") color = "black";
-
-  return L.divIcon({
-    html: `<div style="
-      background:${color};
-      width:14px;
-      height:14px;
-      border-radius:50%;
-      border:2px solid white
-    "></div>`,
-    className: ""
-  });
+  let color="blue";
+  if(c==="Maíz") color="orange";
+  if(c==="Soja") color="yellow";
+  if(c==="Trigo") color="#bdbdbd";
+  if(c==="Girasol") color="black";
+  return L.divIcon({ html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>` });
 }
 
 /* ===== RENDER ===== */
 function render(){
-  tbody.innerHTML = "";
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
+  tbody.innerHTML="";
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
 
-  let bounds = [];
+  let bounds=[];
 
-  visibles.forEach(r => {
-    tbody.innerHTML += `
+  visibles.forEach(r=>{
+    tbody.innerHTML+=`
       <tr>
         <td>${r.numero_qr}</td>
         <td>${r.cereal}</td>
@@ -207,90 +176,56 @@ function render(){
         <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
         <td>${r.tas_min ?? '-'}</td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
-        <td>${r.eventos > 0 ? r.eventos : 'No'}</td>
-        <td>
-          <button onclick="location.href='/silo/${r.numero_qr}'">Ver</button>
-        </td>
+        <td>${r.eventos>0 ? r.eventos : 'No'}</td>
+        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
       </tr>
     `;
 
-    const lat = Number(r.lat);
-    const lon = Number(r.lon);
-
-    if(!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0){
-      const m = L.marker([lat, lon], { icon: icono(r.cereal) }).addTo(map);
+    if(r.lat && r.lon){
+      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
       markers.push(m);
-      bounds.push([lat, lon]);
+      bounds.push([r.lat,r.lon]);
     }
   });
 
-  if(bounds.length){
-    map.fitBounds(bounds, { padding: [30, 30] });
-  }
+  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
 }
 
-/* ===== FILTROS ===== */
-function aplicarFiltros(){
-  const c = filtroCereal.value;
-  const eg = filtroEstadoGrano.value;
-  const es = filtroEstadoSilo.value;
-
-  visibles = registros.filter(r =>
-    (!c || r.cereal === c) &&
-    (!eg || r.estado_grano === eg) &&
-    (!es || r.estado_silo === es)
-  );
-  render();
-<script>
-/* ============================
-   NUEVO MOTOR DE FILTROS + ORDEN
-   (NO reemplaza nada existente)
-   ============================ */
-
-const filtrosExcel = {
-  cereal: "",
-  estado_grano: "",
-  estado_silo: "",
-  eventos: "",
-  orden: ""
+/* ===== FILTROS + ORDEN EXCEL ===== */
+const filtros = {
+  cereal:"",
+  estado_grano:"",
+  estado_silo:"",
+  eventos:"",
+  orden:""
 };
 
-function setFiltro(campo, valor){
-  filtrosExcel[campo] = valor;
-  aplicarFiltrosExcel();
+function setFiltro(campo,valor){
+  filtros[campo]=valor;
+  aplicarFiltros();
 }
 
-function aplicarFiltrosExcel(){
-  visibles = registros.filter(r => {
-    if(filtrosExcel.cereal && r.cereal !== filtrosExcel.cereal) return false;
-    if(filtrosExcel.estado_grano && r.estado_grano !== filtrosExcel.estado_grano) return false;
-    if(filtrosExcel.estado_silo && r.estado_silo !== filtrosExcel.estado_silo) return false;
-    if(filtrosExcel.eventos === "si" && r.eventos === 0) return false;
-    if(filtrosExcel.eventos === "no" && r.eventos > 0) return false;
+function ordenar(campo){
+  filtros.orden = campo;
+  aplicarFiltros();
+}
+
+function aplicarFiltros(){
+  visibles = registros.filter(r=>{
+    if(filtros.cereal && r.cereal!==filtros.cereal) return false;
+    if(filtros.estado_grano && r.estado_grano!==filtros.estado_grano) return false;
+    if(filtros.estado_silo && r.estado_silo!==filtros.estado_silo) return false;
+    if(filtros.eventos==="si" && r.eventos===0) return false;
+    if(filtros.eventos==="no" && r.eventos>0) return false;
     return true;
   });
 
-  aplicarOrdenExcel();
-  render();
-}
-
-function aplicarOrdenExcel(){
-  switch(filtrosExcel.orden){
-    case "qr":
-      visibles.sort((a,b)=>a.numero_qr.localeCompare(b.numero_qr));
-      break;
-    case "confeccion":
-      visibles.sort((a,b)=>new Date(a.fecha_confeccion)-new Date(b.fecha_confeccion));
-      break;
-    case "grado":
-      visibles.sort((a,b)=>(a.grado ?? 99)-(b.grado ?? 99));
-      break;
-    case "factor":
-      visibles.sort((a,b)=>(a.factor ?? 999)-(b.factor ?? 999));
-      break;
-    case "tas":
-      visibles.sort((a,b)=>(a.tas_min ?? 9999)-(b.tas_min ?? 9999));
-      break;
+  switch(filtros.orden){
+    case "qr": visibles.sort((a,b)=>a.numero_qr.localeCompare(b.numero_qr)); break;
+    case "confeccion": visibles.sort((a,b)=>new Date(a.fecha_confeccion)-new Date(b.fecha_confeccion)); break;
+    case "grado": visibles.sort((a,b)=>(a.grado??99)-(b.grado??99)); break;
+    case "factor": visibles.sort((a,b)=>(a.factor??999)-(b.factor??999)); break;
+    case "tas": visibles.sort((a,b)=>(a.tas_min??9999)-(b.tas_min??9999)); break;
     case "extraccion":
       visibles.sort((a,b)=>{
         if(!a.fecha_extraccion_estimada) return 1;
@@ -299,19 +234,13 @@ function aplicarOrdenExcel(){
       });
       break;
   }
-}
-</script>
-}
 
-function resetFiltros(){
-  document.querySelectorAll("select").forEach(s => s.value = "");
-  visibles = [...registros];
   render();
 }
 
-document.querySelectorAll("select")
-  .forEach(s => s.onchange = aplicarFiltros);
-
-/* ===== INIT ===== */
+/* INIT */
 render();
 </script>
+
+</body>
+</html>
