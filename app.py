@@ -211,7 +211,7 @@ def panel():
             "grado": grado,
             "factor": factor,
             "tas_min": tas_min,
-            "fecha_extraccion_estimada": fecha_extraccion_estimada
+            "fecha_extraccion_estimada": fecha_extraccion_estimada,
             "eventos": eventos_pendientes
         })
 
