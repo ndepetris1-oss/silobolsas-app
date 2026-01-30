@@ -163,30 +163,30 @@ def panel():
 
                 grados, factores, tass = [], [], []
 
-                for a in analisis:
-                    try:
-                        g = int(a["grado"])
-                        grados.append(g)
-                    except:
-                        pass
+for a in analisis:
+    try:
+        g = int(a["grado"])
+        grados.append(g)
+    except:
+        pass
 
-                    try:
-                        f = float(a["factor"])
-                        if f > 0:
-                            factores.append(f)
-                    except:
-                        pass
+    try:
+        f = float(a["factor"])
+        if f > 0:
+            factores.append(f)
+    except:
+        pass
 
-                    try:
-                        t = int(float(a["tas"]))
-                        if t > 0:
-                            tass.append(t)
-                    except:
-                        pass
+    try:
+        t = int(float(a["tas"]))
+        if t > 0:
+            tass.append(t)
+    except:
+        pass
 
-                grado = max(grados) if grados else None
-                factor = round(sum(factores) / len(factores), 4) if factores else None
-                tas_min = min(tass) if tass else None
+grado = max(grados) if grados else None
+factor = round(sum(factores) / len(factores), 4) if factores else None
+tas_min = min(tass) if tass else None
 
                 if tas_min:
                     row = conn.execute(
