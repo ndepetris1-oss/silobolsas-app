@@ -525,10 +525,11 @@ def ver_silo(qr):
 
     for m in muestreos_raw:
         analisis = conn.execute("""
-            SELECT seccion, grado, tas
-            FROM analisis
-            WHERE id_muestreo=?
-        """, (m["id"],)).fetchall()
+    SELECT seccion, grado, tas
+    FROM analisis
+    WHERE id_muestreo=?
+      AND (grado IS NOT NULL OR tas IS NOT NULL)
+""", (m["id"],)).fetchall()
 
         por_seccion = {a["seccion"]: a for a in analisis}
 
