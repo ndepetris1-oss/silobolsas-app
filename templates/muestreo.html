@@ -81,7 +81,21 @@ input,select{
   padding:6px;
   margin-bottom:8px
 }
+  @media (max-width: 768px) {
+  .modal {
+    align-items: flex-start;
+  }
+
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    padding: 15px;
+  }
+}
 </style>
+  
 </head>
 
 <body>
@@ -157,17 +171,18 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
     <h3 id="tituloModal"></h3>
 
-    <input id="temperatura" placeholder="Temperatura">
-
-    <input id="humedad" type="number" inputmode="decimal" step="0.1" placeholder="Humedad">
+    <input id="temperatura" type="number" inputmode="decimal" placeholder="Temperatura">
+    <input id="humedad" type="number" inputmode="decimal" placeholder="Humedad">
 
     {% if muestreo.cereal not in ("Soja","Girasol") %}
-    <input id="ph" type="number" inputmode="decimal" step="0.1" placeholder="PH">
+    <input id="ph" type="number" inputmode="decimal" placeholder="PH">
     {% endif %}
 
-    <input id="danados" type="number" inputmode="decimal" step="0.1" placeholder="Dañados">
-    <input id="quebrados" type="number" inputmode="decimal" step="0.1" placeholder="Quebrados">
-    <input id="materia_extrana" type="number" inputmode="decimal" step="0.1" placeholder="Materia extraña">
+    <input id="danados" type="number" inputmode="decimal" placeholder="Dañados">
+    <input id="quebrados" type="number" inputmode="decimal" placeholder="Quebrados">
+    <input id="materia_extrana" type="number" inputmode="decimal" placeholder="Materia extraña">
+
+    <input id="chamico" type="number" inputmode="numeric" placeholder="Cantidad / semillas">
 
     <label>Olor (%)</label>
     <select id="olor">
