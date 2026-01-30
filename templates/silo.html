@@ -148,31 +148,32 @@ th{background:#a5d6a7}
     </span>
 
     <table style="margin-top:8px">
-      <tr>
-        <th>Sección</th>
-        <th>Grado</th>
-        <th>TAS (días)</th>
-      </tr>
-
-{% for sec in ["punta","medio","final"] %}
-  {% set a = m[sec] %}
-
   <tr>
-    <td><b>{{ sec|capitalize }}</b></td>
-
-    <td>
-      {{ a.grado if a and a.grado is not none else "-" }}
-    </td>
-
-    <td
-      {% if a and a.tas is not none and a.tas <= 30 %}
-        style="color:#b71c1c;font-weight:bold"
-      {% endif %}
-    >
-      {{ a.tas if a and a.tas is not none else "-" }}
-    </td>
+    <th>Sección</th>
+    <th>Grado</th>
+    <th>TAS (días)</th>
   </tr>
-{% endfor %}
+
+  {% for sec in ["punta","medio","final"] %}
+    {% set a = m[sec] %}
+
+    <tr>
+      <td><b>{{ sec|capitalize }}</b></td>
+
+      <td>
+        {{ a.grado if a and a.grado is not none else "-" }}
+      </td>
+
+      <td
+        {% if a and a.tas is not none and a.tas <= 30 %}
+          style="color:#b71c1c;font-weight:bold"
+        {% endif %}
+      >
+        {{ a.tas if a and a.tas is not none else "-" }}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
 
         <tr>
           <td><b>{{ sec|capitalize }}</b></td>
