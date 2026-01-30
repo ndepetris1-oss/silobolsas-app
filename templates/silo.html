@@ -157,24 +157,6 @@ th{background:#a5d6a7}
   {% for sec in ["punta","medio","final"] %}
     {% set a = m[sec] %}
 
-    <tr>
-      <td><b>{{ sec|capitalize }}</b></td>
-
-      <td>
-        {{ a.grado if a and a.grado is not none else "-" }}
-      </td>
-
-      <td
-        {% if a and a.tas is not none and a.tas <= 30 %}
-          style="color:#b71c1c;font-weight:bold"
-        {% endif %}
-      >
-        {{ a.tas if a and a.tas is not none else "-" }}
-      </td>
-    </tr>
-  {% endfor %}
-</table>
-
     <button
       style="margin-top:6px"
       onclick="location.href='/muestreo/{{ m.id }}'">
