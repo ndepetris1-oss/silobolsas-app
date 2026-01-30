@@ -153,7 +153,7 @@ def panel():
         tas_min = None
         fecha_extraccion_estimada = None
 
-        try:
+                try:
             if s["ultimo_muestreo"]:
                 analisis = conn.execute("""
                     SELECT grado, factor, tas
@@ -161,27 +161,27 @@ def panel():
                     WHERE id_muestreo=?
                 """, (s["ultimo_muestreo"],)).fetchall()
 
-grados = [
-    int(a["grado"])
-    for a in analisis
-    if a["grado"] is not None
-]
+                grados = [
+                    int(a["grado"])
+                    for a in analisis
+                    if a["grado"] is not None
+                ]
 
-factores = [
-    float(a["factor"])
-    for a in analisis
-    if a["factor"] is not None and float(a["factor"]) > 0
-]
+                factores = [
+                    float(a["factor"])
+                    for a in analisis
+                    if a["factor"] is not None and float(a["factor"]) > 0
+                ]
 
-tass = [
-    int(a["tas"])
-    for a in analisis
-    if a["tas"] is not None and int(a["tas"]) > 0
-]
+                tass = [
+                    int(a["tas"])
+                    for a in analisis
+                    if a["tas"] is not None and int(a["tas"]) > 0
+                ]
 
-grado = max(grados) if grados else None
-factor = round(sum(factores) / len(factores), 4) if factores else None
-tas_min = min(tass) if tass else None
+                grado = max(grados) if grados else None
+                factor = round(sum(factores) / len(factores), 4) if factores else None
+                tas_min = min(tass) if tass else None
 
                 if tas_min:
                     row = conn.execute(
@@ -205,6 +205,7 @@ tas_min = min(tass) if tass else None
 
         except Exception as e:
             print("ERROR PANEL SILO:", s["numero_qr"], e)
+
 
         registros.append({
             **dict(s),
