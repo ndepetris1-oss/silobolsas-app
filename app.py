@@ -513,13 +513,33 @@ def ver_silo(qr):
         conn.close()
         return "Silo no encontrado", 404
 
-    muestreos = conn.execute("""
-        SELECT id, fecha_muestreo,
-        CAST(julianday('now') - julianday(fecha_muestreo) AS INT) dias
-        FROM muestreos
-        WHERE numero_qr=?
-        ORDER BY fecha_muestreo DESC
-    """, (qr,)).fetchall()
+    muestreos_raw = conn.execute("""
+    SELECT m.id, m.fecha_muestreo,
+           CAST(julianday('now') - julianday(m.fecha_muestreo) AS INT) dias
+    FROM muestreos m
+    WHERE m.numero_qr=?
+    ORDER BY m.fecha_muestreo DESC
+""", (qr,)).fetchall()
+
+muestreos = []
+
+for m in muestreos_raw:
+    analisis = conn.execute("""
+        SELECT seccion, grado, tas
+        FROM analisis
+        WHERE id_muestreo=?
+    """, (m["id"],)).fetchall()
+
+    por_seccion = {a["seccion"]: a for a in analisis}
+
+    muestreos.append({
+        "id": m["id"],
+        "fecha_muestreo": m["fecha_muestreo"],
+        "dias": m["dias"],
+        "punta": por_seccion.get("punta"),
+        "medio": por_seccion.get("medio"),
+        "final": por_seccion.get("final")
+    })
 
     eventos_pendientes = conn.execute("""
         SELECT tipo, fecha_evento, foto_evento
