@@ -132,35 +132,54 @@ th{background:#a5d6a7}
 <h3>📊 Muestreos</h3>
 
 {% if not muestreos %}
-  <div class="alerta">
-    ⚠ Este silo aún no tiene muestreos cargados.
-  </div>
+  <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
 {% endif %}
 
-<button onclick="location.href='/nuevo_muestreo/{{ silo.numero_qr }}'">
-  ➕ Nuevo muestreo
-</button>
-
-<table>
-<thead>
-<tr>
-  <th>Fecha muestreo</th>
-  <th>Días desde muestreo</th>
-  <th>Acción</th>
-</tr>
-</thead>
-<tbody>
 {% for m in muestreos %}
-<tr>
-  <td>{{ m.fecha_muestreo }}</td>
-  <td>{{ m.dias }}</td>
-  <td>
-    <button onclick="location.href='/muestreo/{{ m.id }}'">
-      Ver
+  <div class="info" style="margin-top:15px">
+    <b>📅 Muestreo:</b> {{ m.fecha_muestreo }}  
+    <span style="margin-left:10px;color:#555">
+      ({{ m.dias }} días)
+    </span>
+
+    <table style="margin-top:8px">
+      <tr>
+        <th>Sección</th>
+        <th>Grado</th>
+        <th>TAS (días)</th>
+      </tr>
+
+      {% for sec in ["punta","medio","final"] %}
+        {% set a = (
+          analisis
+          | selectattr("id_muestreo","equalto",m.id)
+          | selectattr("seccion","equalto",sec)
+          | list
+          | first
+        ) %}
+
+        <tr>
+          <td><b>{{ sec|capitalize }}</b></td>
+          <td>{{ a.grado if a else "-" }}</td>
+          <td
+            {% if a and a.tas is not none and a.tas <= 30 %}
+              style="color:#b71c1c;font-weight:bold"
+            {% endif %}
+          >
+            {{ a.tas if a else "-" }}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+
+    <button
+      style="margin-top:6px"
+      onclick="location.href='/muestreo/{{ m.id }}'">
+      Ver detalle
     </button>
-  </td>
-</tr>
+  </div>
 {% endfor %}
+
 </tbody>
 </table>
 
