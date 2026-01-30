@@ -17,7 +17,8 @@ DB_NAME = os.path.join(BASE_DIR, "silobolsas.db")
 # UTILIDADES
 # ======================
 def ahora():
-    return datetime.now()
+    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
+
 
 def get_db():
     conn = sqlite3.connect(DB_NAME)
