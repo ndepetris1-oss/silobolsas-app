@@ -130,6 +130,11 @@ th{background:#a5d6a7}
 {% endif %}
   
 <h3>📊 Muestreos</h3>
+<button
+  style="margin:10px 0"
+  onclick="location.href='/nuevo_muestreo/{{ silo.numero_qr }}'">
+  ➕ Nuevo muestreo
+</button>
 
 {% if not muestreos %}
   <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
