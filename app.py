@@ -525,7 +525,7 @@ def ver_silo(qr):
 
     for m in muestreos_raw:
         analisis = conn.execute("""
-    SELECT seccion, grado, grado, tas
+    SELECT seccion, grado, factor, tas
     FROM analisis
     WHERE id_muestreo=?
       AND (grado IS NOT NULL OR tas IS NOT NULL)
