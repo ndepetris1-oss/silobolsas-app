@@ -158,15 +158,16 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <h3 id="tituloModal"></h3>
 
     <input id="temperatura" placeholder="Temperatura">
-    <input id="humedad" placeholder="Humedad">
+
+    <input id="humedad" type="number" inputmode="decimal" step="0.1" placeholder="Humedad">
 
     {% if muestreo.cereal not in ("Soja","Girasol") %}
-    <input id="ph" placeholder="PH">
+    <input id="ph" type="number" inputmode="decimal" step="0.1" placeholder="PH">
     {% endif %}
 
-    <input id="danados" placeholder="Dañados">
-    <input id="quebrados" placeholder="Quebrados">
-    <input id="materia_extrana" placeholder="Materia extraña">
+    <input id="danados" type="number" inputmode="decimal" step="0.1" placeholder="Dañados">
+    <input id="quebrados" type="number" inputmode="decimal" step="0.1" placeholder="Quebrados">
+    <input id="materia_extrana" type="number" inputmode="decimal" step="0.1" placeholder="Materia extraña">
 
     <label>Olor (%)</label>
     <select id="olor">
@@ -190,7 +191,7 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
     <label>
       Chamico
-      <input id="chamico" placeholder="Cantidad / semillas">
+      <input id="chamico" type="number" inputmode="decimal" step="1" placeholder="Cantidad / semillas">
     </label>
 
     <button onclick="guardarAnalisis()">💾 Guardar</button>
