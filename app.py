@@ -600,42 +600,6 @@ def ver_silo(qr):
         eventos_pendientes=eventos_pendientes,
         eventos_resueltos=eventos_resueltos
     )
-# ======================
-# NUEVO MUESTREO (DESDE SILO)
-# ======================
-@app.route("/api/nuevo_muestreo", methods=["POST"])
-def api_nuevo_muestreo():
-    d = request.get_json(force=True, silent=True) or {}
-    qr = d.get("qr")
-
-    if not qr:
-        return jsonify(error="QR faltante"), 400
-
-    conn = get_db()
-
-    silo = conn.execute(
-        "SELECT estado_silo FROM silos WHERE numero_qr=?",
-        (qr,)
-    ).fetchone()
-
-    if not silo or silo["estado_silo"] == "Extraído":
-        conn.close()
-        return jsonify(
-            ok=False,
-            error="El silo ya fue extraído. No se pueden cargar nuevos muestreos."
-        ), 400
-
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO muestreos (numero_qr, fecha_muestreo)
-        VALUES (?,?)
-    """, (qr, ahora().strftime("%Y-%m-%d %H:%M")))
-
-    conn.commit()
-    mid = cur.lastrowid
-    conn.close()
-
-    return jsonify(id_muestreo=mid)
 
 # ======================
 # VER MUESTREO
