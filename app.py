@@ -165,19 +165,20 @@ def panel():
                     int(a["grado"])
                     for a in analisis
                     if a["grado"] is not None
-                ]
+]
 
                 factores = [
                     float(a["factor"])
                     for a in analisis
                     if a["factor"] is not None and float(a["factor"]) > 0
-                ]
+]
 
                 tass = [
                     int(a["tas"])
                     for a in analisis
                     if a["tas"] is not None and int(a["tas"]) > 0
-                ]
+]
+
 
                 grado = max(grados) if grados else None
                 factor = round(sum(factores) / len(factores), 4) if factores else None
