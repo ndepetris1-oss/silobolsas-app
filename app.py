@@ -391,16 +391,28 @@ def nuevo_monitoreo():
     qr = request.form.get("numero_qr")
     tipo = request.form.get("tipo")
     detalle = request.form.get("detalle")
-
     foto_evento = request.files.get("foto")
-    path_evento = None
 
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT estado_silo FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    if not silo or silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(
+            ok=False,
+            error="El silo está extraído. No se pueden cargar eventos."
+        ), 400
+
+    path_evento = None
     if foto_evento:
         os.makedirs("static/monitoreos", exist_ok=True)
         path_evento = f"static/monitoreos/{datetime.now().timestamp()}_{foto_evento.filename}"
         foto_evento.save(path_evento)
 
-    conn = get_db()
     conn.execute("""
         INSERT INTO monitoreos (
             numero_qr, fecha_evento, tipo, detalle, foto_evento
@@ -412,6 +424,7 @@ def nuevo_monitoreo():
         detalle,
         path_evento
     ))
+
     conn.commit()
     conn.close()
     return jsonify(ok=True)
@@ -590,11 +603,29 @@ def ver_silo(qr):
 # ======================
 # NUEVO MUESTREO (DESDE SILO)
 # ======================
-@app.route("/nuevo_muestreo/<qr>")
-def nuevo_muestreo_desde_silo(qr):
-    conn = get_db()
-    cur = conn.cursor()
+@app.route("/api/nuevo_muestreo", methods=["POST"])
+def api_nuevo_muestreo():
+    d = request.get_json(force=True, silent=True) or {}
+    qr = d.get("qr")
 
+    if not qr:
+        return jsonify(error="QR faltante"), 400
+
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT estado_silo FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    if not silo or silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(
+            ok=False,
+            error="El silo ya fue extraído. No se pueden cargar nuevos muestreos."
+        ), 400
+
+    cur = conn.cursor()
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
@@ -604,7 +635,8 @@ def nuevo_muestreo_desde_silo(qr):
     mid = cur.lastrowid
     conn.close()
 
-    return redirect(f"/muestreo/{mid}")
+    return jsonify(id_muestreo=mid)
+
 # ======================
 # VER MUESTREO
 # ======================
