@@ -153,7 +153,7 @@ def panel():
         tas_min = None
         fecha_extraccion_estimada = None
 
-          try:
+        try:
             if s["ultimo_muestreo"]:
                 analisis = conn.execute("""
                     SELECT grado, factor, tas
