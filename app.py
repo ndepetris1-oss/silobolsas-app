@@ -286,8 +286,22 @@ def api_nuevo_muestreo():
         return jsonify(error="QR faltante"), 400
 
     conn = get_db()
-    cur = conn.cursor()
 
+    # 🔒 BLOQUEO SI ESTÁ EXTRAÍDO
+    silo = conn.execute(
+        "SELECT estado_silo FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    if not silo or silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(
+            ok=False,
+            error="El silo ya fue extraído. No se pueden cargar nuevos muestreos."
+        ), 400
+
+    # ✅ SI ESTÁ ACTIVO, CREA EL MUESTREO
+    cur = conn.cursor()
     cur.execute("""
         INSERT INTO muestreos (numero_qr, fecha_muestreo)
         VALUES (?,?)
@@ -297,7 +311,7 @@ def api_nuevo_muestreo():
     mid = cur.lastrowid
     conn.close()
 
-    return jsonify(id_muestreo=mid)
+    return jsonify(ok=True, id_muestreo=mid)
 
 # ======================
 # ANALISIS — SECCION
