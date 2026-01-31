@@ -153,7 +153,7 @@ def panel():
         tas_min = None
         fecha_extraccion_estimada = None
 
-        try:
+          try:
             if s["ultimo_muestreo"]:
                 analisis = conn.execute("""
                     SELECT grado, factor, tas
@@ -161,33 +161,33 @@ def panel():
                     WHERE id_muestreo=?
                 """, (s["ultimo_muestreo"],)).fetchall()
 
-grados = []
-factores = []
-tass = []
+                grados = []
+                factores = []
+                tass = []
 
-for a in analisis:
-    # grado: solo si es numérico
-    try:
-        g = int(a["grado"])
-        grados.append(g)
-    except:
-        pass
+                for a in analisis:
+                    # grado: solo si es numérico
+                    try:
+                        g = int(a["grado"])
+                        grados.append(g)
+                    except:
+                        pass
 
-    # factor: solo positivos
-    try:
-        f = float(a["factor"])
-        if f > 0:
-            factores.append(f)
-    except:
-        pass
+                    # factor: solo positivos
+                    try:
+                        f = float(a["factor"])
+                        if f > 0:
+                            factores.append(f)
+                    except:
+                        pass
 
-    # tas: solo positivos
-    try:
-        t = int(a["tas"])
-        if t > 0:
-            tass.append(t)
-    except:
-        pass
+                    # tas: solo positivos
+                    try:
+                        t = int(a["tas"])
+                        if t > 0:
+                            tass.append(t)
+                    except:
+                        pass
 
                 grado = max(grados) if grados else None
                 factor = round(sum(factores) / len(factores), 4) if factores else None
