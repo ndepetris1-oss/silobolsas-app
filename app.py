@@ -130,7 +130,7 @@ def panel():
             SELECT m.id
             FROM muestreos m
             WHERE m.numero_qr = s.numero_qr
-            ORDER BY m.fecha_muestreo DESC
+            ORDER BY m.id DESC
             LIMIT 1
         ) ultimo_muestreo
         FROM silos s
