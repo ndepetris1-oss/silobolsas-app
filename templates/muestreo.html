@@ -138,7 +138,9 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <th>TAS (días)</th>
     </tr>
     <tr>
-      <td>{{ a.temperatura }}</td>
+      <td>
+        {{ a.temperatura if a.temperatura is not none else "-" }}
+</td>
       <td>{{ a.humedad }}</td>
       <td>{{ a.danados }}</td>
       <td>{{ a.quebrados }}</td>
@@ -148,9 +150,21 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
       <td>{{ "Sí" if a.insectos else "No" }}</td>
       <td>{{ a.chamico }}</td>
       {% if muestreo.cereal in ("Maíz","Trigo") %}
-      <td><b>{{ a.grado }}</b></td>
+     <td>
+       {% if a.grado is not none %}
+        <b>{{ a.grado }}</b>
+       {% else %}
+        -
+       {% endif %}
+</td>
       {% endif %}
-      <td><b>{{ (a.factor*100)|round(2) }}%</b></td>
+      <td>
+        {% if a.factor is not none %}
+          <b>{{ (a.factor * 100)|round(2) }}%</b>
+        {% else %}
+          -
+        {% endif %}
+</td>
       <td><b>{{ a.tas if a.tas is not none else "-" }}</b></td>
     </tr>
   </table>
