@@ -172,7 +172,13 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <p><i>Sin análisis cargado</i></p>
   {% endif %}
 
-  <button onclick="abrirAnalisis('{{ sec }}')">➕ Cargar / Editar análisis</button>
+  <button onclick='abrirAnalisis(
+  "{{ sec }}",
+  {{ a|tojson if a else "null" }}
+)'>
+  ➕ Cargar / Editar análisis
+</button>
+
 </div>
 
 {% endfor %}
@@ -230,7 +236,9 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 <script>
 let seccionActual=null;
 
-function abrirAnalisis(seccion){
+function abrirAnalisis(seccion, datos){
+  ...
+}
   seccionActual=seccion;
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
