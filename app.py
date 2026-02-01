@@ -248,10 +248,15 @@ def form():
 @app.route("/api/registrar_silo", methods=["POST"])
 def registrar_silo():
     d = request.get_json(force=True, silent=True)
-    print("DATA FORM:", d)
 
     if not d or not d.get("numero_qr"):
         return jsonify(ok=False, error="Datos inválidos"), 400
+
+    if d.get("lat") is None or d.get("lon") is None:
+        return jsonify(
+            ok=False,
+            error="No se pudo obtener la ubicación GPS. Active el GPS y reintente."
+        ), 400
 
     conn = get_db()
     conn.execute("""
