@@ -126,17 +126,17 @@ def panel():
     conn = get_db()
 
     silos = conn.execute("""
-        SELECT s.*,
-        (
-            SELECT m.id
-            FROM muestreos m
-            WHERE m.numero_qr = s.numero_qr
-            ORDER BY m.id DESC
-            LIMIT 1
-        ) ultimo_muestreo
-        FROM silos s
-        ORDER BY fecha_confeccion DESC
-    """).fetchall()
+    SELECT s.*,
+    (
+        SELECT m.id
+        FROM muestreos m
+        WHERE m.numero_qr = s.numero_qr
+        ORDER BY m.id DESC
+        LIMIT 1
+    ) ultimo_muestreo
+    FROM silos s
+    ORDER BY datetime(fecha_confeccion) DESC
+""").fetchall()
 
     registros = []
     
