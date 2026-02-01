@@ -174,7 +174,22 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
   <button onclick='abrirAnalisis(
   "{{ sec }}",
-  {{ a|tojson if a else "null" }}
+  {% if a %}
+  {
+    temperatura: {{ a.temperatura if a.temperatura is not none else "null" }},
+    humedad: {{ a.humedad if a.humedad is not none else "null" }},
+    ph: {{ a.ph if a.ph is not none else "null" }},
+    danados: {{ a.danados if a.danados is not none else "null" }},
+    quebrados: {{ a.quebrados if a.quebrados is not none else "null" }},
+    materia_extrana: {{ a.materia_extrana if a.materia_extrana is not none else "null" }},
+    chamico: {{ a.chamico if a.chamico is not none else "null" }},
+    olor: {{ a.olor if a.olor is not none else 0 }},
+    moho: {{ a.moho if a.moho is not none else 0 }},
+    insectos: {{ "true" if a.insectos else "false" }}
+  }
+  {% else %}
+  null
+  {% endif %}
 )'>
   ➕ Cargar / Editar análisis
 </button>
@@ -234,23 +249,40 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 </div>
 
 <script>
-let seccionActual=null;
+let seccionActual = null;
 
 function abrirAnalisis(seccion, datos){
-  ...
-}
-  seccionActual=seccion;
+  seccionActual = seccion;
+
   document.getElementById("tituloModal").innerText =
     "Análisis - " + seccion.toUpperCase();
 
+  // limpiar
   ["temperatura","humedad","danados","quebrados","materia_extrana","chamico"]
-    .forEach(id=>{ if(document.getElementById(id)) document.getElementById(id).value=""; });
+    .forEach(id => {
+      if(document.getElementById(id)) document.getElementById(id).value = "";
+    });
 
-  if(document.getElementById("ph")) ph.value="";
-  olor.value="0"; moho.value="0";
-  insectos.checked=false;
+  if(document.getElementById("ph")) ph.value = "";
+  olor.value = "0";
+  moho.value = "0";
+  insectos.checked = false;
 
-  document.getElementById("modal").style.display="flex";
+  // precargar si hay datos
+  if(datos){
+    if(datos.temperatura !== null) temperatura.value = datos.temperatura;
+    if(datos.humedad !== null) humedad.value = datos.humedad;
+    if(document.getElementById("ph") && datos.ph !== null) ph.value = datos.ph;
+    if(datos.danados !== null) danados.value = datos.danados;
+    if(datos.quebrados !== null) quebrados.value = datos.quebrados;
+    if(datos.materia_extrana !== null) materia_extrana.value = datos.materia_extrana;
+    if(datos.chamico !== null) chamico.value = datos.chamico;
+    olor.value = datos.olor ?? "0";
+    moho.value = datos.moho ?? "0";
+    insectos.checked = datos.insectos === true;
+  }
+
+  document.getElementById("modal").style.display = "flex";
 }
 
 function cerrarModal(){
