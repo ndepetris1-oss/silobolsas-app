@@ -658,7 +658,44 @@ def exportar():
         download_name="silos.csv",
         mimetype="text/csv"
     )
+# ======================
+# CALADO FORM
+# ======================
+@app.route("/api/informar_calado", methods=["POST"])
+def informar_calado():
+    d = request.get_json(force=True, silent=True)
+    qr = d.get("numero_qr")
 
+    if not qr:
+        return jsonify(ok=False, error="QR faltante"), 400
+
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT estado_silo FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+
+    if not silo or silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(
+            ok=False,
+            error="El silo está extraído. No se puede informar calado."
+        ), 400
+
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO muestreos (numero_qr, fecha_muestreo)
+        VALUES (?,?)
+    """, (
+        qr,
+        ahora().strftime("%Y-%m-%d %H:%M")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
 # ======================
 # RUN
 # ======================
