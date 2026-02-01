@@ -253,12 +253,6 @@ def registrar_silo():
     if not d or not d.get("numero_qr"):
         return jsonify(ok=False, error="Datos inválidos"), 400
 
-    if d.get("lat") is None or d.get("lon") is None:
-        return jsonify(
-            ok=False,
-            error="No se pudo obtener la ubicación GPS. Active el GPS y reintente."
-        ), 400
-
     conn = get_db()
     conn.execute("""
         INSERT INTO silos (
@@ -271,8 +265,8 @@ def registrar_silo():
         d["estado_grano"],
         "Activo",
         int(d["metros"]),
-        d.get("lat"),
-        d.get("lon"),
+        d.get("lat"),   # 👈 puede ser None, está bien
+        d.get("lon"),   # 👈 puede ser None, está bien
         ahora().strftime("%Y-%m-%d %H:%M")
     ))
 
