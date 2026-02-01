@@ -215,25 +215,6 @@ async function init(){
 
     return;
   }
-async function informarCalado(){
-  if(!confirm("¿Confirmar calado del silo ahora?")) return;
-
-  const res = await fetch("/api/informar_calado",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ numero_qr: qr })
-  });
-
-  const data = await res.json();
-
-  if(!data.ok){
-    alert(data.error || "Error al registrar calado");
-    return;
-  }
-
-  alert("🧪 Calado registrado correctamente");
-  location.reload();
-}
   // 🔴 BLOQUEO SI ESTÁ EXTRAÍDO
   if(data.estado_silo === "Extraído"){
     infoSilo.innerHTML = `
@@ -261,6 +242,7 @@ async function informarCalado(){
 
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
+  bloqueCalado.classList.remove("hidden");
 
   await cargarEventosPendientes();
   await cargarEventosResueltos();
@@ -323,6 +305,26 @@ tipo_evento.onchange=e=>{
   
 
 /* GUARDAR */
+async function informarCalado(){
+  if(!confirm("¿Confirmar calado del silo ahora?")) return;
+
+  const res = await fetch("/api/informar_calado",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ numero_qr: qr })
+  });
+
+  const data = await res.json();
+
+  if(!data.ok){
+    alert(data.error || "Error al registrar calado");
+    return;
+  }
+
+  alert("🧪 Calado registrado correctamente");
+  location.reload();
+}
+
 async function guardar(){
   const btn = btnGuardar;
   btn.disabled = true;
