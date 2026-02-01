@@ -152,6 +152,24 @@ async function nuevoMuestreo(){
 }
 </script>
 
+<script>
+async function nuevoMuestreo(){
+  const res = await fetch("/api/nuevo_muestreo",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  });
+
+  const data = await res.json();
+
+  if(data.id_muestreo){
+    location.href = "/muestreo/" + data.id_muestreo;
+  }else{
+    alert(data.error || "Error al crear muestreo");
+  }
+}
+</script>
+
 {% if not muestreos %}
   <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
 {% endif %}
