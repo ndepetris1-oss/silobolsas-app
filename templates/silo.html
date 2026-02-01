@@ -130,11 +130,27 @@ th{background:#a5d6a7}
 {% endif %}
   
 <h3>📊 Muestreos</h3>
-<button
-  style="margin:10px 0"
-  onclick="location.href='/nuevo_muestreo/{{ silo.numero_qr }}'">
+<button style="margin:10px 0" onclick="nuevoMuestreo()">
   ➕ Nuevo muestreo
 </button>
+
+<script>
+async function nuevoMuestreo(){
+  const res = await fetch("/api/nuevo_muestreo",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  });
+
+  const data = await res.json();
+
+  if(data.id_muestreo){
+    location.href = "/muestreo/" + data.id_muestreo;
+  }else{
+    alert(data.error || "Error al crear muestreo");
+  }
+}
+</script>
 
 {% if not muestreos %}
   <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
