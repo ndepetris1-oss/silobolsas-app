@@ -731,7 +731,7 @@ def exportar():
 # ======================
 @app.route("/api/informar_calado", methods=["POST"])
 def informar_calado():
-    d = request.get_json(force=True, silent=True)
+    d = request.get_json(force=True, silent=True) or {}
     qr = d.get("numero_qr")
 
     if not qr:
