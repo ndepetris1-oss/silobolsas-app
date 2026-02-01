@@ -191,26 +191,21 @@ async function obtenerGPS(){
 /* INIT */
 async function init(){
   if(!qr) return;
-  if(!data.existe){
-  modo = "registro";
-
-  try{
-    await obtenerGPSObligatorio();
-    bloqueRegistro.classList.remove("hidden");
-  }catch{
-    btnGuardar.disabled = true;
-  }
-
-  return;
-}
-
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
 
+  // 🆕 REGISTRO NUEVO → GPS OBLIGATORIO
   if(!data.existe){
-    modo="registro";
-    bloqueRegistro.classList.remove("hidden");
+    modo = "registro";
+
+    try{
+      await obtenerGPSObligatorio();
+      bloqueRegistro.classList.remove("hidden");
+    }catch{
+      btnGuardar.disabled = true;
+    }
+
     return;
   }
 
@@ -225,19 +220,17 @@ async function init(){
     `;
     infoSilo.classList.remove("hidden");
 
-    // ocultamos todo lo operativo
     bloqueMonitoreo.classList.add("hidden");
     bloqueExtraccion.classList.add("hidden");
     bloqueEventosPendientes.classList.add("hidden");
     bloqueResolucion.classList.add("hidden");
 
-    // deshabilitamos guardar
     btnGuardar.disabled = true;
     return;
   }
 
-  // ✅ SILO ACTIVO (flujo normal)
-  modo="operacion";
+  // ✅ SILO ACTIVO
+  modo = "operacion";
   infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
   infoSilo.classList.remove("hidden");
 
