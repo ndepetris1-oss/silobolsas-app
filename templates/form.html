@@ -345,16 +345,29 @@ function resolverEvento(id){
 tipo_evento.onchange=e=>{
   detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
 };
-  
+  chkTemp.onchange = e => {
+  bloqueTemperaturas.classList.toggle("hidden", !e.target.checked);
+};
 
 /* GUARDAR */
 async function informarCalado(){
   if(!confirm("¿Confirmar calado del silo ahora?")) return;
 
+  const payload = {
+    numero_qr: qr,
+    informar_temperatura: chkTemp.checked
+  };
+
+  if(chkTemp.checked){
+    payload.temp_punta = temp_punta.value;
+    payload.temp_medio = temp_medio.value;
+    payload.temp_final = temp_final.value;
+  }
+
   const res = await fetch("/api/informar_calado",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ numero_qr: qr })
+    body: JSON.stringify(payload)
   });
 
   const data = await res.json();
