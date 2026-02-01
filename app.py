@@ -102,7 +102,7 @@ init_db()
 def api_silo(qr):
     conn = get_db()
     s = conn.execute(
-        "SELECT cereal, fecha_confeccion FROM silos WHERE numero_qr=?",
+        "SELECT cereal, fecha_confeccion, estado_silo FROM silos WHERE numero_qr=?",
         (qr,)
     ).fetchone()
     conn.close()
@@ -113,7 +113,8 @@ def api_silo(qr):
     return jsonify(
         existe=True,
         cereal=s["cereal"],
-        fecha_confeccion=s["fecha_confeccion"]
+        fecha_confeccion=s["fecha_confeccion"],
+        estado_silo=s["estado_silo"]
     )
 
 # ======================
