@@ -191,7 +191,19 @@ async function obtenerGPS(){
 /* INIT */
 async function init(){
   if(!qr) return;
-  await obtenerGPS();
+  if(!data.existe){
+  modo = "registro";
+
+  try{
+    await obtenerGPSObligatorio();
+    bloqueRegistro.classList.remove("hidden");
+  }catch{
+    btnGuardar.disabled = true;
+  }
+
+  return;
+}
+
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
@@ -298,6 +310,11 @@ async function guardar(){
   btn.disabled = true;
 
   if(modo === "registro"){
+  if(lat === null || lon === null){
+  alert("📍 Debe activar la ubicación para registrar el silo");
+  btn.disabled = false;
+  return;
+}
     await fetch("/api/registrar_silo",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -358,6 +375,36 @@ async function guardar(){
   }
 
   btn.disabled = false;
+}
+async function obtenerGPSObligatorio(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){
+      alert("Este dispositivo no soporta GPS");
+      reject();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        resolve();
+      },
+      err=>{
+        alert(
+          "📍 Ubicación requerida\n\n" +
+          "Debés activar la ubicación del dispositivo para registrar el silo.\n" +
+          "Activá el GPS y aceptá el permiso."
+        );
+        reject(err);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  });
 }
 
 init();
