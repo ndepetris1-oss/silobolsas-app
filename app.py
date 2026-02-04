@@ -312,22 +312,18 @@ def registrar_silo():
     d = request.get_json(force=True, silent=True)
 
     if not d or not d.get("numero_qr"):
-        return jsonify(ok=False, error="Datos inválidos"), 400
+        return jsonify(ok=False, error="QR faltante"), 400
 
     conn = get_db()
     conn.execute("""
         INSERT INTO silos (
-            numero_qr, cereal, estado_grano, estado_silo,
-            metros, lat, lon, fecha_confeccion
-        ) VALUES (?,?,?,?,?,?,?,?)
+            numero_qr,
+            estado_silo,
+            fecha_confeccion
+        ) VALUES (?,?,?)
     """, (
         d["numero_qr"],
-        d["cereal"],
-        d["estado_grano"],
         "Activo",
-        int(d["metros"]),
-        d.get("lat"),   # 👈 puede ser None, está bien
-        d.get("lon"),   # 👈 puede ser None, está bien
         ahora().strftime("%Y-%m-%d %H:%M")
     ))
 
