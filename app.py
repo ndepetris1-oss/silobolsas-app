@@ -259,13 +259,17 @@ def panel():
 @app.route("/comercial")
 def comercial():
     conn = get_db()
-
     rows = conn.execute("""
-        SELECT cereal, pizarra, dolar, fecha
+        SELECT cereal,
+               pizarra_auto,
+               pizarra_manual,
+               usar_manual,
+               obs_precio,
+               dolar,
+               fecha
         FROM mercado
         ORDER BY cereal
     """).fetchall()
-
     conn.close()
 
     return render_template("comercial.html", mercado=rows)
@@ -273,18 +277,25 @@ def comercial():
 # ======================
 # COMERCIAL – API
 # ======================
-@app.route("/api/mercado", methods=["POST"])
-def api_mercado():
-    d = request.get_json(force=True, silent=True)
+@app.route("/api/mercado/manual", methods=["POST"])
+def mercado_manual():
+    d = request.get_json()
 
     conn = get_db()
     conn.execute("""
         UPDATE mercado
-        SET pizarra=?, dolar=?, fecha=CURRENT_TIMESTAMP
+        SET
+            pizarra_manual=?,
+            usar_manual=?,
+            obs_precio=?,
+            dolar=?,
+            fecha=CURRENT_TIMESTAMP
         WHERE cereal=?
     """, (
-        float(d["pizarra"]),
-        float(d["dolar"]),
+        d.get("pizarra_manual"),
+        1 if d.get("usar_manual") else 0,
+        d.get("obs_precio"),
+        d.get("dolar"),
         d["cereal"]
     ))
     conn.commit()
