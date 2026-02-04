@@ -256,6 +256,28 @@ def comercial():
     conn.close()
 
     return render_template("comercial.html", mercado=rows)
+    
+# ======================
+# COMERCIAL – API
+# ======================
+@app.route("/api/mercado", methods=["POST"])
+def api_mercado():
+    d = request.get_json(force=True, silent=True)
+
+    conn = get_db()
+    conn.execute("""
+        UPDATE mercado
+        SET pizarra=?, dolar=?, fecha=CURRENT_TIMESTAMP
+        WHERE cereal=?
+    """, (
+        float(d["pizarra"]),
+        float(d["dolar"]),
+        d["cereal"]
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
 
 # ======================
 # FORM
