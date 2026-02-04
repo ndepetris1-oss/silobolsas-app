@@ -132,6 +132,28 @@ th{background:#a5d6a7}
     🧪 <b>Último calado:</b> 2026-02-01 11:55<br>
     ⚠️ Análisis pendiente de carga
     </div>
+  
+  {% if precio_estimado %}
+<div class="alert" style="background:#e8f5e9;border-left:6px solid #2e7d32">
+  <h3>💰 Precio estimado</h3>
+
+  <p>Pizarra {{ silo.cereal }}:
+     <b>{{ mercado.pizarra }} ARS/TN</b></p>
+
+  <p>Factor comercial:
+     <b>{{ (precio_estimado / mercado.pizarra)|round(4) }}</b></p>
+
+  <p>Precio ajustado:
+     <b>{{ precio_estimado }} ARS/TN</b></p>
+
+  <p>Dólar:
+     <b>{{ mercado.dolar }}</b></p>
+
+  <p style="font-size:18px">
+    👉 <b>{{ precio_usd }} USD/TN</b>
+  </p>
+</div>
+{% endif %}
 
 <h3>📊 Muestreos</h3>
 <button style="margin:10px 0" onclick="nuevoMuestreo()">
