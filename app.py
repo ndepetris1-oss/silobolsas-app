@@ -671,8 +671,16 @@ def ver_silo(qr):
         "SELECT * FROM silos WHERE numero_qr=?",
         (qr,)
     ).fetchone()
+    
+    mercado = conn.execute("""
+    SELECT pizarra, dolar
+    FROM mercado
+    WHERE cereal = ?
+""", (silo["cereal"],)).fetchone()
 
     if not silo:
+        precio_estimado = None
+        precio_usd = None
         conn.close()
         return "Silo no encontrado", 404
 
@@ -692,6 +700,21 @@ def ver_silo(qr):
     FROM analisis
     WHERE id_muestreo=?
 """, (m["id"],)).fetchall()
+
+        if muestreos and mercado:
+    factores = []
+
+    for sec in ["punta", "medio", "final"]:
+        a = por_seccion.get(sec)
+        if a and a["factor"] is not None:
+            factores.append(a["factor"])
+
+        if factores:
+        factor_prom = sum(factores) / len(factores)
+
+        if mercado["pizarra"] and mercado["dolar"]:
+            precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
+            precio_usd = round(precio_estimado / mercado["dolar"], 2)
 
         por_seccion = {a["seccion"]: a for a in analisis}
 
