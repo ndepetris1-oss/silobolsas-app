@@ -106,15 +106,25 @@ def init_db():
     cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
 
     for cereal in cereales_base:
-        c.execute("""
-            INSERT OR IGNORE INTO mercado (cereal, pizarra, dolar, fecha)
-            VALUES (?,?,?,?)
-        """, (
-            cereal,
-            0,
-            0,
-            ahora().strftime("%Y-%m-%d %H:%M")
-        ))
+    c.execute("""
+     INSERT OR IGNORE INTO mercado (
+         cereal,
+          pizarra_auto,
+        pizarra_manual,
+        usar_manual,
+        dolar,
+        fecha
+)
+VALUES (?,?,?,?,?,?)
+""", 
+(
+    cereal,
+    0,      # pizarra_auto
+    0,      # pizarra_manual
+    0,      # usar_manual
+    0,      # dolar
+    ahora().strftime("%Y-%m-%d %H:%M")
+)
 
     conn.commit()
     conn.close()
@@ -691,10 +701,14 @@ def ver_silo(qr):
         return "Silo no encontrado", 404
 
     mercado = conn.execute("""
-        SELECT pizarra, dolar
-        FROM mercado
-        WHERE cereal = ?
-    """, (silo["cereal"],)).fetchone()
+        SELECT
+    CASE
+        WHEN usar_manual = 1 THEN pizarra_manual
+        ELSE pizarra_auto
+    END AS pizarra,
+    dolar
+FROM mercado
+WHERE cereal = ?
 
     muestreos_raw = conn.execute("""
         SELECT m.id, m.fecha_muestreo,
