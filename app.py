@@ -671,18 +671,16 @@ def ver_silo(qr):
         "SELECT * FROM silos WHERE numero_qr=?",
         (qr,)
     ).fetchone()
-    
-    mercado = conn.execute("""
-    SELECT pizarra, dolar
-    FROM mercado
-    WHERE cereal = ?
-""", (silo["cereal"],)).fetchone()
 
     if not silo:
-        precio_estimado = None
-        precio_usd = None
         conn.close()
         return "Silo no encontrado", 404
+
+    mercado = conn.execute("""
+        SELECT pizarra, dolar
+        FROM mercado
+        WHERE cereal = ?
+    """, (silo["cereal"],)).fetchone()
 
     muestreos_raw = conn.execute("""
         SELECT m.id, m.fecha_muestreo,
@@ -693,30 +691,30 @@ def ver_silo(qr):
     """, (qr,)).fetchall()
 
     muestreos = []
+    precio_estimado = None
+    precio_usd = None
 
-    for m in muestreos_raw:
+    for idx, m in enumerate(muestreos_raw):
         analisis = conn.execute("""
-    SELECT seccion, grado, factor, tas, temperatura
-    FROM analisis
-    WHERE id_muestreo=?
-""", (m["id"],)).fetchall()
-
-        if muestreos and mercado:
-    factores = []
-
-    for sec in ["punta", "medio", "final"]:
-        a = por_seccion.get(sec)
-        if a and a["factor"] is not None:
-            factores.append(a["factor"])
-
-        if factores:
-        factor_prom = sum(factores) / len(factores)
-
-        if mercado["pizarra"] and mercado["dolar"]:
-            precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
-            precio_usd = round(precio_estimado / mercado["dolar"], 2)
+            SELECT seccion, grado, factor, tas, temperatura
+            FROM analisis
+            WHERE id_muestreo=?
+        """, (m["id"],)).fetchall()
 
         por_seccion = {a["seccion"]: a for a in analisis}
+
+        # 👉 SOLO para el último muestreo
+        if idx == 0 and mercado:
+            factores = []
+            for sec in ["punta", "medio", "final"]:
+                a = por_seccion.get(sec)
+                if a and a["factor"] is not None:
+                    factores.append(a["factor"])
+
+            if factores and mercado["pizarra"] and mercado["dolar"]:
+                factor_prom = sum(factores) / len(factores)
+                precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
+                precio_usd = round(precio_estimado / mercado["dolar"], 2)
 
         muestreos.append({
             "id": m["id"],
@@ -750,19 +748,11 @@ def ver_silo(qr):
         silo=silo,
         muestreos=muestreos,
         eventos_pendientes=eventos_pendientes,
-        eventos_resueltos=eventos_resueltos
+        eventos_resueltos=eventos_resueltos,
+        mercado=mercado,
+        precio_estimado=precio_estimado,
+        precio_usd=precio_usd
     )
-    
-return render_template(
-    "silo.html",
-    silo=silo,
-    muestreos=muestreos,
-    eventos_pendientes=eventos_pendientes,
-    eventos_resueltos=eventos_resueltos,
-    mercado=mercado,
-    precio_estimado=precio_estimado,
-    precio_usd=precio_usd
-)
 
 # ======================
 # VER MUESTREO
