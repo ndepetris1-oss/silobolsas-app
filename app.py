@@ -91,14 +91,14 @@ def init_db():
     """)
 
     c.execute("""
-CREATE TABLE IF NOT EXISTS mercado (
-    cereal TEXT PRIMARY KEY,
-    pizarra_auto REAL,
-    pizarra_manual REAL,
-    usar_manual INTEGER DEFAULT 0,
-    obs_precio TEXT,
-    dolar REAL,
-    fecha TEXT
+    CREATE TABLE IF NOT EXISTS mercado (
+        cereal TEXT PRIMARY KEY,
+        pizarra_auto REAL,
+        pizarra_manual REAL,
+        usar_manual INTEGER DEFAULT 0,
+        obs_precio TEXT,
+        dolar REAL,
+        fecha TEXT
 )
 """)
 
