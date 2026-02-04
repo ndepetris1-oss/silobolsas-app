@@ -89,36 +89,33 @@ def init_db():
         foto_resolucion TEXT
     )
     """)
-    
+
     c.execute("""
     CREATE TABLE IF NOT EXISTS mercado (
-        # Datos iniciales mercado
-    cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
-
-    for ceral in cereales_base:
-        c.execute("""
-            INSERT OR IGNORE INTO mercado (cereal, pizarra, dolar, fecha)
-            VALUES (?,?,?,?)
-        """, (
-            ceral,
-            0,
-            0,
-            ahora().strftime("%Y-%m-%d %H:%M")
-        ))
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cereal TEXT UNIQUE,
+        cereal TEXT PRIMARY KEY,
         pizarra REAL,
         dolar REAL,
         fecha TEXT
     )
     """)
 
+    # Datos iniciales mercado
+    cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
+
+    for cereal in cereales_base:
+        c.execute("""
+            INSERT OR IGNORE INTO mercado (cereal, pizarra, dolar, fecha)
+            VALUES (?,?,?,?)
+        """, (
+            cereal,
+            0,
+            0,
+            ahora().strftime("%Y-%m-%d %H:%M")
+        ))
+
     conn.commit()
-    
     conn.close()
 
-init_db()
 
 # ======================
 # API — CONSULTA SILO
