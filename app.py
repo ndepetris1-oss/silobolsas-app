@@ -319,11 +319,15 @@ def registrar_silo():
     conn.execute("""
         INSERT INTO silos (
             numero_qr,
+            cereal,
+            estado_grano,
             estado_silo,
             fecha_confeccion
-        ) VALUES (?,?,?)
+        ) VALUES (?,?,?,?,?)
     """, (
-        d["numero_qr"],
+        d.get("numero_qr"),
+        d.get("cereal"),
+        d.get("estado_grano"),
         "Activo",
         ahora().strftime("%Y-%m-%d %H:%M")
     ))
