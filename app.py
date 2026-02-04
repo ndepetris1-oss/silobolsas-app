@@ -752,6 +752,17 @@ def ver_silo(qr):
         eventos_pendientes=eventos_pendientes,
         eventos_resueltos=eventos_resueltos
     )
+    
+return render_template(
+    "silo.html",
+    silo=silo,
+    muestreos=muestreos,
+    eventos_pendientes=eventos_pendientes,
+    eventos_resueltos=eventos_resueltos,
+    mercado=mercado,
+    precio_estimado=precio_estimado,
+    precio_usd=precio_usd
+)
 
 # ======================
 # VER MUESTREO
