@@ -92,6 +92,16 @@ def init_db():
 
     conn.commit()
     conn.close()
+    
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS mercado (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cereal TEXT UNIQUE,
+        pizarra REAL,
+        dolar REAL,
+        fecha TEXT
+    )
+    """)
 
 init_db()
 
@@ -229,6 +239,23 @@ def panel():
 
     conn.close()
     return render_template("panel.html", registros=registros)
+    
+# ======================
+# COMERCIAL – PANTALLA
+# ======================
+@app.route("/comercial")
+def comercial():
+    conn = get_db()
+
+    rows = conn.execute("""
+        SELECT cereal, pizarra, dolar, fecha
+        FROM mercado
+        ORDER BY cereal
+    """).fetchall()
+
+    conn.close()
+
+    return render_template("comercial.html", mercado=rows)
 
 # ======================
 # FORM
