@@ -89,12 +89,23 @@ def init_db():
         foto_resolucion TEXT
     )
     """)
-
-    conn.commit()
-    conn.close()
     
     c.execute("""
     CREATE TABLE IF NOT EXISTS mercado (
+        # Datos iniciales mercado
+    cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
+
+    for ceral in cereales_base:
+        c.execute("""
+            INSERT OR IGNORE INTO mercado (cereal, pizarra, dolar, fecha)
+            VALUES (?,?,?,?)
+        """, (
+            ceral,
+            0,
+            0,
+            ahora().strftime("%Y-%m-%d %H:%M")
+        ))
+
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         cereal TEXT UNIQUE,
         pizarra REAL,
@@ -102,6 +113,10 @@ def init_db():
         fecha TEXT
     )
     """)
+
+    conn.commit()
+    
+    conn.close()
 
 init_db()
 
