@@ -153,6 +153,17 @@ th{background:#a5d6a7}
     👉 <b>{{ precio_usd }} USD/TN</b>
   </p>
 </div>
+  
+  {% if factor_prom %}
+<div class="card mt-3">
+  <div class="card-body">
+    <h5>📊 Comercial</h5>
+    <p><strong>Factor promedio:</strong> {{ factor_prom }}</p>
+    {% if tas_usada %}
+      <p><strong>TAS usada:</strong> {{ tas_usada }} días</p>
+    {% endif %}
+  </div>
+</div>
 {% endif %}
 
 <h3>📊 Muestreos</h3>
