@@ -106,15 +106,15 @@ def init_db():
     cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
 
     for cereal in cereales_base:
-    c.execute("""
-        INSERT OR IGNORE INTO mercado (
-            cereal,
-            pizarra_auto,
-            pizarra_manual,
-            usar_manual,
-            dolar,
-            fecha
-        )
+        c.execute("""
+            INSERT OR IGNORE INTO mercado (
+                cereal,
+                pizarra_auto,
+                pizarra_manual,
+                usar_manual,
+                dolar,
+                fecha
+            )
         VALUES (?,?,?,?,?,?)
     """, (
         cereal,
