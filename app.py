@@ -732,45 +732,50 @@ def ver_silo(qr):
         por_seccion = {a["seccion"]: a for a in analisis}
 
         # 👉 SOLO para el último muestreo
- factor_prom = None
+factor_prom = None
 tas_usada = None
 
-if idx == 0:
-    factores = []
-    tass = []
+for idx, m in enumerate(muestreos_raw):
+    analisis = conn.execute("""
+        SELECT seccion, grado, factor, tas, temperatura
+        FROM analisis
+        WHERE id_muestreo=?
+    """, (m["id"],)).fetchall()
 
-    for sec in ["punta", "medio", "final"]:
-        a = por_seccion.get(sec)
-        if a:
-            if a["factor"] is not None:
-                factores.append(a["factor"])
-            if a["tas"] is not None:
-                tass.append(a["tas"])
+    por_seccion = {a["seccion"]: a for a in analisis}
 
-    if factores:
-        factor_prom = round(sum(factores) / len(factores), 4)
+    # 👉 SOLO para el último muestreo
+    if idx == 0:
+        factores = []
+        tass = []
 
-    if tass:
-        tas_usada = min(tass)
+        for sec in ["punta", "medio", "final"]:
+            a = por_seccion.get(sec)
+            if a:
+                if a["factor"] is not None:
+                    factores.append(a["factor"])
+                if a["tas"] is not None:
+                    tass.append(a["tas"])
 
-    if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
-        precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
-        precio_usd = round(precio_estimado / mercado["dolar"], 2)
+        if factores:
+            factor_prom = round(sum(factores) / len(factores), 4)
 
+        if tass:
+            tas_usada = min(tass)
 
-            if factores and mercado["pizarra"] and mercado["dolar"]:
-                factor_prom = sum(factores) / len(factores)
-                precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
-                precio_usd = round(precio_estimado / mercado["dolar"], 2)
+        if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
+            precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
+            precio_usd = round(precio_estimado / mercado["dolar"], 2)
 
-        muestreos.append({
-            "id": m["id"],
-            "fecha_muestreo": m["fecha_muestreo"],
-            "dias": m["dias"],
-            "punta": por_seccion.get("punta"),
-            "medio": por_seccion.get("medio"),
-            "final": por_seccion.get("final")
-        })
+    muestreos.append({
+        "id": m["id"],
+        "fecha_muestreo": m["fecha_muestreo"],
+        "dias": m["dias"],
+        "punta": por_seccion.get("punta"),
+        "medio": por_seccion.get("medio"),
+        "final": por_seccion.get("final")
+    })
+
 
     eventos_pendientes = conn.execute("""
         SELECT tipo, fecha_evento, foto_evento
