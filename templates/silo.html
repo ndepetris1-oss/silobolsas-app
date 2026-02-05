@@ -133,15 +133,22 @@ th{background:#a5d6a7}
     ⚠️ Análisis pendiente de carga
     </div>
   
-  {% if precio_estimado %}
+{% if precio_estimado and mercado and mercado.pizarra and mercado.dolar %}
 <div class="alert" style="background:#e8f5e9;border-left:6px solid #2e7d32">
   <h3>💰 Precio estimado</h3>
 
   <p>Pizarra {{ silo.cereal }}:
      <b>{{ mercado.pizarra }} ARS/TN</b></p>
 
-  <p>Factor comercial:
-     <b>{{ (precio_estimado / mercado.pizarra)|round(4) }}</b></p>
+  {% if factor_prom %}
+    <p>Factor comercial:
+       <b>{{ factor_prom }}</b></p>
+  {% endif %}
+
+  {% if tas_usada %}
+    <p>TAS utilizada:
+       <b>{{ tas_usada }} días</b></p>
+  {% endif %}
 
   <p>Precio ajustado:
      <b>{{ precio_estimado }} ARS/TN</b></p>
@@ -153,41 +160,12 @@ th{background:#a5d6a7}
     👉 <b>{{ precio_usd }} USD/TN</b>
   </p>
 </div>
-  
-  {% if factor_prom %}
-<div class="card mt-3">
-  <div class="card-body">
-    <h5>📊 Comercial</h5>
-    <p><strong>Factor promedio:</strong> {{ factor_prom }}</p>
-    {% if tas_usada %}
-      <p><strong>TAS usada:</strong> {{ tas_usada }} días</p>
-    {% endif %}
-  </div>
-</div>
 {% endif %}
 
 <h3>📊 Muestreos</h3>
 <button style="margin:10px 0" onclick="nuevoMuestreo()">
   ➕ Nuevo muestreo
 </button>
-
-<script>
-async function nuevoMuestreo(){
-  const res = await fetch("/api/nuevo_muestreo",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
-  });
-
-  const data = await res.json();
-
-  if(data.id_muestreo){
-    location.href = "/muestreo/" + data.id_muestreo;
-  }else{
-    alert(data.error || "Error al crear muestreo");
-  }
-}
-</script>
 
 <script>
 async function nuevoMuestreo(){
