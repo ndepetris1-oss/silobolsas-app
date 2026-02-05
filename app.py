@@ -345,13 +345,19 @@ def registrar_silo():
             cereal,
             estado_grano,
             estado_silo,
+            metros,
+            lat,
+            lon,
             fecha_confeccion
-        ) VALUES (?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?)
     """, (
         d.get("numero_qr"),
         d.get("cereal"),
         d.get("estado_grano"),
         "Activo",
+        d.get("metros"),
+        d.get("lat"),
+        d.get("lon"),
         ahora().strftime("%Y-%m-%d %H:%M")
     ))
 
