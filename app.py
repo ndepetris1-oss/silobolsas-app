@@ -732,12 +732,31 @@ def ver_silo(qr):
         por_seccion = {a["seccion"]: a for a in analisis}
 
         # 👉 SOLO para el último muestreo
-        if idx == 0 and mercado:
-            factores = []
-            for sec in ["punta", "medio", "final"]:
-                a = por_seccion.get(sec)
-                if a and a["factor"] is not None:
-                    factores.append(a["factor"])
+ factor_prom = None
+tas_usada = None
+
+if idx == 0:
+    factores = []
+    tass = []
+
+    for sec in ["punta", "medio", "final"]:
+        a = por_seccion.get(sec)
+        if a:
+            if a["factor"] is not None:
+                factores.append(a["factor"])
+            if a["tas"] is not None:
+                tass.append(a["tas"])
+
+    if factores:
+        factor_prom = round(sum(factores) / len(factores), 4)
+
+    if tass:
+        tas_usada = min(tass)
+
+    if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
+        precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
+        precio_usd = round(precio_estimado / mercado["dolar"], 2)
+
 
             if factores and mercado["pizarra"] and mercado["dolar"]:
                 factor_prom = sum(factores) / len(factores)
@@ -779,8 +798,11 @@ def ver_silo(qr):
         eventos_resueltos=eventos_resueltos,
         mercado=mercado,
         precio_estimado=precio_estimado,
-        precio_usd=precio_usd
-    )
+        precio_usd=precio_usd,
+        factor_prom=factor_prom,
+        tas_usada=tas_usada
+)
+
 
 # ======================
 # VER MUESTREO
