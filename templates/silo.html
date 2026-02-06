@@ -128,13 +128,14 @@ th{background:#a5d6a7}
     </div>
   {% endfor %}
 {% endif %}
-     {% if analisis_pendiente %}
-      <div class="alerta">
-      🧪 <b>Último calado:</b> {{ muestreos[0].fecha_muestreo }}<br>
-      ⚠️ Análisis pendiente de carga
-      </div>
-{% endif %}
   
+{% if analisis_pendiente %}
+  <div class="alerta">
+    🧪 <b>Último calado:</b> {{ muestreos[0].fecha_muestreo }}<br>
+    ⚠️ Análisis pendiente de carga
+  </div>
+{% endif %}
+
 {% if precio_estimado and mercado and mercado.pizarra and mercado.dolar %}
 <div class="alert" style="background:#e8f5e9;border-left:6px solid #2e7d32">
   <h3>💰 Precio estimado</h3>
