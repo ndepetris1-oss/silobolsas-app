@@ -700,11 +700,6 @@ def ver_silo(qr):
         "SELECT * FROM silos WHERE numero_qr=?",
         (qr,)
     ).fetchone()
-    
-    # 🛡 Inicialización segura para el template
-    analisis_pendiente = False
-    factor_prom = None
-    tas_usada = None
 
     if not silo:
         conn.close()
@@ -729,20 +724,7 @@ def ver_silo(qr):
         ORDER BY m.fecha_muestreo DESC
     """, (qr,)).fetchall()
 
-    # 🔎 Verificar si el último muestreo tiene análisis cargados
-ultimo_muestreo_id = muestreos_raw[0]["id"] if muestreos_raw else None
-analisis_pendiente = False
-
-        if ultimo_muestreo_id:
-            cant = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM analisis
-                WHERE id_muestreo = ?
-            """, (ultimo_muestreo_id,)).fetchone()["c"]
-
-    analisis_pendiente = (cant == 0)
-
-        muestreos = []
+    muestreos = []
     precio_estimado = None
     precio_usd = None
     factor_prom = None
@@ -758,7 +740,6 @@ analisis_pendiente = False
 
         por_seccion = {a["seccion"]: a for a in analisis}
 
-        # 👉 SOLO para el último muestreo
         if idx == 0:
             if not analisis:
                 analisis_pendiente = True
@@ -812,18 +793,18 @@ analisis_pendiente = False
     conn.close()
 
     return render_template(
-    "silo.html",
-    silo=silo,
-    muestreos=muestreos,
-    eventos_pendientes=eventos_pendientes,
-    eventos_resueltos=eventos_resueltos,
-    mercado=mercado,
-    precio_estimado=precio_estimado,
-    precio_usd=precio_usd,
-    factor_prom=factor_prom,
-    tas_usada=tas_usada,
-    analisis_pendiente=analisis_pendiente
-)
+        "silo.html",
+        silo=silo,
+        muestreos=muestreos,
+        eventos_pendientes=eventos_pendientes,
+        eventos_resueltos=eventos_resueltos,
+        mercado=mercado,
+        precio_estimado=precio_estimado,
+        precio_usd=precio_usd,
+        factor_prom=factor_prom,
+        tas_usada=tas_usada,
+        analisis_pendiente=analisis_pendiente
+    )
 
 # ======================
 # VER MUESTREO
