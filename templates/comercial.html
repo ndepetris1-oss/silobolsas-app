@@ -71,7 +71,7 @@ button:hover{background:#2e7d32}
   <th>Observación</th>
   <th>Dólar</th>
   <th>Comparar</th>
-  <th></th>
+  <th>Guardar</th>
 </tr>
 
 {% for m in mercado %}
@@ -89,22 +89,34 @@ button:hover{background:#2e7d32}
   </td>
 
   <td>
-  <input type="number" step="0.01"
-         id="dolar_{{ m.cereal }}"
-         value="{{ m.dolar or '' }}">
-</td>
+    <input type="number" step="0.01"
+           id="manual_{{ m.cereal }}"
+           value="{{ m.pizarra_manual or '' }}">
+  </td>
 
-<td>
-  <a href="/comercial/{{ m.cereal }}">
-    <button style="background:#1976d2">
-      📊 Comparar
-    </button>
-  </a>
-</td>
+  <td>
+    <input type="text"
+           id="obs_{{ m.cereal }}"
+           value="{{ m.obs_precio or '' }}">
+  </td>
 
-<td>
-  <button onclick="guardar('{{ m.cereal }}')">💾</button>
-</td>
+  <td>
+    <input type="number" step="0.01"
+           id="dolar_{{ m.cereal }}"
+           value="{{ m.dolar or '' }}">
+  </td>
+
+  <td>
+    <a href="/comercial/{{ m.cereal }}">
+      <button style="background:#1976d2">
+        📊 Comparar
+      </button>
+    </a>
+  </td>
+
+  <td>
+    <button onclick="guardar('{{ m.cereal }}')">💾</button>
+  </td>
 </tr>
 {% endfor %}
 </table>
