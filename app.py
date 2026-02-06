@@ -742,11 +742,12 @@ analisis_pendiente = False
 
     analisis_pendiente = (cant == 0)
 
-    muestreos = []
+        muestreos = []
     precio_estimado = None
     precio_usd = None
     factor_prom = None
     tas_usada = None
+    analisis_pendiente = False
 
     for idx, m in enumerate(muestreos_raw):
         analisis = conn.execute("""
@@ -759,26 +760,29 @@ analisis_pendiente = False
 
         # 👉 SOLO para el último muestreo
         if idx == 0:
-            factores = []
-            tass = []
+            if not analisis:
+                analisis_pendiente = True
+            else:
+                factores = []
+                tass = []
 
-            for sec in ["punta", "medio", "final"]:
-                a = por_seccion.get(sec)
-                if a:
-                    if a["factor"] is not None:
-                        factores.append(a["factor"])
-                    if a["tas"] is not None:
-                        tass.append(a["tas"])
+                for sec in ["punta", "medio", "final"]:
+                    a = por_seccion.get(sec)
+                    if a:
+                        if a["factor"] is not None:
+                            factores.append(a["factor"])
+                        if a["tas"] is not None:
+                            tass.append(a["tas"])
 
-            if factores:
-                factor_prom = round(sum(factores) / len(factores), 4)
+                if factores:
+                    factor_prom = round(sum(factores) / len(factores), 4)
 
-            if tass:
-                tas_usada = min(tass)
+                if tass:
+                    tas_usada = min(tass)
 
-            if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
-                precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
-                precio_usd = round(precio_estimado / mercado["dolar"], 2)
+                if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
+                    precio_estimado = round(mercado["pizarra"] * factor_prom, 2)
+                    precio_usd = round(precio_estimado / mercado["dolar"], 2)
 
         muestreos.append({
             "id": m["id"],
