@@ -97,8 +97,8 @@ th{background:#a5d6a7}
     {% for i in range(4) %}
 <tr>
   <td>
-    <input placeholder="Ej: ACA, Cargill">
-  </td>
+  <input type="number" placeholder="USD/TN">
+</td>
 
   <td>
     <input type="number" placeholder="USD/TN">
@@ -269,7 +269,7 @@ function aplicarGastos(){
 
   cerrarGastos();
 }
-<script>
+
 function calcularComparacion(){
   const filas = document.querySelectorAll("table tr");
   let ofertas = [];
