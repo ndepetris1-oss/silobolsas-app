@@ -700,6 +700,11 @@ def ver_silo(qr):
         "SELECT * FROM silos WHERE numero_qr=?",
         (qr,)
     ).fetchone()
+    
+    # 🛡 Inicialización segura para el template
+    analisis_pendiente = False
+    factor_prom = None
+    tas_usada = None
 
     if not silo:
         conn.close()
