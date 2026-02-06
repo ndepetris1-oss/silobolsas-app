@@ -129,7 +129,7 @@ th{background:#a5d6a7}
   {% endfor %}
 {% endif %}
   
-{% if analisis_pendiente %}
+{% if analisis_pendiente and muestreos and muestreos|length > 0 %}
   <div class="alerta">
     🧪 <b>Último calado:</b> {{ muestreos[0].fecha_muestreo }}<br>
     ⚠️ Análisis pendiente de carga
