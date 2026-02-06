@@ -285,27 +285,28 @@ def comercial():
     conn.close()
 
     return render_template("comercial.html", mercado=rows)
+
 # ======================
-# COMERCIAL – COMPARADOR POR CEREAL
+# COMPARADOR COMERCIAL
 # ======================
 @app.route("/comercial/<cereal>")
-def comercial_cereal(cereal):
+def comparador(cereal):
     conn = get_db()
 
-    # Silos activos del cereal seleccionado
+    # silos activos de ese cereal
     silos = conn.execute("""
-        SELECT
-            s.numero_qr,
-            s.cereal,
-            (
-                SELECT AVG(a.factor)
-                FROM analisis a
-                JOIN muestreos m ON m.id = a.id_muestreo
-                WHERE m.numero_qr = s.numero_qr
-            ) AS factor_prom
+        SELECT s.numero_qr,
+               s.cereal,
+               (
+                 SELECT ROUND(AVG(a.factor),4)
+                 FROM analisis a
+                 JOIN muestreos m ON m.id = a.id_muestreo
+                 WHERE m.numero_qr = s.numero_qr
+                   AND a.factor IS NOT NULL
+               ) AS factor_prom
         FROM silos s
-        WHERE s.cereal = ?
-          AND s.estado_silo = 'Activo'
+        WHERE s.estado_silo = 'Activo'
+          AND s.cereal = ?
         ORDER BY s.numero_qr
     """, (cereal,)).fetchall()
 
@@ -316,7 +317,7 @@ def comercial_cereal(cereal):
         cereal=cereal,
         silos=silos
     )
-    
+
 # ======================
 # COMERCIAL – API
 # ======================
