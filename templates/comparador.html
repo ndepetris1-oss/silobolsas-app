@@ -87,22 +87,41 @@ th{background:#a5d6a7}
   
   <table>
     <tr>
-      <th>Oferente</th>
-      <th>Precio pizarra</th>
-      <th>Gastos</th>
-      <th>Precio neto</th>
-      <th>Dif. vs mejor</th>
-    </tr>
+  <!-- Oferente -->
+  <td>
+    <input type="text" placeholder="Ej: ACA, Cargill">
+  </td>
+
+  <!-- Precio -->
+  <td>
+    <input type="number" step="0.01" placeholder="USD/TN">
+  </td>
+
+  <!-- Gastos -->
+  <td>
+    <button onclick="abrirGastos(this)" style="background:#1976d2">
+      ⚙️ Gastos
+    </button>
+    <div class="small total-gastos">0 USD/TN</div>
+  </td>
+
+  <!-- Precio neto -->
+  <td class="precio-neto">-</td>
+
+  <!-- Diferencia -->
+  <td class="dif-mejor">-</td>
+</tr>
+
 
     {% for i in range(4) %}
 <tr>
   <td>
-  <input type="number" placeholder="USD/TN">
+  <input type="text" placeholder="Ej: ACA, Cargill">
 </td>
 
-  <td>
-    <input type="number" placeholder="USD/TN">
-  <td>
+ <td>
+  <input type="number" placeholder="USD/TN">
+</td>
     
   <button onclick="abrirGastos(this)" style="background:#1976d2">
     ⚙️ Gastos
