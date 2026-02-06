@@ -86,53 +86,42 @@ th{background:#a5d6a7}
   <h3>🏢 Oferentes</h3>
   
   <table>
-    <tr>
-  <!-- Oferente -->
-  <td>
-    <input type="text" placeholder="Ej: ACA, Cargill">
-  </td>
+  <tr>
+    <th>Oferente</th>
+    <th>Precio pizarra</th>
+    <th>Gastos</th>
+    <th>Precio neto</th>
+    <th>Dif. vs mejor</th>
+  </tr>
 
-  <!-- Precio -->
-  <td>
-    <input type="number" step="0.01" placeholder="USD/TN">
-  </td>
+  {% for i in range(4) %}
+  <tr>
+    <!-- Oferente -->
+    <td>
+      <input type="text" placeholder="Ej: ACA, Cargill">
+    </td>
 
-  <!-- Gastos -->
-  <td>
-    <button onclick="abrirGastos(this)" style="background:#1976d2">
-      ⚙️ Gastos
-    </button>
-    <div class="small total-gastos">0 USD/TN</div>
-  </td>
+    <!-- Precio -->
+    <td>
+      <input type="number" step="0.01" placeholder="USD/TN">
+    </td>
 
-  <!-- Precio neto -->
-  <td class="precio-neto">-</td>
+    <!-- Gastos -->
+    <td>
+      <button onclick="abrirGastos(this)" style="background:#1976d2">
+        ⚙️ Gastos
+      </button>
+      <div class="small total-gastos">0 USD/TN</div>
+    </td>
 
-  <!-- Diferencia -->
-  <td class="dif-mejor">-</td>
-</tr>
+    <!-- Precio neto -->
+    <td class="precio-neto">-</td>
 
-
-    {% for i in range(4) %}
-<tr>
-  <td>
-  <input type="text" placeholder="Ej: ACA, Cargill">
-</td>
-
- <td>
-  <input type="number" placeholder="USD/TN">
-</td>
-    
-  <button onclick="abrirGastos(this)" style="background:#1976d2">
-    ⚙️ Gastos
-  </button>
-  <div class="small total-gastos">0 USD/TN</div>
-</td>
-  <td class="precio-neto">-</td>
-  <td class="dif-mejor">-</td>
-</tr>
-{% endfor %}
-  </table>
+    <!-- Diferencia -->
+    <td class="dif-mejor">-</td>
+  </tr>
+  {% endfor %}
+</table>
 
  <button
   id="btnComparar"
