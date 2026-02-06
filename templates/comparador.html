@@ -108,7 +108,7 @@ th{background:#a5d6a7}
   </td>
 
   <td>
-  <div class="small total-gastos">0 ARS/TN</div>
+  .innerText = totalFijo.toFixed(2) + " USD/TN";
   </td>
 
   <td class="precio-neto">-</td>
@@ -167,8 +167,16 @@ th{background:#a5d6a7}
 
     <hr>
 
-    <label>🎁 Bonificación secada (puntos %)</label>
-    <input type="number" step="0.1" id="bonif_secada" placeholder="Ej: 2 → cobra desde base + 2">
+     <label>🎁 Bonificación secada (puntos %)</label>
+     <select id="bonif_secada">
+        <option value="0">0</option>
+        <option value="0.5">0.5</option>
+        <option value="1">1</option>
+        <option value="1.5">1.5</option>
+        <option value="2">2</option>
+        <option value="2.5">2.5</option>
+        <option value="3">3</option>
+</select>
 
     <label>
       <input type="checkbox" id="bonif_fumigada">
