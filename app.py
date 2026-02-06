@@ -724,6 +724,19 @@ def ver_silo(qr):
         ORDER BY m.fecha_muestreo DESC
     """, (qr,)).fetchall()
 
+    # 🔎 Verificar si el último muestreo tiene análisis cargados
+ultimo_muestreo_id = muestreos_raw[0]["id"] if muestreos_raw else None
+analisis_pendiente = False
+
+        if ultimo_muestreo_id:
+            cant = conn.execute("""
+                SELECT COUNT(*) AS c
+                FROM analisis
+                WHERE id_muestreo = ?
+            """, (ultimo_muestreo_id,)).fetchone()["c"]
+
+    analisis_pendiente = (cant == 0)
+
     muestreos = []
     precio_estimado = None
     precio_usd = None
@@ -790,17 +803,18 @@ def ver_silo(qr):
     conn.close()
 
     return render_template(
-        "silo.html",
-        silo=silo,
-        muestreos=muestreos,
-        eventos_pendientes=eventos_pendientes,
-        eventos_resueltos=eventos_resueltos,
-        mercado=mercado,
-        precio_estimado=precio_estimado,
-        precio_usd=precio_usd,
-        factor_prom=factor_prom,
-        tas_usada=tas_usada
-    )
+    "silo.html",
+    silo=silo,
+    muestreos=muestreos,
+    eventos_pendientes=eventos_pendientes,
+    eventos_resueltos=eventos_resueltos,
+    mercado=mercado,
+    precio_estimado=precio_estimado,
+    precio_usd=precio_usd,
+    factor_prom=factor_prom,
+    tas_usada=tas_usada,
+    analisis_pendiente=analisis_pendiente
+)
 
 # ======================
 # VER MUESTREO
