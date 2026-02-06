@@ -98,20 +98,23 @@ th{background:#a5d6a7}
     </tr>
 
     {% for i in range(4) %}
-    <tr>
-      <td>
-        <input placeholder="Ej: ACA, Cargill">
-      </td>
-      <td>
-        <input type="number" placeholder="ARS/TN">
-      </td>
-      <td>
-        <input type="number" placeholder="Gastos">
-      </td>
-      <td>-</td>
-      <td>-</td>
-    </tr>
-    {% endfor %}
+<tr>
+  <td>
+    <input placeholder="Ej: ACA, Cargill">
+  </td>
+
+  <td>
+    <input type="number" placeholder="ARS/TN">
+  </td>
+
+  <td>
+  <div class="small total-gastos">0 ARS/TN</div>
+  </td>
+
+  <td class="precio-neto">-</td>
+  <td class="dif-mejor">-</td>
+</tr>
+{% endfor %}
   </table>
 
   <button style="margin-top:12px" disabled>
@@ -120,9 +123,6 @@ th{background:#a5d6a7}
 </div>
 
 </div>
-
-</body>
-</html>
 <!-- MODAL GASTOS -->
 <div id="modalGastos" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
 background:rgba(0,0,0,0.5);z-index:999">
@@ -171,9 +171,11 @@ background:rgba(0,0,0,0.5);z-index:999">
     <button onclick="aplicarGastos()" style="background:#2e7d32;color:white">
       Aplicar gastos
     </button>
-
-  </div>
+    </div>
 </div>
+</body>
+</html>
+
 <script>
 let filaOferenteActual = null;
 
@@ -199,8 +201,9 @@ function aplicarGastos(){
 
   const totalGastos = flete + contra + secada + fumigada + zarandeo;
 
-  // 👉 acá solo mostramos, después calculamos precio neto
-  alert("Total gastos: " + totalGastos + " ARS/TN");
+  filaOferenteActual
+    .querySelector(".total-gastos")
+    .innerText = totalGastos.toFixed(2) + " ARS/TN";
 
   cerrarGastos();
 }
