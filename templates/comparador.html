@@ -115,9 +115,12 @@ th{background:#a5d6a7}
 {% endfor %}
   </table>
 
-  <button style="margin-top:12px" disabled>
-    🧮 Calcular comparación
-  </button>
+ <button
+  id="btnComparar"
+  style="margin-top:12px"
+  onclick="calcularComparacion()">
+  🧮 Calcular comparación
+</button>
 </div>
 
 </div>
@@ -265,5 +268,61 @@ function aplicarGastos(){
     .innerText = totalFijo.toFixed(2) + " USD/TN";
 
   cerrarGastos();
+}
+<script>
+function calcularComparacion(){
+  const filas = document.querySelectorAll("table tr");
+  let ofertas = [];
+
+  filas.forEach((tr, idx) => {
+    if(idx === 0) return; // saltear header
+
+    const inputs = tr.querySelectorAll("input");
+    if(inputs.length < 2) return;
+
+    const oferente = inputs[0].value;
+    const precio = parseFloat(inputs[1].value);
+    const gastos = tr.dataset.gastos
+      ? JSON.parse(tr.dataset.gastos)
+      : null;
+
+    if(!oferente || !precio || !gastos) return;
+
+    const totalGastos =
+      gastos.flete +
+      gastos.contra +
+      gastos.paritarias +
+      gastos.fumigada +
+      gastos.zarandeo +
+      gastos.almacenaje +
+      gastos.manipuleo;
+
+    const precioNeto = precio - totalGastos;
+
+    ofertas.push({
+      tr,
+      oferente,
+      precioNeto
+    });
+
+    tr.querySelector(".precio-neto").innerText =
+      precioNeto.toFixed(2) + " USD/TN";
+  });
+
+  if(ofertas.length < 2){
+    alert("Cargá al menos 2 oferentes con precio y gastos");
+    return;
+  }
+
+  // ordenar de mejor a peor
+  ofertas.sort((a,b) => b.precioNeto - a.precioNeto);
+
+  const mejor = ofertas[0].precioNeto;
+
+  ofertas.forEach((o, idx) => {
+    const dif = o.precioNeto - mejor;
+    o.tr.querySelector(".dif-mejor").innerText =
+      idx === 0 ? "MEJOR" : dif.toFixed(2) + " USD/TN";
+  });
 }
 </script>
