@@ -70,6 +70,7 @@ button:hover{background:#2e7d32}
   <th>Pizarra manual</th>
   <th>Observación</th>
   <th>Dólar</th>
+  <th>Comparar</th>
   <th></th>
 </tr>
 
@@ -104,6 +105,12 @@ button:hover{background:#2e7d32}
            id="dolar_{{ m.cereal }}"
            value="{{ m.dolar or '' }}">
   </td>
+  <a href="/comercial/{{ row.cereal }}">
+    <button style="background:#1976d2">
+      📊 Comparar
+    </button>
+  </a>
+</td>
 
   <td>
     <button onclick="guardar('{{ m.cereal }}')">💾</button>
