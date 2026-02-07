@@ -299,7 +299,7 @@ function aplicarGastos(){
     contra: +g_contra.value || 0,
     paritarias: +g_paritarias.value || 0,
     secada: +g_secada.value || 0,
-    fumigada: +g_fumigada.value || 0,
+    fumigada: bonif_fumigada.checked ? 0 : (+g_fumigada.value || 0),
     zarandeo: +g_zarandeo.value || 0,
     almacenaje: +g_almacenaje.value || 0,
     manipuleo: +g_manipuleo.value || 0,
