@@ -287,19 +287,6 @@ def comercial():
     return render_template("comercial.html", mercado=rows)
 
 # ======================
-# COMPARADOR COMERCIAL
-# ======================
-from flask import Flask, render_template, request, jsonify, send_file, redirect
-import sqlite3, os
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-import csv, io
-
-from calculos import calcular_comercial
-
-app = Flask(__name__)
-
-# ======================
 # DB PATH
 # ======================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
