@@ -81,7 +81,13 @@ th{background:#a5d6a7}
       data-humedad="{{ s.humedad_prom or 0 }}"
       data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
     >
-      {{ s.numero_qr }} — Factor prom: {{ s.factor_prom or "-" }}
+      {{ s.numero_qr }} — Factor prom:
+      {% if s.factor_prom %}
+        {{ (s.factor_prom * 100) | round(2) }}%
+      {% else %}
+        -
+{% endif %}
+
     </option>
   {% endfor %}
 </select>
@@ -252,8 +258,33 @@ function onCambioSilo(){
 
 function abrirGastos(btn){
   filaOferenteActual = btn.closest("tr");
-  document.getElementById("g_volatil").value =
-    volatilPorCereal["{{ cereal }}"] || 0;
+
+  // reset por defecto
+  const vacio = {
+    flete:0, contra:0, paritarias:0, secada:0,
+    fumigada:0, zarandeo:0, almacenaje:0,
+    manipuleo:0, bonif_secada:0,
+    comision:0, volatil:0
+  };
+
+  const gastos = filaOferenteActual.dataset.gastos
+    ? JSON.parse(filaOferenteActual.dataset.gastos)
+    : vacio;
+
+  // cargar inputs
+  g_flete.value = gastos.flete;
+  g_contra.value = gastos.contra;
+  g_paritarias.value = gastos.paritarias;
+  g_secada.value = gastos.secada;
+  g_fumigada.value = gastos.fumigada;
+  g_zarandeo.value = gastos.zarandeo;
+  g_almacenaje.value = gastos.almacenaje;
+  g_manipuleo.value = gastos.manipuleo;
+  bonif_secada.value = gastos.bonif_secada;
+  g_comision.value = gastos.comision;
+  g_volatil.value = gastos.volatil;
+
+  bonif_fumigada.checked = gastos.fumigada === 0;
 
   document.getElementById("modalGastos").style.display = "block";
 }
