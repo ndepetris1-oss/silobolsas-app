@@ -72,14 +72,19 @@ th{background:#a5d6a7}
 
 <div class="card">
   <h3>🌾 Seleccionar silo</h3>
-  <select id="siloSelect">
-    <option value="">Seleccione un silo…</option>
-    {% for s in silos %}
-      <option value="{{ s.numero_qr }}">
-        {{ s.numero_qr }} — Factor prom: {{ s.factor_prom or "-" }}
-      </option>
-    {% endfor %}
-  </select>
+ <select id="siloSelect" onchange="onCambioSilo()">
+  <option value="">Seleccione un silo…</option>
+  {% for s in silos %}
+    <option
+      value="{{ s.numero_qr }}"
+      data-factor="{{ s.factor_prom }}"
+      data-humedad="{{ s.humedad_prom or 0 }}"
+      data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
+    >
+      {{ s.numero_qr }} — Factor prom: {{ s.factor_prom or "-" }}
+    </option>
+  {% endfor %}
+</select>
 </div>
 
 <div class="card">
@@ -213,8 +218,9 @@ th{background:#a5d6a7}
 
 <script>
 let filaOferenteActual = null;
+let siloActual = null;
 
-// base humedad por cereal (simple por ahora)
+// humedad base por cereal
 const baseHumedad = {
   "Maíz": 14.6,
   "Trigo": 13.5,
@@ -230,10 +236,22 @@ const volatilPorCereal = {
   "Girasol": 0.5
 };
 
+function onCambioSilo(){
+  const sel = document.getElementById("siloSelect");
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.dataset.factor) return;
+
+  siloActual = {
+    factor: parseFloat(opt.dataset.factor),
+    humedad: parseFloat(opt.dataset.humedad),
+    insectos: opt.dataset.insectos === "1"
+  };
+
+  calcularComparacion(); // 🔥 recalcula todo al cambiar silo
+}
+
 function abrirGastos(btn){
   filaOferenteActual = btn.closest("tr");
-
-  // setea volátil automático
   document.getElementById("g_volatil").value =
     volatilPorCereal["{{ cereal }}"] || 0;
 
@@ -250,7 +268,7 @@ function aplicarGastos(){
     contra: +g_contra.value || 0,
     paritarias: +g_paritarias.value || 0,
     secada: +g_secada.value || 0,
-    fumigada: bonif_fumigada.checked ? 0 : (+g_fumigada.value || 0),
+    fumigada: +g_fumigada.value || 0,
     zarandeo: +g_zarandeo.value || 0,
     almacenaje: +g_almacenaje.value || 0,
     manipuleo: +g_manipuleo.value || 0,
@@ -259,31 +277,49 @@ function aplicarGastos(){
     volatil: +g_volatil.value || 0
   };
 
-  // guardamos todo en la fila
   filaOferenteActual.dataset.gastos = JSON.stringify(gastos);
 
   const totalFijo =
     gastos.flete +
     gastos.contra +
     gastos.paritarias +
-    gastos.fumigada +
     gastos.zarandeo +
     gastos.almacenaje +
     gastos.manipuleo;
 
-  filaOferenteActual
-    .querySelector(".total-gastos")
-    .innerText = totalFijo.toFixed(2) + " USD/TN";
+  filaOferenteActual.querySelector(".total-gastos").innerText =
+    totalFijo.toFixed(2) + " USD/TN";
 
   cerrarGastos();
 }
 
+function calcularSecada(gastos){
+  if(!siloActual) return 0;
+
+  const base = baseHumedad["{{ cereal }}"];
+  const bonif = gastos.bonif_secada || 0;
+  const exceso = siloActual.humedad - (base + bonif);
+
+  if(exceso <= 0) return 0;
+  return exceso * gastos.secada;
+}
+
+function calcularFumigada(gastos){
+  if(!siloActual) return 0;
+  return siloActual.insectos ? gastos.fumigada : 0;
+}
+
 function calcularComparacion(){
+  if(!siloActual){
+    alert("Seleccioná un silo primero");
+    return;
+  }
+
   const filas = document.querySelectorAll("table tr");
   let ofertas = [];
 
   filas.forEach((tr, idx) => {
-    if(idx === 0) return; // saltear header
+    if(idx === 0) return;
 
     const inputs = tr.querySelectorAll("input");
     if(inputs.length < 2) return;
@@ -296,41 +332,40 @@ function calcularComparacion(){
 
     if(!oferente || !precio || !gastos) return;
 
-    const totalGastos =
+    const secada = calcularSecada(gastos);
+    const fumigada = calcularFumigada(gastos);
+
+    const gastosFijos =
       gastos.flete +
       gastos.contra +
       gastos.paritarias +
-      gastos.fumigada +
       gastos.zarandeo +
       gastos.almacenaje +
       gastos.manipuleo;
 
-    const precioNeto = precio - totalGastos;
+    const precioNeto =
+      (precio * siloActual.factor)
+      - gastosFijos
+      - secada
+      - fumigada;
 
-    ofertas.push({
-      tr,
-      oferente,
-      precioNeto
-    });
+    ofertas.push({ tr, precioNeto });
 
     tr.querySelector(".precio-neto").innerText =
       precioNeto.toFixed(2) + " USD/TN";
   });
 
   if(ofertas.length < 2){
-    alert("Cargá al menos 2 oferentes con precio y gastos");
+    alert("Cargá al menos 2 oferentes completos");
     return;
   }
 
-  // ordenar de mejor a peor
   ofertas.sort((a,b) => b.precioNeto - a.precioNeto);
-
   const mejor = ofertas[0].precioNeto;
 
-  ofertas.forEach((o, idx) => {
-    const dif = o.precioNeto - mejor;
+  ofertas.forEach((o, i) => {
     o.tr.querySelector(".dif-mejor").innerText =
-      idx === 0 ? "MEJOR" : dif.toFixed(2) + " USD/TN";
+      i === 0 ? "MEJOR" : (o.precioNeto - mejor).toFixed(2) + " USD/TN";
   });
 }
 </script>
