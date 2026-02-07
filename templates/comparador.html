@@ -87,6 +87,13 @@ th{background:#a5d6a7}
       {% else %}
         -
 {% endif %}
+      
+<div id="infoSilo" class="card" style="display:none">
+  <h4>📦 Estado del silo</h4>
+
+  <p id="infoHumedad"></p>
+  <p id="infoInsectos"></p>
+</div>
 
     </option>
   {% endfor %}
@@ -253,9 +260,39 @@ function onCambioSilo(){
     insectos: opt.dataset.insectos === "1"
   };
 
-  calcularComparacion(); // 🔥 recalcula todo al cambiar silo
-}
+  // 👉 Mostrar info del silo
+  const base = baseHumedad["{{ cereal }}"];
+  const info = document.getElementById("infoSilo");
+  const hum = document.getElementById("infoHumedad");
+  const ins = document.getElementById("infoInsectos");
 
+  info.style.display = "block";
+
+  if(siloActual.humedad > base){
+    hum.innerHTML =
+      "⚠️ <b>Silo húmedo</b> — Humedad prom: " +
+      siloActual.humedad.toFixed(2) +
+      "% (base " + base + "%)";
+    hum.style.color = "#b71c1c";
+  }else{
+    hum.innerHTML =
+      "✔️ <b>Humedad OK</b> — " +
+      siloActual.humedad.toFixed(2) + "%";
+    hum.style.color = "#2e7d32";
+  }
+
+  if(siloActual.insectos){
+    ins.innerHTML =
+      "🐞 <b>Insectos detectados</b> — se aplica fumigada";
+    ins.style.color = "#b71c1c";
+  }else{
+    ins.innerHTML =
+      "✔️ <b>Sin insectos</b>";
+    ins.style.color = "#2e7d32";
+  }
+
+  calcularComparacion();
+}
 function abrirGastos(btn){
   filaOferenteActual = btn.closest("tr");
 
