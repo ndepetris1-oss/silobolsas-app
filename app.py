@@ -584,53 +584,49 @@ def comercial():
 def comparador(cereal):
     conn = get_db()
 
-    # silos activos de ese cereal
-    silos = conn.execute("""
-    SELECT
-        s.numero_qr,
+    rows = conn.execute("""
+        SELECT
+            s.numero_qr,
 
-        -- FACTOR PROMEDIO
-        (
-          SELECT ROUND(AVG(a.factor),4)
-          FROM analisis a
-          JOIN muestreos m ON m.id = a.id_muestreo
-          WHERE m.numero_qr = s.numero_qr
-            AND a.factor IS NOT NULL
-        ) AS factor_prom,
+            (
+              SELECT ROUND(AVG(a.factor),4)
+              FROM analisis a
+              JOIN muestreos m ON m.id = a.id_muestreo
+              WHERE m.numero_qr = s.numero_qr
+                AND a.factor IS NOT NULL
+            ) AS factor_prom,
 
-        -- HUMEDAD PROMEDIO
-        (
-          SELECT ROUND(AVG(a.humedad),2)
-          FROM analisis a
-          JOIN muestreos m ON m.id = a.id_muestreo
-          WHERE m.numero_qr = s.numero_qr
-            AND a.humedad IS NOT NULL
-        ) AS humedad_prom,
+            (
+              SELECT ROUND(AVG(a.humedad),2)
+              FROM analisis a
+              JOIN muestreos m ON m.id = a.id_muestreo
+              WHERE m.numero_qr = s.numero_qr
+                AND a.humedad IS NOT NULL
+            ) AS humedad_prom,
 
-        -- INSECTOS: si hay al menos uno en alguna sección
-        (
-          SELECT COUNT(*)
-          FROM analisis a
-          JOIN muestreos m ON m.id = a.id_muestreo
-          WHERE m.numero_qr = s.numero_qr
-            AND a.insectos = 1
-        ) AS tiene_insectos
+            (
+              SELECT COUNT(*)
+              FROM analisis a
+              JOIN muestreos m ON m.id = a.id_muestreo
+              WHERE m.numero_qr = s.numero_qr
+                AND a.insectos = 1
+            ) AS tiene_insectos
 
-    FROM silos s
-    WHERE s.estado_silo = 'Activo'
-      AND s.cereal = ?
-    ORDER BY s.numero_qr
-""", (cereal,)).fetchall()
+        FROM silos s
+        WHERE s.estado_silo = 'Activo'
+          AND s.cereal = ?
+        ORDER BY s.numero_qr
+    """, (cereal,)).fetchall()
 
     conn.close()
-    
-silos = [
-    {
-        **dict(s),
-        "tiene_insectos": True if s["tiene_insectos"] > 0 else False
-    }
-    for s in silos
-]
+
+    silos = [
+        {
+            **dict(r),
+            "tiene_insectos": True if r["tiene_insectos"] > 0 else False
+        }
+        for r in rows
+    ]
 
     return render_template(
         "comparador.html",
