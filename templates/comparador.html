@@ -81,20 +81,16 @@ th{background:#a5d6a7}
       data-humedad="{{ s.humedad_prom or 0 }}"
       data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
     >
-      {{ s.numero_qr }} — Factor prom:
+      {{ s.numero_qr }} —
       {% if s.factor_prom %}
-        {{ (s.factor_prom * 100) | round(2) }}%
+        Factor {{ (s.factor_prom * 100) | round(2) }}%
       {% else %}
-        -
-{% endif %}
+        Sin análisis
+      {% endif %}
+    </option>
+  {% endfor %}
+</select>
       
-<div id="infoSilo" class="card" style="display:none">
-  <h4>📦 Estado del silo</h4>
-
-  <p id="infoHumedad"></p>
-  <p id="infoInsectos"></p>
-</div>
-
     </option>
   {% endfor %}
 </select>
