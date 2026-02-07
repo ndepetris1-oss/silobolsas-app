@@ -72,29 +72,34 @@ th{background:#a5d6a7}
 
 <div class="card">
   <h3>🌾 Seleccionar silo</h3>
- <select id="siloSelect" onchange="onCambioSilo()">
-  <option value="">Seleccione un silo…</option>
-  {% for s in silos %}
-    <option
-      value="{{ s.numero_qr }}"
-      data-factor="{{ s.factor_prom }}"
-      data-humedad="{{ s.humedad_prom or 0 }}"
-      data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
-    >
-      {{ s.numero_qr }} —
-      {% if s.factor_prom %}
-        Factor {{ (s.factor_prom * 100) | round(2) }}%
-      {% else %}
-        Sin análisis
-      {% endif %}
-    </option>
-  {% endfor %}
-</select>
-      
-    </option>
-  {% endfor %}
-</select>
+
+  <select id="siloSelect" onchange="onCambioSilo()">
+    <option value="">Seleccione un silo…</option>
+    {% for s in silos %}
+      <option
+        value="{{ s.numero_qr }}"
+        data-factor="{{ s.factor_prom }}"
+        data-humedad="{{ s.humedad_prom or 0 }}"
+        data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
+      >
+        {{ s.numero_qr }} —
+        {% if s.factor_prom %}
+          Factor {{ (s.factor_prom * 100) | round(2) }}%
+        {% else %}
+          Sin análisis
+        {% endif %}
+      </option>
+    {% endfor %}
+  </select>
+
+  <!-- INFO DEL SILO (A2) -->
+  <div id="infoSilo" class="card" style="display:none">
+    <h4>📦 Estado del silo</h4>
+    <p id="infoHumedad"></p>
+    <p id="infoInsectos"></p>
+  </div>
 </div>
+
 
 <div class="card">
   <h3>🏢 Oferentes</h3>
