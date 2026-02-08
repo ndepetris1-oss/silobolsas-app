@@ -389,8 +389,7 @@ async function guardar(){
   btn.dataset.locked = "1";
   btn.disabled = true;
   btn.innerText = "Guardando…";
-  btn.disabled = true;
-
+  
   if(modo === "registro"){
 
   // ❌ VALIDACIÓN: evitar silo vacío
@@ -468,7 +467,12 @@ async function guardar(){
     });
     location.reload();
     return;
-  
+    // 🔄 fallback si no se hizo ninguna acción
+  btn.disabled = false;
+  btn.innerText = "Guardar";
+  btn.dataset.locked = "";
+  return;
+
 }
 async function obtenerGPSObligatorio(){
   return new Promise((resolve, reject)=>{
