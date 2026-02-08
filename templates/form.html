@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -452,8 +452,10 @@ async function guardar(){
 
     alert("Evento resuelto correctamente");
     btn.disabled = false;
-    return;
-  }
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;    
+ }
 
   if(estado_silo.value){
     await fetch("/api/extraccion",{
@@ -466,13 +468,7 @@ async function guardar(){
     });
     location.reload();
     return;
-  }
-
-btn.disabled = false;
-btn.innerText = "Guardar";
-btn.dataset.locked = "";
-return;
-
+  
 }
 async function obtenerGPSObligatorio(){
   return new Promise((resolve, reject)=>{
