@@ -408,19 +408,30 @@ async function guardar(){
     btn.dataset.locked = "";
     return;
   }
-    await fetch("/api/registrar_silo",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        numero_qr: qr,
-        cereal: cereal.value,
-        estado_grano: estado_grano.value,
-        metros: metros.value,
-        lat, lon
-      })
-    });
-    location.reload();
-    return;
+    const res = await fetch("/api/registrar_silo",{
+  method:"POST",
+  headers:{ "Content-Type":"application/json" },
+  body:JSON.stringify({
+    numero_qr: qr,
+    cereal: cereal.value,
+    estado_grano: estado_grano.value,
+    metros: metros.value,
+    lat, lon
+  })
+});
+
+const data = await res.json();
+
+if(!data.ok){
+  alert(data.error || "Error al registrar silo");
+  btn.disabled = false;
+  btn.innerText = "Guardar";
+  btn.dataset.locked = "";
+  return;
+}
+
+// 👉 ir al panel
+window.location.href = "/panel";
   }
 
   if(tipo_evento.value && !eventoPendiente){
