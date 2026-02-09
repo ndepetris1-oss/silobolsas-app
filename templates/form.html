@@ -381,112 +381,6 @@ async function informarCalado(){
   location.reload();
 }
 
-<script>
-async function guardar(){
-  const btn = btnGuardar;
-
-  // 🔒 bloqueo doble tap
-  if(btn.dataset.locked) return;
-  btn.dataset.locked = "1";
-  btn.disabled = true;
-  btn.innerText = "Guardando…";
-
-  try {
-
-    /* ======================
-       REGISTRO DE SILO
-       ====================== */
-    if(modo === "registro"){
-
-      if(!cereal.value || !estado_grano.value || !metros.value){
-        throw new Error("Complete cereal, estado del grano y metros");
-      }
-
-      if(lat === null || lon === null){
-        throw new Error("Debe activar la ubicación para registrar el silo");
-      }
-
-      const res = await fetch("/api/registrar_silo",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          numero_qr: qr,
-          cereal: cereal.value,
-          estado_grano: estado_grano.value,
-          metros: metros.value,
-          lat, lon
-        })
-      });
-
-      if(!res.ok){
-        throw new Error("Error HTTP " + res.status);
-      }
-
-      const data = await res.json();
-      if(!data.ok){
-        throw new Error(data.error || "Error al registrar silo");
-      }
-
-      // ✅ FIN DEL FORM
-      window.location.replace("/panel");
-      return;
-    }
-
-    /* ======================
-       NUEVO EVENTO
-       ====================== */
-    if(tipo_evento.value && !eventoPendiente){
-      const fd = new FormData();
-      fd.append("numero_qr", qr);
-      fd.append("tipo", tipo_evento.value);
-      fd.append("detalle", detalle_evento.value);
-      if(foto.files[0]) fd.append("foto", foto.files[0]);
-
-      await fetch("/api/monitoreo",{ method:"POST", body:fd });
-      location.reload();
-      return;
-    }
-
-    /* ======================
-       RESOLVER EVENTO
-       ====================== */
-    if(eventoPendiente && resuelto.checked){
-      const fd = new FormData();
-      fd.append("id_monitoreo", eventoPendiente.id);
-      if(foto_resolucion.files[0]) fd.append("foto", foto_resolucion.files[0]);
-
-      await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
-      location.reload();
-      return;
-    }
-
-    /* ======================
-       EXTRACCIÓN
-       ====================== */
-    if(estado_silo.value){
-      await fetch("/api/extraccion",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          numero_qr: qr,
-          estado_silo: estado_silo.value
-        })
-      });
-      location.reload();
-      return;
-    }
-
-    throw new Error("No hay acción para guardar");
-
-  } catch (err) {
-    alert("❌ " + err.message);
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-  }
-}
-</script>
-
     }
     // 🔄 fallback si no se hizo ninguna acción
   btn.disabled = false;
@@ -524,6 +418,119 @@ async function obtenerGPSObligatorio(){
       }
     );
   });
+}
+
+init();
+</script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const qr = params.get("id");
+if(qr) document.getElementById("qr").value = qr;
+
+let modo = null;
+let lat = null;
+let lon = null;
+let eventoPendiente = null;
+
+/* ======================
+   GPS OBLIGATORIO
+====================== */
+function obtenerGPSObligatorio(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){
+      alert("Este dispositivo no soporta GPS");
+      reject();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        resolve();
+      },
+      ()=>{
+        alert("Debés activar la ubicación para registrar el silo");
+        reject();
+      },
+      { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+    );
+  });
+}
+
+/* ======================
+   INIT
+====================== */
+async function init(){
+  if(!qr) return;
+
+  const res = await fetch(`/api/silo/${qr}`);
+  const data = await res.json();
+
+  if(!data.existe){
+    modo = "registro";
+    try{
+      await obtenerGPSObligatorio();
+      bloqueRegistro.classList.remove("hidden");
+    }catch{
+      btnGuardar.disabled = true;
+    }
+    return;
+  }
+
+  modo = "operacion";
+  infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+  infoSilo.classList.remove("hidden");
+
+  bloqueMonitoreo.classList.remove("hidden");
+  bloqueExtraccion.classList.remove("hidden");
+  bloqueCalado.classList.remove("hidden");
+}
+
+/* ======================
+   GUARDAR
+====================== */
+async function guardar(){
+  const btn = btnGuardar;
+  if(btn.dataset.locked) return;
+
+  btn.dataset.locked = "1";
+  btn.disabled = true;
+  btn.innerText = "Guardando…";
+
+  try{
+    if(modo === "registro"){
+      if(!cereal.value || !estado_grano.value || !metros.value){
+        throw new Error("Complete todos los campos");
+      }
+
+      const res = await fetch("/api/registrar_silo",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          numero_qr: qr,
+          cereal: cereal.value,
+          estado_grano: estado_grano.value,
+          metros: metros.value,
+          lat, lon
+        })
+      });
+
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.error || "Error");
+
+      window.location.replace("/panel");
+      return;
+    }
+
+    throw new Error("Nada para guardar");
+
+  }catch(err){
+    alert(err.message);
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+  }
 }
 
 init();
