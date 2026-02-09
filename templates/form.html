@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -350,48 +350,107 @@ tipo_evento.onchange=e=>{
 };
 
 /* GUARDAR */
-<script>
 async function informarCalado(){
   if(!confirm("¿Confirmar calado del silo ahora?")) return;
 
-  try {
-    const res = await fetch("/api/informar_calado",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        numero_qr: qr,
-        informar_temperatura: chkTemp.checked,
-        temp_punta: temp_punta.value || null,
-        temp_medio: temp_medio.value || null,
-        temp_final: temp_final.value || null
-      })
-    });
+  const payload = {
+    numero_qr: qr,
+    informar_temperatura: chkTemp.checked
+  };
 
-    if(!res.ok){
-      throw new Error("Error HTTP " + res.status);
-    }
-
-    const data = await res.json();
-
-    if(!data.ok){
-      throw new Error(data.error || "Error al registrar calado");
-    }
-
-    alert("🧪 Calado registrado correctamente");
-    location.reload();
-
-  } catch (err){
-    alert("❌ Calado: " + err.message);
+  if(chkTemp.checked){
+    payload.temp_punta = temp_punta.value;
+    payload.temp_medio = temp_medio.value;
+    payload.temp_final = temp_final.value;
   }
+
+  const res = await fetch("/api/informar_calado",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if(!data.ok){
+    alert(data.error || "Error al registrar calado");
+    return;
+  }
+
+  alert("🧪 Calado registrado correctamente");
+  location.reload();
 }
 
+async function guardar(){
+  const btn = btnGuardar;
+  btn.disabled = true;
 
-    // 🔄 fallback si no se hizo ninguna acción
+  if(modo === "registro"){
+  if(lat === null || lon === null){
+  alert("📍 Debe activar la ubicación para registrar el silo");
   btn.disabled = false;
-  btn.innerText = "Guardar";
-  btn.dataset.locked = "";
   return;
+}
+    await fetch("/api/registrar_silo",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        cereal: cereal.value,
+        estado_grano: estado_grano.value,
+        metros: metros.value,
+        lat, lon
+      })
+    });
+    location.reload();
+    return;
+  }
 
+  if(tipo_evento.value && !eventoPendiente){
+    const fd = new FormData();
+    fd.append("numero_qr", qr);
+    fd.append("tipo", tipo_evento.value);
+    fd.append("detalle", detalle_evento.value);
+    foto.files[0] && fd.append("foto", foto.files[0]);
+
+    await fetch("/api/monitoreo",{ method:"POST", body:fd });
+    location.reload();
+    return;
+  }
+
+  if(eventoPendiente && resuelto.checked){
+    const fd = new FormData();
+    fd.append("id_monitoreo", eventoPendiente.id);
+    foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
+
+    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
+
+    eventoPendiente = null;
+    resuelto.checked = false;
+    bloqueResolucion.classList.add("hidden");
+
+    await cargarEventosPendientes();
+    await cargarEventosResueltos();
+
+    alert("Evento resuelto correctamente");
+    btn.disabled = false;
+    return;
+  }
+
+  if(estado_silo.value){
+    await fetch("/api/extraccion",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        estado_silo: estado_silo.value
+      })
+    });
+    location.reload();
+    return;
+  }
+
+  btn.disabled = false;
 }
 async function obtenerGPSObligatorio(){
   return new Promise((resolve, reject)=>{
@@ -422,118 +481,6 @@ async function obtenerGPSObligatorio(){
       }
     );
   });
-}
-
-init();
-</script>
-<script>
-const params = new URLSearchParams(window.location.search);
-const qr = params.get("id");
-if(qr) document.getElementById("qr").value = qr;
-
-let modo = null;
-let lat = null;
-let lon = null;
-let eventoPendiente = null;
-
-/* ======================
-   GPS OBLIGATORIO
-====================== */
-function obtenerGPSObligatorio(){
-  return new Promise((resolve, reject)=>{
-    if(!navigator.geolocation){
-      alert("Este dispositivo no soporta GPS");
-      reject();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
-        resolve();
-      },
-      ()=>{
-        alert("Debés activar la ubicación para registrar el silo");
-        reject();
-      },
-      { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
-    );
-  });
-}
-
-/* ======================
-   INIT
-====================== */
-async function init(){
-  if(!qr) return;
-
-  const res = await fetch(`/api/silo/${qr}`);
-  const data = await res.json();
-
-  if(!data.existe){
-    modo = "registro";
-    try{
-      await obtenerGPSObligatorio();
-      bloqueRegistro.classList.remove("hidden");
-    }catch{
-      btnGuardar.disabled = true;
-    }
-    return;
-  }
-
-  modo = "operacion";
-  infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
-  infoSilo.classList.remove("hidden");
-
-  bloqueMonitoreo.classList.remove("hidden");
-  bloqueExtraccion.classList.remove("hidden");
-  bloqueCalado.classList.remove("hidden");
-}
-
-/* ======================
-   GUARDAR
-====================== */
-async function guardar(){
-  const btn = btnGuardar;
-  if(btn.dataset.locked) return;
-
-  btn.dataset.locked = "1";
-  btn.disabled = true;
-  btn.innerText = "Guardando…";
-
-  try{
-    if(modo === "registro"){
-      if(!cereal.value || !estado_grano.value || !metros.value){
-        throw new Error("Complete todos los campos");
-      }
-
-      const res = await fetch("/api/registrar_silo",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          numero_qr: qr,
-          cereal: cereal.value,
-          estado_grano: estado_grano.value,
-          metros: metros.value,
-          lat, lon
-        })
-      });
-
-      const data = await res.json();
-      if(!data.ok) throw new Error(data.error || "Error");
-
-     // ✅ volver a cargar el mismo silo ya registrado
-window.location.reload();
-return;
-    }
-
-  }catch(err){
-    alert(err.message);
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-  }
 }
 
 init();
