@@ -350,38 +350,42 @@ tipo_evento.onchange=e=>{
 };
 
 /* GUARDAR */
+<script>
 async function informarCalado(){
   if(!confirm("¿Confirmar calado del silo ahora?")) return;
 
-  const payload = {
-    numero_qr: qr,
-    informar_temperatura: chkTemp.checked
-  };
+  try {
+    const res = await fetch("/api/informar_calado",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        numero_qr: qr,
+        informar_temperatura: chkTemp.checked,
+        temp_punta: temp_punta.value || null,
+        temp_medio: temp_medio.value || null,
+        temp_final: temp_final.value || null
+      })
+    });
 
-  if(chkTemp.checked){
-    payload.temp_punta = temp_punta.value;
-    payload.temp_medio = temp_medio.value;
-    payload.temp_final = temp_final.value;
+    if(!res.ok){
+      throw new Error("Error HTTP " + res.status);
+    }
+
+    const data = await res.json();
+
+    if(!data.ok){
+      throw new Error(data.error || "Error al registrar calado");
+    }
+
+    alert("🧪 Calado registrado correctamente");
+    location.reload();
+
+  } catch (err){
+    alert("❌ Calado: " + err.message);
   }
-
-  const res = await fetch("/api/informar_calado",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-
-  if(!data.ok){
-    alert(data.error || "Error al registrar calado");
-    return;
-  }
-
-  alert("🧪 Calado registrado correctamente");
-  location.reload();
 }
 
-    }
+
     // 🔄 fallback si no se hizo ninguna acción
   btn.disabled = false;
   btn.innerText = "Guardar";
@@ -523,8 +527,6 @@ async function guardar(){
 window.location.reload();
 return;
     }
-
-    throw new Error("Nada para guardar");
 
   }catch(err){
     alert(err.message);
