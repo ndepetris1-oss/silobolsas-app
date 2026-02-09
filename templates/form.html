@@ -519,8 +519,9 @@ async function guardar(){
       const data = await res.json();
       if(!data.ok) throw new Error(data.error || "Error");
 
-      window.location.replace("/panel");
-      return;
+     // ✅ volver a cargar el mismo silo ya registrado
+window.location.reload();
+return;
     }
 
     throw new Error("Nada para guardar");
