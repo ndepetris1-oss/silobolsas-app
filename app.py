@@ -352,8 +352,9 @@ def comparador(cereal):
 @app.route("/api/mercado/manual", methods=["POST"])
 def mercado_manual():
     d = request.get_json()
-if not d or not d.get("cereal"):
-    return jsonify(ok=False, error="Cereal faltante"), 400
+
+    if not d or not d.get("cereal"):
+        return jsonify(ok=False, error="Cereal faltante"), 400
 
     conn = get_db()
     conn.execute("""
