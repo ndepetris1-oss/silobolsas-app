@@ -381,6 +381,7 @@ async function informarCalado(){
   location.reload();
 }
 
+<script>
 async function guardar(){
   const btn = btnGuardar;
 
@@ -389,103 +390,102 @@ async function guardar(){
   btn.dataset.locked = "1";
   btn.disabled = true;
   btn.innerText = "Guardando…";
-  
-  if(modo === "registro"){
 
-  // ❌ VALIDACIÓN: evitar silo vacío
-  if(!cereal.value || !estado_grano.value || !metros.value){
-    alert("⚠️ Complete cereal, estado del grano y metros");
+  try {
+
+    /* ======================
+       REGISTRO DE SILO
+       ====================== */
+    if(modo === "registro"){
+
+      if(!cereal.value || !estado_grano.value || !metros.value){
+        throw new Error("Complete cereal, estado del grano y metros");
+      }
+
+      if(lat === null || lon === null){
+        throw new Error("Debe activar la ubicación para registrar el silo");
+      }
+
+      const res = await fetch("/api/registrar_silo",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          numero_qr: qr,
+          cereal: cereal.value,
+          estado_grano: estado_grano.value,
+          metros: metros.value,
+          lat, lon
+        })
+      });
+
+      if(!res.ok){
+        throw new Error("Error HTTP " + res.status);
+      }
+
+      const data = await res.json();
+      if(!data.ok){
+        throw new Error(data.error || "Error al registrar silo");
+      }
+
+      // ✅ FIN DEL FORM
+      window.location.replace("/panel");
+      return;
+    }
+
+    /* ======================
+       NUEVO EVENTO
+       ====================== */
+    if(tipo_evento.value && !eventoPendiente){
+      const fd = new FormData();
+      fd.append("numero_qr", qr);
+      fd.append("tipo", tipo_evento.value);
+      fd.append("detalle", detalle_evento.value);
+      if(foto.files[0]) fd.append("foto", foto.files[0]);
+
+      await fetch("/api/monitoreo",{ method:"POST", body:fd });
+      location.reload();
+      return;
+    }
+
+    /* ======================
+       RESOLVER EVENTO
+       ====================== */
+    if(eventoPendiente && resuelto.checked){
+      const fd = new FormData();
+      fd.append("id_monitoreo", eventoPendiente.id);
+      if(foto_resolucion.files[0]) fd.append("foto", foto_resolucion.files[0]);
+
+      await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
+      location.reload();
+      return;
+    }
+
+    /* ======================
+       EXTRACCIÓN
+       ====================== */
+    if(estado_silo.value){
+      await fetch("/api/extraccion",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          numero_qr: qr,
+          estado_silo: estado_silo.value
+        })
+      });
+      location.reload();
+      return;
+    }
+
+    throw new Error("No hay acción para guardar");
+
+  } catch (err) {
+    alert("❌ " + err.message);
     btn.disabled = false;
     btn.innerText = "Guardar";
     btn.dataset.locked = "";
-    return;
   }
-
-  if(lat === null || lon === null){
-    alert("📍 Debe activar la ubicación para registrar el silo");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;
-  }
-    
-try {
-  const res = await fetch("/api/registrar_silo",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      numero_qr: qr,
-      cereal: cereal.value,
-      estado_grano: estado_grano.value,
-      metros: metros.value,
-      lat, lon
-    })
-  });
-
-  if(!res.ok){
-    throw new Error("Error HTTP " + res.status);
-  }
-
-  const data = await res.json();
-
-  if(!data.ok){
-    throw new Error(data.error || "Error al registrar silo");
-  }
-
-  // ✅ REDIRECCIÓN LIMPIA
-  window.location.replace("/panel");
-
-} catch (err) {
-  alert("❌ " + err.message);
-  btn.disabled = false;
-  btn.innerText = "Guardar";
-  btn.dataset.locked = "";
 }
-
-  if(tipo_evento.value && !eventoPendiente){
-    const fd = new FormData();
-    fd.append("numero_qr", qr);
-    fd.append("tipo", tipo_evento.value);
-    fd.append("detalle", detalle_evento.value);
-    foto.files[0] && fd.append("foto", foto.files[0]);
-
-    await fetch("/api/monitoreo",{ method:"POST", body:fd });
-    location.reload();
-    return;
-  }
-
-  if(eventoPendiente && resuelto.checked){
-    const fd = new FormData();
-    fd.append("id_monitoreo", eventoPendiente.id);
-    foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
-
-    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
-
-    eventoPendiente = null;
-    resuelto.checked = false;
-    bloqueResolucion.classList.add("hidden");
-
-    await cargarEventosPendientes();
-    await cargarEventosResueltos();
-
-    alert("Evento resuelto correctamente");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;    
- }
-
-  if(estado_silo.value){
-    await fetch("/api/extraccion",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        numero_qr: qr,
-        estado_silo: estado_silo.value
-      })
-    });
-    location.reload();
-    return;
+</script>
 
     }
     // 🔄 fallback si no se hizo ninguna acción
