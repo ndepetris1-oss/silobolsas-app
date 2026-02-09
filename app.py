@@ -410,6 +410,18 @@ def registrar_silo():
             ok=False,
             error="Datos incompletos para registrar el silo"
         ), 400
+        
+    existe = conn.execute(
+        "SELECT 1 FROM silos WHERE numero_qr=?",
+        (d["numero_qr"],)
+    ).fetchone()
+
+    if existe:
+        conn.close()
+        return jsonify(
+            ok=False,
+            error="El silo ya está registrado"
+        ), 400
 
     conn = get_db()
     conn.execute("""
