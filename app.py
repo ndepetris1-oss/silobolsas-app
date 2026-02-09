@@ -352,6 +352,8 @@ def comparador(cereal):
 @app.route("/api/mercado/manual", methods=["POST"])
 def mercado_manual():
     d = request.get_json()
+if not d or not d.get("cereal"):
+    return jsonify(ok=False, error="Cereal faltante"), 400
 
     conn = get_db()
     conn.execute("""
@@ -759,7 +761,28 @@ def monitoreos_resueltos(qr):
 def registrar_extraccion():
     d = request.get_json(force=True, silent=True)
 
+    # ❌ Validación básica
+    if not d or not d.get("numero_qr") or not d.get("estado_silo"):
+        return jsonify(ok=False, error="Datos incompletos"), 400
+
     conn = get_db()
+
+    # 🔍 Verificar silo
+    silo = conn.execute(
+        "SELECT estado_silo FROM silos WHERE numero_qr=?",
+        (d["numero_qr"],)
+    ).fetchone()
+
+    if not silo:
+        conn.close()
+        return jsonify(ok=False, error="Silo inexistente"), 400
+
+    # 🔒 Bloquear doble extracción
+    if silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(ok=False, error="El silo ya está extraído"), 400
+
+    # ✅ Actualizar estado
     conn.execute("""
         UPDATE silos SET
             estado_silo=?,
@@ -774,6 +797,7 @@ def registrar_extraccion():
     conn.commit()
     conn.close()
     return jsonify(ok=True)
+
 # ======================
 # SILO (DETALLE)
 # ======================
