@@ -289,6 +289,9 @@ def comercial():
 # ======================
 # COMPARADOR COMERCIAL
 # ======================
+# ======================
+# COMPARADOR COMERCIAL
+# ======================
 @app.route("/comercial/<cereal>")
 def comparador(cereal):
     conn = get_db()
@@ -353,9 +356,6 @@ def comparador(cereal):
 def mercado_manual():
     d = request.get_json()
 
-    if not d or not d.get("cereal"):
-        return jsonify(ok=False, error="Cereal faltante"), 400
-
     conn = get_db()
     conn.execute("""
         UPDATE mercado
@@ -396,48 +396,37 @@ def form():
 # ======================
 @app.route("/api/registrar_silo", methods=["POST"])
 def registrar_silo():
-    try:
-        d = request.get_json(force=True)
+    d = request.get_json(force=True, silent=True)
 
-        campos = ["numero_qr", "cereal", "estado_grano", "metros", "lat", "lon"]
-        if not all(d.get(c) for c in campos):
-            return jsonify(ok=False, error="Datos incompletos"), 400
+    if not d or not d.get("numero_qr"):
+        return jsonify(ok=False, error="QR faltante"), 400
 
-        conn = get_db()
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO silos (
+            numero_qr,
+            cereal,
+            estado_grano,
+            estado_silo,
+            metros,
+            lat,
+            lon,
+            fecha_confeccion
+        ) VALUES (?,?,?,?,?,?,?,?)
+    """, (
+        d.get("numero_qr"),
+        d.get("cereal"),
+        d.get("estado_grano"),
+        "Activo",
+        d.get("metros"),
+        d.get("lat"),
+        d.get("lon"),
+        ahora().strftime("%Y-%m-%d %H:%M")
+    ))
 
-        existe = conn.execute(
-            "SELECT 1 FROM silos WHERE numero_qr=?",
-            (d["numero_qr"],)
-        ).fetchone()
-
-        if existe:
-            conn.close()
-            return jsonify(ok=False, error="El silo ya existe"), 400
-
-        conn.execute("""
-            INSERT INTO silos (
-                numero_qr, cereal, estado_grano,
-                estado_silo, metros, lat, lon, fecha_confeccion
-            ) VALUES (?,?,?,?,?,?,?,?)
-        """, (
-            d["numero_qr"],
-            d["cereal"],
-            d["estado_grano"],
-            "Activo",
-            int(d["metros"]),
-            float(d["lat"]),
-            float(d["lon"]),
-            ahora().strftime("%Y-%m-%d %H:%M")
-        ))
-
-        conn.commit()
-        conn.close()
-
-        return jsonify(ok=True)
-
-    except Exception as e:
-        print("ERROR registrar_silo:", e)
-        return jsonify(ok=False, error="Error interno del servidor"), 500
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
 
 # ======================
 # API — NUEVO MUESTREO
@@ -748,28 +737,7 @@ def monitoreos_resueltos(qr):
 def registrar_extraccion():
     d = request.get_json(force=True, silent=True)
 
-    # ❌ Validación básica
-    if not d or not d.get("numero_qr") or not d.get("estado_silo"):
-        return jsonify(ok=False, error="Datos incompletos"), 400
-
     conn = get_db()
-
-    # 🔍 Verificar silo
-    silo = conn.execute(
-        "SELECT estado_silo FROM silos WHERE numero_qr=?",
-        (d["numero_qr"],)
-    ).fetchone()
-
-    if not silo:
-        conn.close()
-        return jsonify(ok=False, error="Silo inexistente"), 400
-
-    # 🔒 Bloquear doble extracción
-    if silo["estado_silo"] == "Extraído":
-        conn.close()
-        return jsonify(ok=False, error="El silo ya está extraído"), 400
-
-    # ✅ Actualizar estado
     conn.execute("""
         UPDATE silos SET
             estado_silo=?,
@@ -784,7 +752,6 @@ def registrar_extraccion():
     conn.commit()
     conn.close()
     return jsonify(ok=True)
-
 # ======================
 # SILO (DETALLE)
 # ======================
