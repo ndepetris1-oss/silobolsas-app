@@ -396,62 +396,48 @@ def form():
 # ======================
 @app.route("/api/registrar_silo", methods=["POST"])
 def registrar_silo():
-    d = request.get_json(force=True, silent=True)
+    try:
+        d = request.get_json(force=True)
 
-    # ❌ VALIDACIÓN DURA: evitar silo vacío
-    campos_obligatorios = [
-        "numero_qr",
-        "cereal",
-        "estado_grano",
-        "metros",
-        "lat",
-        "lon"
-    ]
+        campos = ["numero_qr", "cereal", "estado_grano", "metros", "lat", "lon"]
+        if not all(d.get(c) for c in campos):
+            return jsonify(ok=False, error="Datos incompletos"), 400
 
-    if not d or not all(d.get(c) not in (None, "", []) for c in campos_obligatorios):
-        return jsonify(
-            ok=False,
-            error="Datos incompletos para registrar el silo"
-        ), 400
-        
-    existe = conn.execute(
-        "SELECT 1 FROM silos WHERE numero_qr=?",
-        (d["numero_qr"],)
-    ).fetchone()
+        conn = get_db()
 
-    if existe:
+        existe = conn.execute(
+            "SELECT 1 FROM silos WHERE numero_qr=?",
+            (d["numero_qr"],)
+        ).fetchone()
+
+        if existe:
+            conn.close()
+            return jsonify(ok=False, error="El silo ya existe"), 400
+
+        conn.execute("""
+            INSERT INTO silos (
+                numero_qr, cereal, estado_grano,
+                estado_silo, metros, lat, lon, fecha_confeccion
+            ) VALUES (?,?,?,?,?,?,?,?)
+        """, (
+            d["numero_qr"],
+            d["cereal"],
+            d["estado_grano"],
+            "Activo",
+            int(d["metros"]),
+            float(d["lat"]),
+            float(d["lon"]),
+            ahora().strftime("%Y-%m-%d %H:%M")
+        ))
+
+        conn.commit()
         conn.close()
-        return jsonify(
-            ok=False,
-            error="El silo ya está registrado"
-        ), 400
 
-    conn = get_db()
-    conn.execute("""
-        INSERT INTO silos (
-            numero_qr,
-            cereal,
-            estado_grano,
-            estado_silo,
-            metros,
-            lat,
-            lon,
-            fecha_confeccion
-        ) VALUES (?,?,?,?,?,?,?,?)
-    """, (
-        d.get("numero_qr"),
-        d.get("cereal"),
-        d.get("estado_grano"),
-        "Activo",
-        d.get("metros"),
-        d.get("lat"),
-        d.get("lon"),
-        ahora().strftime("%Y-%m-%d %H:%M")
-    ))
+        return jsonify(ok=True)
 
-    conn.commit()
-    conn.close()
-    return jsonify(ok=True)
+    except Exception as e:
+        print("ERROR registrar_silo:", e)
+        return jsonify(ok=False, error="Error interno del servidor"), 500
 
 # ======================
 # API — NUEVO MUESTREO
