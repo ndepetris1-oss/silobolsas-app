@@ -289,9 +289,6 @@ def comercial():
 # ======================
 # COMPARADOR COMERCIAL
 # ======================
-# ======================
-# COMPARADOR COMERCIAL
-# ======================
 @app.route("/comercial/<cereal>")
 def comparador(cereal):
     conn = get_db()
@@ -398,8 +395,21 @@ def form():
 def registrar_silo():
     d = request.get_json(force=True, silent=True)
 
-    if not d or not d.get("numero_qr"):
-        return jsonify(ok=False, error="QR faltante"), 400
+    # ❌ VALIDACIÓN DURA: evitar silo vacío
+    campos_obligatorios = [
+        "numero_qr",
+        "cereal",
+        "estado_grano",
+        "metros",
+        "lat",
+        "lon"
+    ]
+
+    if not d or not all(d.get(c) not in (None, "", []) for c in campos_obligatorios):
+        return jsonify(
+            ok=False,
+            error="Datos incompletos para registrar el silo"
+        ), 400
 
     conn = get_db()
     conn.execute("""
