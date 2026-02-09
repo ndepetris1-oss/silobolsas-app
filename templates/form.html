@@ -408,31 +408,39 @@ async function guardar(){
     btn.dataset.locked = "";
     return;
   }
-    const res = await fetch("/api/registrar_silo",{
-  method:"POST",
-  headers:{ "Content-Type":"application/json" },
-  body:JSON.stringify({
-    numero_qr: qr,
-    cereal: cereal.value,
-    estado_grano: estado_grano.value,
-    metros: metros.value,
-    lat, lon
-  })
-});
+    
+try {
+  const res = await fetch("/api/registrar_silo",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      numero_qr: qr,
+      cereal: cereal.value,
+      estado_grano: estado_grano.value,
+      metros: metros.value,
+      lat, lon
+    })
+  });
 
-const data = await res.json();
+  if(!res.ok){
+    throw new Error("Error HTTP " + res.status);
+  }
 
-if(!data.ok){
-  alert(data.error || "Error al registrar silo");
+  const data = await res.json();
+
+  if(!data.ok){
+    throw new Error(data.error || "Error al registrar silo");
+  }
+
+  // ✅ REDIRECCIÓN LIMPIA
+  window.location.replace("/panel");
+
+} catch (err) {
+  alert("❌ " + err.message);
   btn.disabled = false;
   btn.innerText = "Guardar";
   btn.dataset.locked = "";
-  return;
 }
-
-// 👉 ir al panel
-window.location.href = "/panel";
-  }
 
   if(tipo_evento.value && !eventoPendiente){
     const fd = new FormData();
