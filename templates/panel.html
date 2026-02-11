@@ -33,7 +33,6 @@ select{background:#c8e6c9;color:black}
 
 button:hover{background:#2e7d32}
 
-<<<<<<< HEAD
 /* Mapa normal */
 #map {
   width: 100%;
@@ -51,9 +50,6 @@ button:hover{background:#2e7d32}
   z-index: 9999;
   border-radius: 0;
 }
-=======
-#map{height:420px;border-radius:12px;margin-bottom:15px}
->>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
@@ -84,7 +80,6 @@ th{background:#a5d6a7;cursor:pointer}
 <div class="container">
 
 <div class="toolbar">
-<<<<<<< HEAD
   <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
 </div>
 <button id="btnMapa"
@@ -103,11 +98,6 @@ th{background:#a5d6a7;cursor:pointer}
         ">
   🗺 Pantalla completa
 </button>
-=======
-  <button onclick="location.href='/form'">➕ Nuevo / Extracción</button>
-  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-</div>
->>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 <div id="map"></div>
 
@@ -179,7 +169,6 @@ th{background:#a5d6a7;cursor:pointer}
 </table>
 
 </div>
-<<<<<<< HEAD
 <script>
 function toggleMapa(){
   const mapDiv = document.getElementById("map");
@@ -193,8 +182,6 @@ function toggleMapa(){
   }, 300);
 }
 </script>
-=======
->>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 <script>
 /* ===== DATOS ===== */
@@ -249,7 +236,6 @@ function render(){
         </td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
         <td>${r.eventos>0 ? r.eventos : 'No'}</td>
-<<<<<<< HEAD
         <td>
   <button
     onclick="location.href='/silo/${r.numero_qr}'"
@@ -269,9 +255,6 @@ function render(){
       : `<span style="color:#388e3c;font-weight:bold">✔ Extraído</span>`
   }
 </td>
-=======
-        <td><button onclick="location.href='/silo/${r.numero_qr}'">Ver</button></td>
->>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
       </tr>
     `;
 
@@ -335,7 +318,6 @@ function aplicarFiltros(){
 /* INIT */
 render();
 </script>
-<<<<<<< HEAD
 <script>
 async function confirmarExtraccion(qr){
   if(!confirm(
@@ -365,8 +347,6 @@ async function confirmarExtraccion(qr){
   location.reload();
 }
 </script>
-=======
->>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 </body>
 </html>
