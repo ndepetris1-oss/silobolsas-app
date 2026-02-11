@@ -106,15 +106,15 @@ def init_db():
 )
 """)
 # Asegurar columnas nuevas en Render
-try:
-    c.execute("ALTER TABLE mercado ADD COLUMN fuente TEXT")
-except:
-    pass
+    try:
+        c.execute("ALTER TABLE mercado ADD COLUMN fuente TEXT")
+    except:
+        pass
 
-try:
-    c.execute("ALTER TABLE mercado ADD COLUMN fecha_fuente TEXT")
-except:
-    pass
+    try:
+        c.execute("ALTER TABLE mercado ADD COLUMN fecha_fuente TEXT")
+    except:
+        pass
 
     # Datos iniciales mercado
     cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
