@@ -59,6 +59,7 @@ button:hover{background:#2e7d32}
 <body>
 
 <header>💰 Comercial – Precios de mercado</header>
+<<<<<<< HEAD
 {% set ref = mercado[0] if mercado %}
 
 {% if mercado and ref.fecha %}
@@ -84,13 +85,20 @@ button:hover{background:#2e7d32}
 <table>
   …
 </table>
+=======
+
+<div class="container">
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 <table>
 <tr>
   <th>Cereal</th>
   <th>Pizarra auto</th>
+<<<<<<< HEAD
   <th>Fuente</th>
   <th>Fecha fuente</th>
+=======
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
   <th>Usar manual</th>
   <th>Pizarra manual</th>
   <th>Observación</th>
@@ -102,6 +110,7 @@ button:hover{background:#2e7d32}
 {% for m in mercado %}
 <tr>
   <td><b>{{ m.cereal }}</b></td>
+<<<<<<< HEAD
 <td>
   {% if m.pizarra_auto and m.pizarra_auto > 0 %}
     {{ "{:,.0f}".format(m.pizarra_auto).replace(",", ".") }}
@@ -117,6 +126,12 @@ button:hover{background:#2e7d32}
 <td>
   {{ m.fecha_fuente if m.fecha_fuente else "-" }}
 </td>
+=======
+
+  <td>
+    {{ m.pizarra_auto if m.pizarra_auto else "-" }}
+  </td>
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
   <td>
     <input type="checkbox"
@@ -179,6 +194,7 @@ function guardar(cereal){
     .then(()=>alert("Guardado"));
 }
 </script>
+<<<<<<< HEAD
 <script>
 async function actualizarDolar(){
   if(!confirm("¿Actualizar dólar oficial ahora?")) return;
@@ -219,6 +235,8 @@ async function actualizarPizarra(){
   }
 }
 </script>
+=======
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 </body>
 </html>

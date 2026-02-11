@@ -1,12 +1,19 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect
 import sqlite3, os
 from datetime import datetime, timedelta
+<<<<<<< HEAD
 import requests 
 from zoneinfo import ZoneInfo
 import csv, io
 from calculos import calcular_comercial
 from bs4 import BeautifulSoup
 import re
+=======
+from zoneinfo import ZoneInfo
+import csv, io
+
+from calculos import calcular_comercial
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 app = Flask(__name__)
 
@@ -138,6 +145,7 @@ init_db()
 @app.route("/api/silo/<qr>")
 def api_silo(qr):
     conn = get_db()
+<<<<<<< HEAD
 
     s = conn.execute("""
         SELECT
@@ -153,6 +161,12 @@ def api_silo(qr):
         WHERE s.numero_qr=?
     """, (qr,)).fetchone()
 
+=======
+    s = conn.execute(
+        "SELECT cereal, fecha_confeccion, estado_silo FROM silos WHERE numero_qr=?",
+        (qr,)
+    ).fetchone()
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
     conn.close()
 
     if not s:
@@ -162,8 +176,12 @@ def api_silo(qr):
         existe=True,
         cereal=s["cereal"],
         fecha_confeccion=s["fecha_confeccion"],
+<<<<<<< HEAD
         estado_silo=s["estado_silo"],
         ultimo_calado=s["ultimo_calado"]
+=======
+        estado_silo=s["estado_silo"]
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
     )
 
 # ======================
@@ -285,6 +303,7 @@ def panel():
 @app.route("/comercial")
 def comercial():
     conn = get_db()
+<<<<<<< HEAD
 
     rows = conn.execute("""
     SELECT cereal,
@@ -315,6 +334,22 @@ def comercial():
         mercado=rows,
         dolar_info=dolar_info
     )
+=======
+    rows = conn.execute("""
+        SELECT cereal,
+               pizarra_auto,
+               pizarra_manual,
+               usar_manual,
+               obs_precio,
+               dolar,
+               fecha
+        FROM mercado
+        ORDER BY cereal
+    """).fetchall()
+    conn.close()
+
+    return render_template("comercial.html", mercado=rows)
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
 # ======================
 # COMPARADOR COMERCIAL
@@ -932,6 +967,7 @@ def ver_muestreo(id):
         analisis=analisis
     )
 # ======================
+<<<<<<< HEAD
 # EXPORT EXCEL ORDENADO
 # ======================
 @app.route("/api/export")
@@ -1209,6 +1245,32 @@ def actualizar_pizarra():
     conn.close()
     return jsonify(ok=True)
 
+=======
+# EXPORT CSV
+# ======================
+@app.route("/api/export")
+def exportar():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM silos").fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if rows:
+        writer.writerow(rows[0].keys())
+        for r in rows:
+            writer.writerow(list(r))
+
+    mem = io.BytesIO(output.getvalue().encode())
+    mem.seek(0)
+    return send_file(
+        mem,
+        as_attachment=True,
+        download_name="silos.csv",
+        mimetype="text/csv"
+    )
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 # ======================
 # RUN
 # ======================

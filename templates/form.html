@@ -244,9 +244,12 @@ async function init(){
 
   const res = await fetch(`/api/silo/${qr}`);
   const data = await res.json();
+<<<<<<< HEAD
 if(data.ultimo_calado){
   infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
 }
+=======
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
   // 🆕 REGISTRO NUEVO → GPS OBLIGATORIO
   if(!data.existe){
@@ -282,6 +285,7 @@ if(data.ultimo_calado){
   }
 
   // ✅ SILO ACTIVO
+<<<<<<< HEAD
 modo = "operacion";
 
 let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
@@ -292,6 +296,11 @@ if(data.ultimo_calado){
 
 infoSilo.innerHTML = info;
 infoSilo.classList.remove("hidden");
+=======
+  modo = "operacion";
+  infoSilo.innerHTML = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+  infoSilo.classList.remove("hidden");
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
 
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
@@ -395,6 +404,7 @@ async function guardar(){
   const btn = btnGuardar;
   btn.disabled = true;
 
+<<<<<<< HEAD
  if(modo === "registro"){
 
   if(!cereal.value){
@@ -429,6 +439,14 @@ async function guardar(){
     return;
   }
 
+=======
+  if(modo === "registro"){
+  if(lat === null || lon === null){
+  alert("📍 Debe activar la ubicación para registrar el silo");
+  btn.disabled = false;
+  return;
+}
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
     await fetch("/api/registrar_silo",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -445,6 +463,7 @@ async function guardar(){
   }
 
   if(tipo_evento.value && !eventoPendiente){
+<<<<<<< HEAD
 
   if(!foto.files[0]){
     alert("❌ Debe sacar o seleccionar una foto del evento");
@@ -476,6 +495,19 @@ async function guardar(){
   return;
 }
 
+=======
+    const fd = new FormData();
+    fd.append("numero_qr", qr);
+    fd.append("tipo", tipo_evento.value);
+    fd.append("detalle", detalle_evento.value);
+    foto.files[0] && fd.append("foto", foto.files[0]);
+
+    await fetch("/api/monitoreo",{ method:"POST", body:fd });
+    location.reload();
+    return;
+  }
+
+>>>>>>> b2aca66750ac56fc2b015678b8f28062ef564982
   if(eventoPendiente && resuelto.checked){
     const fd = new FormData();
     fd.append("id_monitoreo", eventoPendiente.id);
