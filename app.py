@@ -131,6 +131,24 @@ def init_db():
     conn.close()
 
 init_db()
+def actualizar_tabla_mercado():
+    conn = get_db()
+
+    columnas = [
+        "fuente TEXT",
+        "fecha_fuente TEXT",
+        "usar_manual INTEGER DEFAULT 0",
+        "obs_precio TEXT"
+    ]
+
+    for col in columnas:
+        try:
+            conn.execute(f"ALTER TABLE mercado ADD COLUMN {col}")
+        except:
+            pass
+
+    conn.commit()
+    conn.close()
 
 # ======================
 # API — CONSULTA SILO
@@ -316,9 +334,6 @@ def comercial():
         dolar_info=dolar_info
     )
 
-# ======================
-# COMPARADOR COMERCIAL
-# ======================
 # ======================
 # COMPARADOR COMERCIAL
 # ======================
