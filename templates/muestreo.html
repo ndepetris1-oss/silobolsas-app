@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Muestreo - {{ muestreo.numero_qr }} - {{ muestreo.cereal }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#eef5ee;
+  margin:0
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  font-size:20px;
+  text-align:center
+}
+.container{
+  width:90%;
+  margin:20px auto;
+  background:white;
+  padding:20px;
+  border-radius:12px
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer
+}
+button:hover{background:#2e7d32}
+.section{
+  border:1px solid #c8e6c9;
+  border-radius:10px;
+  padding:15px;
+  margin-bottom:15px
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin:10px 0
+}
+th,td{
+  border:1px solid #c8e6c9;
+  padding:6px;
+  font-size:13px;
+  text-align:center
+}
+th{background:#e8f5e9}
+.alert{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:10px
+}
+.modal{
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+  z-index:9999
+}
+.modal-content{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  width:420px;
+  max-height:90vh;
+  overflow:auto
+}
+input,select{
+  width:100%;
+  padding:6px;
+  margin-bottom:8px
+}
+  @media (max-width: 768px) {
+  .modal {
+    align-items: flex-start;
+  }
+
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    padding: 15px;
+  }
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: 0.3s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.switch input:checked + .slider {
+  background-color: #4caf50;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(24px);
+}
+</style>
+  
+</head>
+
+<body>
+
+<header>
+Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
+</header>
+
+<div class="container">
+
+<button onclick="location.href='/silo/{{ muestreo.numero_qr }}'">⬅ Volver al silo</button>
+
+<p><b>Fecha muestreo:</b> {{ muestreo.fecha_muestreo }}</p>
+
+<hr>
+<h3>Secciones del muestreo</h3>
+
+{% for sec in ["punta","medio","final"] %}
+{% set a = (analisis | selectattr("seccion","equalto",sec) | list | first) %}
+
+<div class="section">
+  <h4>{{ sec|capitalize }}</h4>
+
+  {% if a %}
+  <table>
+    <tr>
+      <th>Temp °C</th>
+      <th>Hum %</th>
+      <th>Dañados</th>
+      <th>Quebrados</th>
+      <th>M.Ext</th>
+      <th>Olor %</th>
+      <th>Moho %</th>
+      <th>Insectos</th>
+      <th>Chamico</th>
+      {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <th>Grado</th>
+      {% endif %}
+      <th>Factor</th>
+      <th>TAS (días)</th>
+    </tr>
+    <tr>
+      <td>
+        {{ a.temperatura if a.temperatura is not none else "-" }}
+</td>
+      <td>{{ a.humedad }}</td>
+      <td>{{ a.danados }}</td>
+      <td>{{ a.quebrados }}</td>
+      <td>{{ a.materia_extrana }}</td>
+      <td>{{ a.olor }}</td>
+      <td>{{ a.moho }}</td>
+      <td>{{ "Sí" if a.insectos else "No" }}</td>
+      <td>{{ a.chamico }}</td>
+      {% if muestreo.cereal in ("Maíz","Trigo") %}
+     <td>
+       {% if a.grado is not none %}
+        <b>{{ a.grado }}</b>
+       {% else %}
+        -
+       {% endif %}
+</td>
+      {% endif %}
+      <td>
+        {% if a.factor is not none %}
+          <b>{{ (a.factor * 100)|round(2) }}%</b>
+        {% else %}
+          -
+        {% endif %}
+</td>
+      <td><b>{{ a.tas if a.tas is not none else "-" }}</b></td>
+    </tr>
+  </table>
+  {% else %}
+    <p><i>Sin análisis cargado</i></p>
+  {% endif %}
+
+  <button onclick='abrirAnalisis(
+  "{{ sec }}",
+  {% if a %}
+  {
+    temperatura: {{ a.temperatura if a.temperatura is not none else "null" }},
+    humedad: {{ a.humedad if a.humedad is not none else "null" }},
+    ph: {{ a.ph if a.ph is not none else "null" }},
+    danados: {{ a.danados if a.danados is not none else "null" }},
+    quebrados: {{ a.quebrados if a.quebrados is not none else "null" }},
+    materia_extrana: {{ a.materia_extrana if a.materia_extrana is not none else "null" }},
+    chamico: {{ a.chamico if a.chamico is not none else "null" }},
+    olor: {{ a.olor if a.olor is not none else 0 }},
+    moho: {{ a.moho if a.moho is not none else 0 }},
+    insectos: {{ "true" if a.insectos else "false" }}
+  }
+  {% else %}
+  null
+  {% endif %}
+)'>
+  ➕ Cargar / Editar análisis
+</button>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+
+    <h3 id="tituloModal"></h3>
+
+    <input id="temperatura" type="number" inputmode="decimal" placeholder="Temperatura">
+    <input id="humedad" type="number" inputmode="decimal" placeholder="Humedad">
+
+    {% if muestreo.cereal not in ("Soja","Girasol") %}
+    <input id="ph" type="number" inputmode="decimal" placeholder="PH">
+    {% endif %}
+
+    <input id="danados" type="number" inputmode="decimal" placeholder="Dañados">
+    <input id="quebrados" type="number" inputmode="decimal" placeholder="Quebrados">
+    <input id="materia_extrana" type="number" inputmode="decimal" placeholder="Materia extraña">
+
+    <input id="chamico" type="number" inputmode="numeric" placeholder="Cantidad / semillas">
+
+    <label>Olor (%)</label>
+    <select id="olor">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label>Moho (%)</label>
+    <select id="moho">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+  <span>Insectos</span>
+
+  <label class="switch">
+    <input type="checkbox" id="insectos">
+    <span class="slider"></span>
+  </label>
+</label>
+  
+    <button onclick="guardarAnalisis()">💾 Guardar</button>
+    <button onclick="cerrarModal()">Cancelar</button>
+
+  </div>
+</div>
+
+<script>
+let seccionActual = null;
+
+function abrirAnalisis(seccion, datos){
+  seccionActual = seccion;
+
+  document.getElementById("tituloModal").innerText =
+    "Análisis - " + seccion.toUpperCase();
+
+  // limpiar
+  ["temperatura","humedad","danados","quebrados","materia_extrana","chamico"]
+    .forEach(id => {
+      if(document.getElementById(id)) document.getElementById(id).value = "";
+    });
+
+  if(document.getElementById("ph")) ph.value = "";
+  olor.value = "0";
+  moho.value = "0";
+  insectos.checked = false;
+
+  // precargar si hay datos
+  if(datos){
+    if(datos.temperatura !== null) temperatura.value = datos.temperatura;
+    if(datos.humedad !== null) humedad.value = datos.humedad;
+    if(document.getElementById("ph") && datos.ph !== null) ph.value = datos.ph;
+    if(datos.danados !== null) danados.value = datos.danados;
+    if(datos.quebrados !== null) quebrados.value = datos.quebrados;
+    if(datos.materia_extrana !== null) materia_extrana.value = datos.materia_extrana;
+    if(datos.chamico !== null) chamico.value = datos.chamico;
+    olor.value = datos.olor ?? "0";
+    moho.value = datos.moho ?? "0";
+    insectos.checked = datos.insectos === true;
+  }
+
+  document.getElementById("modal").style.display = "flex";
+}
+
+function cerrarModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+function guardarAnalisis(){
+  fetch("/api/analisis_seccion",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      id_muestreo: {{ muestreo.id }},
+      cereal: "{{ muestreo.cereal }}",
+      seccion: seccionActual,
+      temperatura: temperatura.value,
+      humedad: humedad.value,
+      ph: document.getElementById("ph") ? ph.value : null,
+      danados: danados.value,
+      quebrados: quebrados.value,
+      materia_extrana: materia_extrana.value,
+      olor: olor.value,
+      moho: moho.value,
+      insectos: insectos.checked,
+      chamico: chamico.value
+    })
+  }).then(()=>location.reload());
+}
+</script>
+
+</body>
+</html>

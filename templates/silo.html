@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Silo {{ silo.numero_qr }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#e8f5e9;
+  margin:0;
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:20px;
+}
+.container{
+  width:95%;
+  margin:15px auto;
+  background:white;
+  border-radius:14px;
+  padding:15px;
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer;
+  font-weight:bold;
+}
+button:hover{background:#2e7d32}
+.info{
+  background:#eeeeee;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:12px;
+}
+.alerta{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin:10px 0;
+  font-weight:bold;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #c8e6c9;
+  text-align:center;
+}
+th{background:#a5d6a7}
+</style>
+</head>
+
+<body>
+
+<header>SILO · {{ silo.numero_qr }}</header>
+
+<div class="container">
+
+<button onclick="location.href='/panel'">← Volver al panel</button>
+
+<div class="info" style="margin-top:10px">
+  <b>Cereal:</b> {{ silo.cereal }} |
+  <b>Estado grano:</b> {{ silo.estado_grano }} |
+  <b>Metros:</b> {{ silo.metros }} |
+  <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
+</div>
+
+<hr>
+  
+<h3>📸 Eventos</h3>
+
+{% if not eventos_pendientes and not eventos_resueltos %}
+  <div class="alerta">
+    ✔ Este silo no tiene eventos registrados.
+  </div>
+{% endif %}
+
+{% if eventos_pendientes %}
+  <h4>⚠️ Eventos pendientes</h4>
+  {% for e in eventos_pendientes %}
+    <div class="alerta">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_evento }}<br><br>
+
+      {% if e.foto_evento %}
+        <a href="/{{ e.foto_evento }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="/{{ e.foto_evento }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+{% if eventos_resueltos %}
+  <h4>✅ Eventos resueltos</h4>
+  {% for e in eventos_resueltos %}
+    <div class="alerta" style="background:#e8f5e9">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_resolucion }}<br><br>
+
+      {% if e.foto_resolucion %}
+        <a href="/{{ e.foto_resolucion }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="/{{ e.foto_resolucion }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+  
+{% if analisis_pendiente and muestreos and muestreos|length > 0 %}
+  <div class="alerta">
+    🧪 <b>Último calado:</b> {{ muestreos[0].fecha_muestreo }}<br>
+    ⚠️ Análisis pendiente de carga
+  </div>
+{% endif %}
+
+{% if precio_estimado and mercado and mercado.pizarra and mercado.dolar %}
+<div class="alert" style="background:#e8f5e9;border-left:6px solid #2e7d32">
+  <h3>💰 Precio estimado</h3>
+
+  <p>Pizarra {{ silo.cereal }}:
+     <b>{{ mercado.pizarra }} ARS/TN</b></p>
+
+  {% if factor_prom %}
+    <p>Factor comercial:
+       <b>{{ factor_prom }}</b></p>
+  {% endif %}
+
+  {% if tas_usada %}
+    <p>TAS utilizada:
+       <b>{{ tas_usada }} días</b></p>
+  {% endif %}
+
+  <p>Precio ajustado:
+     <b>{{ precio_estimado }} ARS/TN</b></p>
+
+  <p>Dólar:
+     <b>{{ mercado.dolar }}</b></p>
+
+  <p style="font-size:18px">
+    👉 <b>{{ precio_usd }} USD/TN</b>
+  </p>
+</div>
+{% endif %}
+
+<h3>📊 Muestreos</h3>
+<button style="margin:10px 0" onclick="nuevoMuestreo()">
+  ➕ Nuevo muestreo
+</button>
+
+<script>
+async function nuevoMuestreo(){
+  const res = await fetch("/api/nuevo_muestreo",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  });
+
+  const data = await res.json();
+
+  if(data.id_muestreo){
+    location.href = "/muestreo/" + data.id_muestreo;
+  }else{
+    alert(data.error || "Error al crear muestreo");
+  }
+}
+</script>
+
+{% if not muestreos %}
+  <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
+{% endif %}
+
+{% for m in muestreos %}
+  <div class="info" style="margin-top:15px">
+    <b>📅 Muestreo:</b> {{ m.fecha_muestreo }}
+    <span style="margin-left:10px;color:#555">
+      ({{ m.dias }} días)
+    </span>
+
+    <table style="margin-top:8px">
+      <tr>
+        <th>Sección</th>
+        <th>Grado</th>
+        <th>Factor</th>
+        <th>TAS (días)</th>
+      </tr>
+
+      {% for sec in ["punta","medio","final"] %}
+        {% set a = m[sec] %}
+        <tr>
+          <td><b>{{ sec|capitalize }}</b></td>
+
+        <td>
+          {{ a.grado if a and a.grado is not none else "-" }}
+        </td>
+
+        <td>
+          {% if a and a.factor is not none %}
+            {{ (a.factor * 100)|round(2) }}%
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td
+          {% if a and a.tas is not none and a.tas <= 30 %}
+            style="color:#b71c1c;font-weight:bold"
+          {% endif %}
+        >
+          {{ a.tas if a and a.tas is not none else "-" }}
+        </td>
+      </tr>
+
+      {% endfor %}
+    </table>
+
+    <button
+      style="margin-top:6px"
+      onclick="location.href='/muestreo/{{ m.id }}'">
+      Ver detalle
+    </button>
+  </div>
+{% endfor %}

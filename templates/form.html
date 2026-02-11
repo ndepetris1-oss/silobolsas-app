@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Silo Bolsa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  background:#e6f4ea;
+  font-family:Arial, sans-serif;
+  padding:20px;
+  color:#1e4620;
+}
+h2{text-align:center}
+label{display:block;margin-top:14px;font-weight:bold}
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin-top:6px;
+  border-radius:10px;
+  border:1px solid #4caf50;
+  font-size:15px;
+}
+input[readonly]{background:#f0f0f0}
+button{
+  background:#4caf50;
+  color:white;
+  border:none;
+  margin-top:18px;
+  font-size:16px;
+  font-weight:bold;
+}
+button:disabled{background:#9ccc9c}
+.hidden{display:none}
+.card{
+  background:#ffffff;
+  border-radius:12px;
+  padding:14px;
+  margin-top:14px;
+}
+.alert{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin-top:10px;
+  font-weight:bold;
+}
+
+/* Switch móvil */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 32px;
+  margin-right: 10px;
+}
+.switch input { display:none }
+.slider {
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  background:#ccc;
+  border-radius:34px;
+  transition:.3s;
+}
+.slider:before {
+  content:"";
+  position:absolute;
+  width:24px; height:24px;
+  left:4px; bottom:4px;
+  background:white;
+  border-radius:50%;
+  transition:.3s;
+}
+.switch input:checked + .slider { background:#4caf50 }
+.switch input:checked + .slider:before { transform:translateX(24px) }
+</style>
+<style>
+.btn-calado{
+  background:#1976d2;
+  color:white;
+  border:none;
+  border-radius:10px;
+  padding:14px;
+  font-size:16px;
+  font-weight:bold;
+  width:100%;
+}
+.btn-calado:hover{
+  background:#0d47a1;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<h2>Silo Bolsa</h2>
+
+<label>QR</label>
+<input id="qr" readonly>
+
+<div id="infoSilo" class="alert hidden"></div>
+
+<!-- EVENTOS PENDIENTES -->
+<div id="bloqueEventosPendientes" class="card hidden">
+  <h3>⚠️ Eventos pendientes</h3>
+  <div id="listaEventos"></div>
+</div>
+
+<!-- REGISTRO -->
+<div id="bloqueRegistro" class="card hidden">
+  <h3>🆕 Registro de silo</h3>
+  <label>Cereal</label>
+  <select id="cereal">
+    <option value="">Seleccione…</option>
+    <option>Maíz</option>
+    <option>Soja</option>
+    <option>Trigo</option>
+    <option>Girasol</option>
+  </select>
+
+  <label>Estado del grano</label>
+  <select id="estado_grano">
+    <option value="">Seleccione…</option>
+    <option>Seco</option>
+    <option>Humedo</option>
+  </select>
+
+  <label>Metros lineales</label>
+  <input type="number" id="metros">
+</div>
+
+<!-- MONITOREO -->
+<div id="bloqueMonitoreo" class="card hidden">
+  <h3>📸 Monitoreo en campo</h3>
+  <label>Tipo de evento</label>
+  <select id="tipo_evento">
+    <option value="">Seleccione…</option>
+    <option>Rotura</option>
+    <option>Malezas</option>
+    <option>Encharcado</option>
+    <option>Animales</option>
+    <option>Otros</option>
+  </select>
+
+  <input id="detalle_evento" class="hidden" placeholder="Detalle (solo si es Otros)">
+
+  <label>Foto del evento</label>
+  <input type="file" id="foto" accept="image/*" capture="environment">
+</div>
+
+<!-- RESOLVER -->
+<div id="bloqueResolucion" class="card hidden">
+  <h3>✅ Resolver evento</h3>
+
+  <label class="switch">
+    <input type="checkbox" id="resuelto">
+    <span class="slider"></span>
+  </label>
+  Marcar evento como resuelto
+
+  <label>Foto de resolución</label>
+  <input type="file" id="foto_resolucion" accept="image/*" capture="environment">
+</div>
+
+<!-- EXTRACCIÓN -->
+<div id="bloqueExtraccion" class="card hidden">
+  <h3>📦 Extracción</h3>
+  <label>Tipo de extracción</label>
+  <select id="estado_silo">
+    <option value="">Seleccione…</option>
+    <option>Extracción parcial</option>
+    <option>Extraído</option>
+  </select>
+</div>
+  <div id="bloqueCalado" class="card hidden">
+  <h3>🧪 Calado</h3>
+
+  <div class="alert">
+    Presione el botón luego de realizar el calado físico del silo.
+    Se registrará fecha y hora.
+  </div>
+
+  <!-- SWITCH TEMPERATURA -->
+  <label class="switch">
+    <input type="checkbox" id="chkTemp">
+    <span class="slider"></span>
+  </label>
+  Informar temperatura del grano
+
+  <!-- TEMPERATURAS -->
+  <div id="bloqueTemperaturas" class="hidden" style="margin-top:10px">
+    <label>🌡 Temperatura Punta (°C)</label>
+    <input type="number" step="0.1" id="temp_punta">
+
+    <label>🌡 Temperatura Medio (°C)</label>
+    <input type="number" step="0.1" id="temp_medio">
+
+    <label>🌡 Temperatura Final (°C)</label>
+    <input type="number" step="0.1" id="temp_final">
+  </div>
+
+  <button
+    style="background:#0288d1;margin-top:14px"
+    onclick="informarCalado()">
+    🧪 Registrar calado
+  </button>
+</div>
+
+<!-- EVENTOS RESUELTOS -->
+<div id="bloqueEventosResueltos" class="card hidden">
+  <h3>✅ Eventos resueltos</h3>
+  <div id="listaEventosResueltos"></div>
+</div>
+  
+<button id="btnGuardar" onclick="guardar()">Guardar</button>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const qr = params.get("id");
+qr && (document.getElementById("qr").value = qr);
+
+let modo = null;
+let lat = null;
+let lon = null;
+let eventoPendiente = null;
+
+/* GPS */
+async function obtenerGPS(){
+  try{
+    const pos = await new Promise((ok,err)=>
+      navigator.geolocation.getCurrentPosition(ok,err)
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  }catch{}
+}
+
+/* INIT */
+async function init(){
+  if(!qr) return;
+
+  const res = await fetch(`/api/silo/${qr}`);
+  const data = await res.json();
+if(data.ultimo_calado){
+  infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+}
+
+  // 🆕 REGISTRO NUEVO → GPS OBLIGATORIO
+  if(!data.existe){
+    modo = "registro";
+
+    try{
+      await obtenerGPSObligatorio();
+      bloqueRegistro.classList.remove("hidden");
+    }catch{
+      btnGuardar.disabled = true;
+    }
+
+    return;
+  }
+  // 🔴 BLOQUEO SI ESTÁ EXTRAÍDO
+  if(data.estado_silo === "Extraído"){
+    infoSilo.innerHTML = `
+      ⛔ <b>SILO EXTRAÍDO</b><br>
+      🌽 ${data.cereal}<br>
+      📅 ${data.fecha_confeccion}<br><br>
+      Este silo ya fue extraído completamente.<br>
+      No se pueden cargar eventos ni extracciones.
+    `;
+    infoSilo.classList.remove("hidden");
+
+    bloqueMonitoreo.classList.add("hidden");
+    bloqueExtraccion.classList.add("hidden");
+    bloqueEventosPendientes.classList.add("hidden");
+    bloqueResolucion.classList.add("hidden");
+
+    btnGuardar.disabled = true;
+    return;
+  }
+
+  // ✅ SILO ACTIVO
+modo = "operacion";
+
+let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+
+if(data.ultimo_calado){
+  info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+}
+
+infoSilo.innerHTML = info;
+infoSilo.classList.remove("hidden");
+
+  bloqueMonitoreo.classList.remove("hidden");
+  bloqueExtraccion.classList.remove("hidden");
+  bloqueCalado.classList.remove("hidden");
+
+  await cargarEventosPendientes();
+  await cargarEventosResueltos();
+}
+
+/* EVENTOS */
+async function cargarEventosPendientes(){
+  const res = await fetch(`/api/monitoreo/pendiente/${qr}`);
+  const eventos = await res.json();
+
+  if(!eventos.length){
+    bloqueEventosPendientes.classList.add("hidden");
+    return;
+  }
+
+  bloqueEventosPendientes.classList.remove("hidden");
+  listaEventos.innerHTML="";
+
+  eventos.forEach(ev=>{
+    const d=document.createElement("div");
+    d.className="alert";
+    d.innerHTML=`<b>${ev.tipo}</b><br>📅 ${ev.fecha}<br><br>
+      <button onclick="resolverEvento(${ev.id})">Resolver</button>`;
+    listaEventos.appendChild(d);
+  });
+}
+
+function resolverEvento(id){
+  eventoPendiente={id};
+  bloqueResolucion.classList.remove("hidden");
+  bloqueMonitoreo.classList.add("hidden"); // opcional
+}
+  async function cargarEventosResueltos(){
+  const res = await fetch(`/api/monitoreo/resueltos/${qr}`);
+  const eventos = await res.json();
+
+  if(!eventos.length){
+    bloqueEventosResueltos.classList.add("hidden");
+    return;
+  }
+
+  bloqueEventosResueltos.classList.remove("hidden");
+  listaEventosResueltos.innerHTML = "";
+
+  eventos.forEach(ev=>{
+    const div = document.createElement("div");
+    div.className = "alert";
+    div.innerHTML = `
+      <b>Evento resuelto: ${ev.tipo}</b><br>
+      📅 ${ev.fecha}
+    `;
+    listaEventosResueltos.appendChild(div);
+  });
+}
+  
+/* OTROS */
+tipo_evento.onchange=e=>{
+  detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
+};
+  chkTemp.onchange = e => {
+  bloqueTemperaturas.classList.toggle("hidden", !e.target.checked);
+};
+
+/* GUARDAR */
+async function informarCalado(){
+  if(!confirm("¿Confirmar calado del silo ahora?")) return;
+
+  const payload = {
+    numero_qr: qr,
+    informar_temperatura: chkTemp.checked
+  };
+
+  if(chkTemp.checked){
+    payload.temp_punta = temp_punta.value;
+    payload.temp_medio = temp_medio.value;
+    payload.temp_final = temp_final.value;
+  }
+
+  const res = await fetch("/api/informar_calado",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if(!data.ok){
+    alert(data.error || "Error al registrar calado");
+    return;
+  }
+
+  alert("🧪 Calado registrado correctamente");
+  location.reload();
+}
+
+async function guardar(){
+  const btn = btnGuardar;
+  btn.disabled = true;
+
+ if(modo === "registro"){
+
+  if(!cereal.value){
+    alert("❌ Falta seleccionar el cereal");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
+
+  if(!estado_grano.value){
+    alert("❌ Falta indicar el estado del grano");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
+
+  if(!metros.value || Number(metros.value) <= 0){
+    alert("❌ Falta indicar los metros lineales");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
+
+  if(lat === null || lon === null){
+    alert("📍 Debe activar la ubicación para registrar el silo");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
+
+    await fetch("/api/registrar_silo",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        cereal: cereal.value,
+        estado_grano: estado_grano.value,
+        metros: metros.value,
+        lat, lon
+      })
+    });
+    location.reload();
+    return;
+  }
+
+  if(tipo_evento.value && !eventoPendiente){
+
+  if(!foto.files[0]){
+    alert("❌ Debe sacar o seleccionar una foto del evento");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("numero_qr", qr);
+  fd.append("tipo", tipo_evento.value);
+  fd.append("detalle", detalle_evento.value);
+  fd.append("foto", foto.files[0]);
+
+  const res = await fetch("/api/monitoreo",{
+    method:"POST",
+    body:fd
+  });
+
+  if(!res.ok){
+    alert("❌ Error al registrar el evento");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    return;
+  }
+
+  alert("📸 Evento registrado correctamente");
+  location.reload();
+  return;
+}
+
+  if(eventoPendiente && resuelto.checked){
+    const fd = new FormData();
+    fd.append("id_monitoreo", eventoPendiente.id);
+    foto_resolucion.files[0] && fd.append("foto", foto_resolucion.files[0]);
+
+    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
+
+    eventoPendiente = null;
+    resuelto.checked = false;
+    bloqueResolucion.classList.add("hidden");
+
+    await cargarEventosPendientes();
+    await cargarEventosResueltos();
+
+    alert("Evento resuelto correctamente");
+    btn.disabled = false;
+    return;
+  }
+
+  if(estado_silo.value){
+    await fetch("/api/extraccion",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        numero_qr: qr,
+        estado_silo: estado_silo.value
+      })
+    });
+    location.reload();
+    return;
+  }
+
+  btn.disabled = false;
+}
+async function obtenerGPSObligatorio(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){
+      alert("Este dispositivo no soporta GPS");
+      reject();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        resolve();
+      },
+      err=>{
+        alert(
+          "📍 Ubicación requerida\n\n" +
+          "Debés activar la ubicación del dispositivo para registrar el silo.\n" +
+          "Activá el GPS y aceptá el permiso."
+        );
+        reject(err);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  });
+}
+
+init();
+</script>
+</body>
+</html>

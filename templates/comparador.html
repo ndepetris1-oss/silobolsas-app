@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comparador comercial – {{ cereal }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#eef5f1;
+  margin:0;
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:20px;
+}
+.container{
+  width:95%;
+  margin:15px auto;
+  background:white;
+  border-radius:14px;
+  padding:15px;
+}
+select, button, input{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  border:1px solid #81c784;
+  font-size:15px;
+}
+button{
+  background:#43a047;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+button:hover{background:#2e7d32}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #c8e6c9;
+  text-align:center;
+}
+th{background:#a5d6a7}
+.card{
+  background:#f1f8f4;
+  padding:12px;
+  border-radius:10px;
+  margin-top:12px;
+}
+.bad{color:#b71c1c;font-weight:bold}
+.good{color:#2e7d32;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<header>💰 Comparador comercial – {{ cereal }}</header>
+
+<div class="container">
+
+<button onclick="location.href='/comercial'">← Volver</button>
+
+<div class="card">
+  <h3>🌾 Seleccionar silo</h3>
+
+  <select id="siloSelect" onchange="onCambioSilo()">
+    <option value="">Seleccione un silo…</option>
+    {% for s in silos %}
+      <option
+        value="{{ s.numero_qr }}"
+        data-factor="{{ s.factor_prom }}"
+        data-humedad="{{ s.humedad_prom or 0 }}"
+        data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
+      >
+        {{ s.numero_qr }} —
+        {% if s.factor_prom %}
+          Factor {{ (s.factor_prom * 100) | round(2) }}%
+        {% else %}
+          Sin análisis
+        {% endif %}
+      </option>
+    {% endfor %}
+  </select>
+
+  <!-- INFO DEL SILO (A2) -->
+  <div id="infoSilo" class="card" style="display:none">
+    <h4>📦 Estado del silo</h4>
+    <p id="infoHumedad"></p>
+    <p id="infoInsectos"></p>
+  </div>
+</div>
+
+
+<div class="card">
+  <h3>🏢 Oferentes</h3>
+  
+  <table>
+  <tr>
+    <th>Oferente</th>
+    <th>Precio pizarra</th>
+    <th>Gastos</th>
+    <th>Precio neto</th>
+    <th>Dif. vs mejor</th>
+  </tr>
+
+  {% for i in range(4) %}
+  <tr>
+    <!-- Oferente -->
+    <td>
+      <input type="text" placeholder="Ej: ACA, Cargill">
+    </td>
+
+    <!-- Precio -->
+    <td>
+      <input type="number" step="0.01" placeholder="USD/TN">
+    </td>
+
+    <!-- Gastos -->
+    <td>
+      <button onclick="abrirGastos(this)" style="background:#1976d2">
+        ⚙️ Gastos
+      </button>
+      <div class="small total-gastos">0 USD/TN</div>
+    </td>
+
+    <!-- Precio neto -->
+    <td class="precio-neto">-</td>
+
+    <!-- Diferencia -->
+    <td class="dif-mejor">-</td>
+  </tr>
+  {% endfor %}
+</table>
+
+ <button
+  id="btnComparar"
+  style="margin-top:12px"
+  onclick="calcularComparacion()">
+  🧮 Calcular comparación
+</button>
+</div>
+
+</div>
+<!-- MODAL GASTOS -->
+<div id="modalGastos" style="
+  display:none;
+  position:fixed;
+  top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.5);
+  z-index:999">
+
+  <div style="
+    background:white;
+    width:90%;
+    max-width:520px;
+    margin:50px auto;
+    padding:20px;
+    border-radius:14px">
+
+    <h3>⚙️ Gastos del oferente (USD/TN)</h3>
+
+    <label>🚚 Flete</label>
+    <input type="number" step="0.01" id="g_flete">
+
+    <label>↩️ Contra flete</label>
+    <input type="number" step="0.01" id="g_contra">
+
+    <label>🤝 Paritarias</label>
+    <input type="number" step="0.01" id="g_paritarias">
+
+    <label>🔥 Secada (USD/TN por punto)</label>
+    <input type="number" step="0.01" id="g_secada">
+
+    <label>🧪 Fumigada</label>
+    <input type="number" step="0.01" id="g_fumigada">
+
+    <label>🌀 Zarandeo</label>
+    <input type="number" step="0.01" id="g_zarandeo">
+
+    <label>🏢 Almacenaje</label>
+    <input type="number" step="0.01" id="g_almacenaje">
+
+    <label>📦 Manipuleo / descarga</label>
+    <input type="number" step="0.01" id="g_manipuleo">
+
+    <hr>
+
+     <label>🎁 Bonificación secada (puntos %)</label>
+     <select id="bonif_secada">
+        <option value="0">0</option>
+        <option value="0.5">0.5</option>
+        <option value="1">1</option>
+        <option value="1.5">1.5</option>
+        <option value="2">2</option>
+        <option value="2.5">2.5</option>
+        <option value="3">3</option>
+</select>
+
+    <label>
+      <input type="checkbox" id="bonif_fumigada">
+      Bonificar fumigada
+    </label>
+
+    <hr>
+
+    <label>🤝 Comisión (%)</label>
+    <input type="number" step="0.01" id="g_comision">
+
+    <label>🌫️ Volátil (%)</label>
+    <input type="number" step="0.01" id="g_volatil" readonly>
+
+    <hr>
+
+    <button onclick="cerrarGastos()">Cancelar</button>
+    <button onclick="aplicarGastos()" style="background:#2e7d32">
+      Aplicar gastos
+    </button>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+let filaOferenteActual = null;
+let siloActual = null;
+
+// humedad base por cereal
+const baseHumedad = {
+  "Maíz": 14.6,
+  "Trigo": 13.5,
+  "Soja": 13.0,
+  "Girasol": 9.0
+};
+
+// volátil automático
+const volatilPorCereal = {
+  "Maíz": 0.3,
+  "Trigo": 0.3,
+  "Soja": 0.5,
+  "Girasol": 0.5
+};
+
+function onCambioSilo(){
+  const sel = document.getElementById("siloSelect");
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.dataset.factor) return;
+
+  siloActual = {
+    factor: parseFloat(opt.dataset.factor),
+    humedad: parseFloat(opt.dataset.humedad),
+    insectos: opt.dataset.insectos === "1"
+  };
+
+  // 👉 Mostrar info del silo
+  const base = baseHumedad["{{ cereal }}"];
+  const info = document.getElementById("infoSilo");
+  const hum = document.getElementById("infoHumedad");
+  const ins = document.getElementById("infoInsectos");
+
+  info.style.display = "block";
+
+  if(siloActual.humedad > base){
+    hum.innerHTML =
+      "⚠️ <b>Silo húmedo</b> — Humedad prom: " +
+      siloActual.humedad.toFixed(2) +
+      "% (base " + base + "%)";
+    hum.style.color = "#b71c1c";
+  }else{
+    hum.innerHTML =
+      "✔️ <b>Humedad OK</b> — " +
+      siloActual.humedad.toFixed(2) + "%";
+    hum.style.color = "#2e7d32";
+  }
+
+  if(siloActual.insectos){
+    ins.innerHTML =
+      "🐞 <b>Insectos detectados</b> — se aplica fumigada";
+    ins.style.color = "#b71c1c";
+  }else{
+    ins.innerHTML =
+      "✔️ <b>Sin insectos</b>";
+    ins.style.color = "#2e7d32";
+  }
+
+  calcularComparacion();
+}
+function abrirGastos(btn){
+  filaOferenteActual = btn.closest("tr");
+
+  // reset por defecto
+  const vacio = {
+    flete:0, contra:0, paritarias:0, secada:0,
+    fumigada:0, zarandeo:0, almacenaje:0,
+    manipuleo:0, bonif_secada:0,
+    comision:0, volatil:0
+  };
+
+  const gastos = filaOferenteActual.dataset.gastos
+    ? JSON.parse(filaOferenteActual.dataset.gastos)
+    : vacio;
+
+  // cargar inputs
+  g_flete.value = gastos.flete;
+  g_contra.value = gastos.contra;
+  g_paritarias.value = gastos.paritarias;
+  g_secada.value = gastos.secada;
+  g_fumigada.value = gastos.fumigada;
+  g_zarandeo.value = gastos.zarandeo;
+  g_almacenaje.value = gastos.almacenaje;
+  g_manipuleo.value = gastos.manipuleo;
+  bonif_secada.value = gastos.bonif_secada;
+  g_comision.value = gastos.comision;
+  g_volatil.value = gastos.volatil;
+
+  bonif_fumigada.checked = gastos.fumigada === 0;
+
+  document.getElementById("modalGastos").style.display = "block";
+}
+
+function cerrarGastos(){
+  document.getElementById("modalGastos").style.display = "none";
+}
+
+function aplicarGastos(){
+  const gastos = {
+    flete: +g_flete.value || 0,
+    contra: +g_contra.value || 0,
+    paritarias: +g_paritarias.value || 0,
+    secada: +g_secada.value || 0,
+    fumigada: bonif_fumigada.checked ? 0 : (+g_fumigada.value || 0),
+    zarandeo: +g_zarandeo.value || 0,
+    almacenaje: +g_almacenaje.value || 0,
+    manipuleo: +g_manipuleo.value || 0,
+    bonif_secada: +bonif_secada.value || 0,
+    comision: +g_comision.value || 0,
+    volatil: +g_volatil.value || 0
+  };
+
+  filaOferenteActual.dataset.gastos = JSON.stringify(gastos);
+
+  const totalFijo =
+    gastos.flete +
+    gastos.contra +
+    gastos.paritarias +
+    gastos.zarandeo +
+    gastos.almacenaje +
+    gastos.manipuleo;
+
+  filaOferenteActual.querySelector(".total-gastos").innerText =
+    totalFijo.toFixed(2) + " USD/TN";
+
+  cerrarGastos();
+}
+
+function calcularSecada(gastos){
+  if(!siloActual) return 0;
+
+  const base = baseHumedad["{{ cereal }}"];
+  const bonif = gastos.bonif_secada || 0;
+  const exceso = siloActual.humedad - (base + bonif);
+
+  if(exceso <= 0) return 0;
+  return exceso * gastos.secada;
+}
+
+function calcularFumigada(gastos){
+  if(!siloActual) return 0;
+  return siloActual.insectos ? gastos.fumigada : 0;
+}
+
+function calcularComparacion(){
+  if(!siloActual){
+    alert("Seleccioná un silo primero");
+    return;
+  }
+
+  const filas = document.querySelectorAll("table tr");
+  let ofertas = [];
+
+  filas.forEach((tr, idx) => {
+    if(idx === 0) return;
+
+    const inputs = tr.querySelectorAll("input");
+    if(inputs.length < 2) return;
+
+    const oferente = inputs[0].value;
+    const precio = parseFloat(inputs[1].value);
+    const gastos = tr.dataset.gastos
+      ? JSON.parse(tr.dataset.gastos)
+      : null;
+
+    if(!oferente || !precio || !gastos) return;
+
+    const secada = calcularSecada(gastos);
+    const fumigada = calcularFumigada(gastos);
+
+    const gastosFijos =
+      gastos.flete +
+      gastos.contra +
+      gastos.paritarias +
+      gastos.zarandeo +
+      gastos.almacenaje +
+      gastos.manipuleo;
+
+    const precioNeto =
+      (precio * siloActual.factor)
+      - gastosFijos
+      - secada
+      - fumigada;
+
+    ofertas.push({ tr, precioNeto });
+
+    tr.querySelector(".precio-neto").innerText =
+      precioNeto.toFixed(2) + " USD/TN";
+  });
+
+  if(ofertas.length < 2){
+    alert("Cargá al menos 2 oferentes completos");
+    return;
+  }
+
+  ofertas.sort((a,b) => b.precioNeto - a.precioNeto);
+  const mejor = ofertas[0].precioNeto;
+
+  ofertas.forEach((o, i) => {
+    o.tr.querySelector(".dif-mejor").innerText =
+      i === 0 ? "MEJOR" : (o.precioNeto - mejor).toFixed(2) + " USD/TN";
+  });
+}
+</script>

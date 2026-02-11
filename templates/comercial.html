@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comercial</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#eef5ee;
+  margin:0
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  font-size:20px;
+  text-align:center
+}
+.container{
+  width:95%;
+  margin:15px auto;
+  background:white;
+  padding:15px;
+  border-radius:12px
+}
+table{
+  width:100%;
+  border-collapse:collapse
+}
+th,td{
+  border:1px solid #c8e6c9;
+  padding:8px;
+  text-align:center;
+  font-size:14px
+}
+th{background:#e8f5e9}
+input{
+  width:100%;
+  padding:5px
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  padding:6px 12px;
+  border-radius:6px;
+  cursor:pointer
+}
+button:hover{background:#2e7d32}
+.small{
+  font-size:12px;
+  color:#555
+}
+</style>
+</head>
+
+<body>
+
+<header>💰 Comercial – Precios de mercado</header>
+{% set ref = mercado[0] if mercado %}
+
+{% if mercado and ref.fecha %}
+  <div style="
+    margin:10px 0;
+    padding:10px;
+    background:#e3f2fd;
+    border-left:5px solid #1976d2;
+    border-radius:6px;
+    font-weight:bold;
+  ">
+    💱 Dólar oficial – <b>Bluelytics</b> – actualizado
+    {{ ref.fecha }}
+  </div>
+{% endif %}
+
+<div class="container">
+<button onclick="actualizarDolar()" style="margin-bottom:10px">
+  🔄 Actualizar dólar
+</button>
+<button onclick="actualizarPizarra()">📊 Actualizar pizarra</button>
+
+<table>
+  …
+</table>
+
+<table>
+<tr>
+  <th>Cereal</th>
+  <th>Pizarra auto</th>
+  <th>Fuente</th>
+  <th>Fecha fuente</th>
+  <th>Usar manual</th>
+  <th>Pizarra manual</th>
+  <th>Observación</th>
+  <th>Dólar</th>
+  <th>Comparar</th>
+  <th>Guardar</th>
+</tr>
+
+{% for m in mercado %}
+<tr>
+  <td><b>{{ m.cereal }}</b></td>
+<td>
+  {% if m.pizarra_auto and m.pizarra_auto > 0 %}
+    {{ "{:,.0f}".format(m.pizarra_auto).replace(",", ".") }}
+  {% else %}
+    -
+  {% endif %}
+</td>
+
+<td>
+  {{ m.fuente if m.fuente else "-" }}
+</td>
+
+<td>
+  {{ m.fecha_fuente if m.fecha_fuente else "-" }}
+</td>
+
+  <td>
+    <input type="checkbox"
+           id="usar_{{ m.cereal }}"
+           {% if m.usar_manual %}checked{% endif %}>
+  </td>
+
+  <td>
+    <input type="number" step="0.01"
+           id="manual_{{ m.cereal }}"
+           value="{{ m.pizarra_manual or '' }}">
+  </td>
+
+  <td>
+    <input type="text"
+           id="obs_{{ m.cereal }}"
+           value="{{ m.obs_precio or '' }}">
+  </td>
+
+  <td>
+    <input type="number" step="0.01"
+           id="dolar_{{ m.cereal }}"
+           value="{{ m.dolar or '' }}">
+  </td>
+
+  <td>
+    <a href="/comercial/{{ m.cereal }}">
+      <button style="background:#1976d2">
+        📊 Comparar
+      </button>
+    </a>
+  </td>
+
+  <td>
+    <button onclick="guardar('{{ m.cereal }}')">💾</button>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+<p class="small">
+✔ Si “Usar manual” está tildado, el sistema ignora la pizarra automática.
+</p>
+
+</div>
+
+<script>
+function guardar(cereal){
+  fetch("/api/mercado/manual",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      cereal: cereal,
+      usar_manual: document.getElementById("usar_"+cereal).checked,
+      pizarra_manual: document.getElementById("manual_"+cereal).value,
+      obs_precio: document.getElementById("obs_"+cereal).value,
+      dolar: document.getElementById("dolar_"+cereal).value
+    })
+  }).then(r=>r.json())
+    .then(()=>alert("Guardado"));
+}
+</script>
+<script>
+async function actualizarDolar(){
+  if(!confirm("¿Actualizar dólar oficial ahora?")) return;
+
+  try{
+    const res = await fetch("/api/actualizar_dolar", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(!data.ok){
+      alert(data.error || "Error al actualizar dólar");
+      return;
+    }
+
+    alert("💵 Dólar actualizado: $" + data.dolar);
+    location.reload();
+
+  }catch(e){
+    alert("Error de conexión");
+    console.error(e);
+  }
+}
+</script>
+<script>
+async function actualizarPizarra(){
+  if(!confirm("Actualizar pizarra automática?")) return;
+
+  const res = await fetch("/api/actualizar_pizarra", { method:"POST" });
+  const data = await res.json();
+
+  if(data.ok){
+    alert("📊 Pizarra actualizada");
+    location.reload();
+  } else {
+    alert("Error al actualizar pizarra");
+  }
+}
+</script>
+
+</body>
+</html>
