@@ -94,15 +94,27 @@ def init_db():
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS mercado (
-        cereal TEXT PRIMARY KEY,
-        pizarra_auto REAL,
-        pizarra_manual REAL,
-        usar_manual INTEGER DEFAULT 0,
-        obs_precio TEXT,
-        dolar REAL,
-        fecha TEXT
+      cereal TEXT PRIMARY KEY,
+      pizarra_auto REAL,
+      pizarra_manual REAL,
+      usar_manual INTEGER DEFAULT 0,
+      obs_precio TEXT,
+      dolar REAL,
+      fecha TEXT,
+      fuente TEXT,
+      fecha_fuente TEXT
 )
 """)
+# Asegurar columnas nuevas en Render
+try:
+    c.execute("ALTER TABLE mercado ADD COLUMN fuente TEXT")
+except:
+    pass
+
+try:
+    c.execute("ALTER TABLE mercado ADD COLUMN fecha_fuente TEXT")
+except:
+    pass
 
     # Datos iniciales mercado
     cereales_base = ["Soja", "Maíz", "Trigo", "Girasol"]
