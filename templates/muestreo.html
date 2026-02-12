@@ -329,7 +329,7 @@ function abrirAnalisis(seccion, datos){
     if(datos.chamico !== null) chamico.value = datos.chamico;
     olor.value = datos.olor ?? "0";
     moho.value = datos.moho ?? "0";
-    insectos.checked = datos.insectos === true;
+    iinsectos.checked = Boolean(datos.insectos);
   }
 
   document.getElementById("modal").style.display = "flex";
