@@ -280,19 +280,13 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
     <label style="margin-top:10px; display:flex; align-items:center; gap:10px;">
   <span>Insectos</span>
-
   <label class="switch">
     <input type="checkbox" id="insectos">
     <span class="slider"></span>
   </label>
 </label>
-  
-    <label><input type="checkbox" id="insectos"> Insectos</label><br>
-
-    
     </label>
-
-    <button onclick="guardarAnalisis()">💾 Guardar</button>
+        <button onclick="guardarAnalisis()">💾 Guardar</button>
     <button onclick="cerrarModal()">Cancelar</button>
 
   </div>
@@ -300,7 +294,6 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
 <script>
 let seccionActual = null;
-
 function abrirAnalisis(seccion, datos){
   seccionActual = seccion;
 
