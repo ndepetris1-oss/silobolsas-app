@@ -309,7 +309,7 @@ function abrirAnalisis(seccion, datos){
   if(document.getElementById("ph")) ph.value = "";
   olor.value = "0";
   moho.value = "0";
-  insectos.checked = false;
+  document.getElementById("insectos").checked = false;
 
   // precargar si hay datos
   if(datos){
@@ -322,7 +322,7 @@ function abrirAnalisis(seccion, datos){
     if(datos.chamico !== null) chamico.value = datos.chamico;
     olor.value = datos.olor ?? "0";
     moho.value = datos.moho ?? "0";
-    iinsectos.checked = Boolean(datos.insectos);
+    document.getElementById("insectos").checked = Boolean(datos.insectos);
   }
 
   document.getElementById("modal").style.display = "flex";
@@ -348,7 +348,7 @@ function guardarAnalisis(){
       materia_extrana: materia_extrana.value,
       olor: olor.value,
       moho: moho.value,
-      insectos: insectos.checked,
+      insectos: document.getElementById("insectos").checked,
       chamico: chamico.value
     })
   }).then(()=>location.reload());
