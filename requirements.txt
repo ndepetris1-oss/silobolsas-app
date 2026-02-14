@@ -6,6 +6,7 @@ click==8.3.1
 colorama==0.4.6
 et_xmlfile==2.0.0
 Flask==3.1.2
+Flask-Login==0.6.3
 gunicorn==25.0.3
 idna==3.11
 itsdangerous==2.2.0
