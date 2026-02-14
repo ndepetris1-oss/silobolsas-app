@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ingreso al Sistema</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- Google Font moderna -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body class="login-body">
+
+    <div class="login-overlay"></div>
+
+    <!-- LOGO SUPERIOR -->
+    
+
+    <!-- CAJA LOGIN -->
+    <div class="login-box">
+        <h1>Ingreso al Sistema</h1>
+
+        {% if error %}
+            <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="text" name="username" placeholder="Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
+    </div>
+
+    <!-- FOOTER CONTACTO -->
+<div class="footer-contacto">
+    <a href="mailto:Ndepetris1@gmail.com" class="contact-link">
+        📩 Ndepetris1@gmail.com
+    </a>
+
+    <a href="tel:+5493385434592" class="contact-link">
+        📞 +54 9 3385 43 4592
+    </a>
+</div>
+
+</body>
+</html>

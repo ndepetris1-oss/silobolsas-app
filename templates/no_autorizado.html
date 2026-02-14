@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Acceso restringido</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(135deg,#1e4620,#2e7d32);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  color:white;
+}
+
+.card{
+  background:white;
+  color:#333;
+  padding:40px;
+  border-radius:16px;
+  width:420px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+
+h2{
+  color:#c62828;
+  margin-bottom:10px;
+}
+
+button{
+  margin-top:20px;
+  padding:12px 20px;
+  border:none;
+  border-radius:8px;
+  background:#1e4620;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#2e7d32;
+}
+
+a{
+  display:block;
+  margin-top:15px;
+  color:#1e4620;
+  text-decoration:none;
+  font-weight:bold;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>⛔ Acceso restringido</h2>
+  <p>No posee permisos para acceder a:</p>
+  <h3>{{ pantalla }}</h3>
+
+  {% if not solicitud_enviada %}
+  <form method="POST" action="/solicitar_acceso/{{ pantalla }}">
+    <button type="submit">Solicitar acceso</button>
+</form>
+  {% else %}
+  <p style="color:#2e7d32;font-weight:bold;">
+    ✔ Solicitud enviada al administrador
+  </p>
+  {% endif %}
+
+  <a href="javascript:history.back()" class="back">← Volver</a>
+</div>
+
+</body>
+</html>

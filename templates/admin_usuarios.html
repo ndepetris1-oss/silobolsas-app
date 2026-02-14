@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Administración de Usuarios</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#f4f6f9;
+}
+
+header{
+    background:#1e4620;
+    color:white;
+    padding:18px;
+    text-align:center;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.container{
+    width:95%;
+    max-width:1100px;
+    margin:25px auto;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom:25px;
+}
+
+h2{
+    margin-top:0;
+    color:#1e4620;
+}
+
+input, select{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    margin-right:10px;
+}
+
+button{
+    background:#2e7d32;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    transition:0.2s;
+}
+
+button:hover{
+    background:#1e4620;
+}
+
+.delete-btn{
+    background:#c62828;
+}
+
+.delete-btn:hover{
+    background:#8e0000;
+}
+
+.user-card{
+    border:1px solid #e0e0e0;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:15px;
+    background:#fafafa;
+}
+
+.user-header{
+    font-weight:bold;
+    font-size:16px;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.permisos{
+    display:flex;
+    gap:25px;
+    flex-wrap:wrap;
+    margin-bottom:15px;
+}
+
+/* ===== SWITCH ===== */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #2e7d32;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+.switch-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+</style>
+</head>
+
+<body>
+
+<header>👤 Administración de Usuarios · SB.Pro</header>
+
+<div class="container">
+
+<!-- CREAR USUARIO -->
+<div class="card">
+    <h2>➕ Crear nuevo usuario</h2>
+    <form method="POST" action="/admin/crear_usuario">
+        <input type="text" name="username" placeholder="Usuario" required>
+        <input type="password" name="password" placeholder="Contraseña" required>
+
+        <select name="rol">
+            <option value="user">Usuario normal</option>
+            <option value="admin">Administrador</option>
+        </select>
+
+        <button type="submit">Crear usuario</button>
+    </form>
+</div>
+
+<!-- USUARIOS -->
+<div class="card">
+    <h2>🔐 Permisos de usuarios</h2>
+
+    {% for u in usuarios %}
+    <div class="user-card">
+
+        <div class="user-header">
+            👤 {{ u.username }}
+
+            {% if u.username != "admin" %}
+            <form method="POST" action="/admin/eliminar_usuario" 
+                  onsubmit="return confirm('¿Eliminar usuario {{ u.username }}?')">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <button type="submit" class="delete-btn">🗑 Eliminar</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="/admin/permisos">
+            <input type="hidden" name="user_id" value="{{ u.id }}">
+
+            <div class="permisos">
+
+                {% for p in ['panel','form','comercial','admin'] %}
+                <div class="switch-label">
+                    <span>{{ p.capitalize() }}</span>
+
+                    <label class="switch">
+                        <input type="checkbox" name="permisos" value="{{ p }}"
+                        {% if (u.id, p) in permisos_set %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                {% endfor %}
+
+            </div>
+
+            <button type="submit">Guardar permisos</button>
+        </form>
+    </div>
+    {% endfor %}
+{% if solicitudes %}
+<div class="solicitudes-box">
+  <h3>📨 Solicitudes pendientes</h3>
+
+  {% for s in solicitudes %}
+    <div class="solicitud-item">
+      <b>{{ s.username }}</b> solicita acceso a:
+      <strong>{{ s.pantalla }}</strong>
+
+      <form method="POST" action="/admin/aprobar_solicitud" style="display:inline">
+        <input type="hidden" name="id" value="{{ s.id }}">
+        <button class="btn-aprobar">Aprobar</button>
+      </form>
+
+      <form method="POST" action="/admin/rechazar_solicitud" style="display:inline">
+        <input type="hidden" name="id" value="{{ s.id }}">
+        <button class="btn-rechazar">Rechazar</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+</div>
+
+</div>
+</body>
+</html>

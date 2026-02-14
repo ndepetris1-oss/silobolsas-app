@@ -13,6 +13,36 @@ body{font-family:Arial;background:#e8f5e9;margin:0}
 header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
 .container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
 
+.dashboard-nav{
+  display:flex;
+  gap:15px;
+  flex-wrap:wrap;
+  padding:15px;
+  background:white;
+  border-radius:14px;
+  width:95%;
+  margin:15px auto 0 auto;
+}
+
+.nav-btn{
+  background:#1e4620;
+  color:white;
+  padding:10px 18px;
+  border-radius:10px;
+  text-decoration:none;
+  font-weight:bold;
+  transition:0.2s;
+}
+
+.nav-btn:hover{
+  background:#2e7d32;
+  transform:translateY(-2px);
+}
+
+.nav-btn.admin{
+  background:#003366;
+}
+
 .toolbar{
   display:flex;
   gap:10px;
@@ -76,6 +106,29 @@ th{background:#a5d6a7;cursor:pointer}
 <body>
 
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
+<div class="dashboard-nav">
+
+  {% if puede_form %}
+    <a href="/form" class="nav-btn">🧪 Form</a>
+  {% endif %}
+
+  {% if puede_comercial %}
+    <a href="/comercial" class="nav-btn">📊 Comercial</a>
+  {% endif %}
+
+  {% if puede_comercial %}
+    <a href="/comercial/Soja" class="nav-btn">📈 Comparador</a>
+  {% endif %}
+
+  {% if puede_panel %}
+    <a href="/api/export" class="nav-btn">📥 Exportar Excel</a>
+  {% endif %}
+
+  {% if puede_admin %}
+    <a href="/admin/usuarios" class="nav-btn admin">👤 Administración</a>
+  {% endif %}
+
+</div>
 
 <div class="container">
 

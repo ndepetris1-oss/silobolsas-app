@@ -7,8 +7,22 @@ import csv, io
 from calculos import calcular_comercial
 from bs4 import BeautifulSoup
 import re
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    login_user,
+    login_required,
+    logout_user,
+    current_user
+)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = "super_clave_cambiar_en_produccion"
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
 
 # ======================
 # DB PATH
@@ -35,76 +49,119 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
+    # TABLA USUARIOS
     c.execute("""
-    CREATE TABLE IF NOT EXISTS silos (
-        numero_qr TEXT PRIMARY KEY,
-        cereal TEXT,
-        estado_grano TEXT,
-        estado_silo TEXT,
-        metros INTEGER,
-        lat REAL,
-        lon REAL,
-        fecha_confeccion TEXT,
-        fecha_extraccion TEXT
-    )
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            rol TEXT
+        )
+    """)
+    # TABLA PERMISOS
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS permisos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            pantalla TEXT
+        )
+    """)
+
+    admin = c.execute(
+        "SELECT * FROM usuarios WHERE username='admin'"
+    ).fetchone()
+
+    if not admin:
+        c.execute("""
+            INSERT INTO usuarios (username, password, rol)
+            VALUES (?, ?, ?)
+        """, (
+            "admin",
+            generate_password_hash("admin123"),
+            "admin"
+        ))
+
+    # TABLAS ORIGINALES
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS silos (
+            numero_qr TEXT PRIMARY KEY,
+            cereal TEXT,
+            estado_grano TEXT,
+            estado_silo TEXT,
+            metros INTEGER,
+            lat REAL,
+            lon REAL,
+            fecha_confeccion TEXT,
+            fecha_extraccion TEXT
+        )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS muestreos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        numero_qr TEXT,
-        fecha_muestreo TEXT
-    )
+        CREATE TABLE IF NOT EXISTS muestreos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_qr TEXT,
+            fecha_muestreo TEXT
+        )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS analisis (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_muestreo INTEGER,
-        seccion TEXT,
-        temperatura REAL,
-        humedad REAL,
-        ph REAL,
-        danados REAL,
-        quebrados REAL,
-        materia_extrana REAL,
-        olor REAL,
-        moho REAL,
-        insectos INTEGER,
-        chamico REAL,
-        grado INTEGER,
-        factor REAL,
-        tas INTEGER
-    )
+        CREATE TABLE IF NOT EXISTS analisis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_muestreo INTEGER,
+            seccion TEXT,
+            temperatura REAL,
+            humedad REAL,
+            ph REAL,
+            danados REAL,
+            quebrados REAL,
+            materia_extrana REAL,
+            olor REAL,
+            moho REAL,
+            insectos INTEGER,
+            chamico REAL,
+            grado INTEGER,
+            factor REAL,
+            tas INTEGER
+        )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS monitoreos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        numero_qr TEXT,
-        fecha_evento TEXT,
-        tipo TEXT,
-        detalle TEXT,
-        foto_evento TEXT,
-        resuelto INTEGER DEFAULT 0,
-        fecha_resolucion TEXT,
-        foto_resolucion TEXT
-    )
+        CREATE TABLE IF NOT EXISTS monitoreos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_qr TEXT,
+            fecha_evento TEXT,
+            tipo TEXT,
+            detalle TEXT,
+            foto_evento TEXT,
+            resuelto INTEGER DEFAULT 0,
+            fecha_resolucion TEXT,
+            foto_resolucion TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS solicitudes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            pantalla TEXT,
+            fecha TEXT,
+            estado TEXT DEFAULT 'pendiente'
+        )
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS mercado (
-      cereal TEXT PRIMARY KEY,
-      pizarra_auto REAL,
-      pizarra_manual REAL,
-      usar_manual INTEGER DEFAULT 0,
-      obs_precio TEXT,
-      dolar REAL,
-      fecha TEXT,
-      fuente TEXT,
-      fecha_fuente TEXT
-)
-""")
+        CREATE TABLE IF NOT EXISTS mercado (
+            cereal TEXT PRIMARY KEY,
+            pizarra_auto REAL,
+            pizarra_manual REAL,
+            usar_manual INTEGER DEFAULT 0,
+            obs_precio TEXT,
+            dolar REAL,
+            fecha TEXT,
+            fuente TEXT,
+            fecha_fuente TEXT
+        )
+    """)
+
 # Asegurar columnas nuevas en Render
     try:
         c.execute("ALTER TABLE mercado ADD COLUMN fuente TEXT")
@@ -143,6 +200,321 @@ def init_db():
     conn.close()
 
 init_db()
+
+# ======================
+# MODELO USUARIO
+# ======================
+
+class User(UserMixin):
+    def __init__(self, id, username, rol):
+        self.id = id
+        self.username = username
+        self.rol = rol
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    conn = get_db()
+    try:
+        u = conn.execute(
+            "SELECT * FROM usuarios WHERE id=?",
+            (user_id,)
+        ).fetchone()
+    except:
+        conn.close()
+        return None
+
+    conn.close()
+
+    if u:
+        return User(u["id"], u["username"], u["rol"])
+    return None
+
+
+# ======================
+# PERMISOS
+# ======================
+
+def tiene_permiso(pantalla):
+
+    if not current_user.is_authenticated:
+        return False
+
+    # ADMIN siempre tiene todo
+    if current_user.username == "admin":
+        return True
+
+    conn = get_db()
+    row = conn.execute("""
+        SELECT 1 FROM permisos
+        WHERE user_id=? AND pantalla=?
+    """, (current_user.id, pantalla)).fetchone()
+    conn.close()
+
+    return row is not None
+
+
+def acceso_denegado(pantalla):
+
+    conn = get_db()
+
+    ya_solicitado = conn.execute("""
+        SELECT 1 FROM solicitudes
+        WHERE user_id=? AND pantalla=? AND estado='pendiente'
+    """, (current_user.id, pantalla)).fetchone()
+
+    solicitud_enviada = False
+
+    if request.method == "POST" and not ya_solicitado:
+        conn.execute("""
+            INSERT INTO solicitudes (user_id, pantalla, fecha)
+            VALUES (?,?,?)
+        """, (
+            current_user.id,
+            pantalla,
+            ahora().strftime("%Y-%m-%d %H:%M")
+        ))
+        conn.commit()
+        solicitud_enviada = True
+    elif ya_solicitado:
+        solicitud_enviada = True
+
+    conn.close()
+
+    return render_template(
+        "no_autorizado.html",
+        pantalla=pantalla,
+        solicitud_enviada=solicitud_enviada
+    ), 403
+
+# ======================
+# PANTALLA PERMISOS
+# ======================
+@app.route("/admin/usuarios")
+@login_required
+def admin_usuarios():
+    if not tiene_permiso("admin"):
+        return acceso_denegado("admin_usuarios")
+
+    conn = get_db()
+    solicitudes = conn.execute("""
+    SELECT s.*, u.username
+    FROM solicitudes s
+    JOIN usuarios u ON u.id = s.user_id
+    WHERE s.estado='pendiente'
+""").fetchall()
+
+    usuarios = conn.execute("SELECT * FROM usuarios").fetchall()
+    permisos = conn.execute("SELECT * FROM permisos").fetchall()
+    conn.close()
+
+    permisos_set = set((p["user_id"], p["pantalla"]) for p in permisos)
+    return render_template(
+    "admin_usuarios.html",
+    usuarios=usuarios,
+    permisos=permisos,
+    permisos_set=permisos_set,
+    solicitudes=solicitudes
+)
+@app.route("/solicitar_acceso/<pantalla>", methods=["POST"])
+@login_required
+def solicitar_acceso(pantalla):
+
+    conn = get_db()
+
+    ya_solicitado = conn.execute("""
+        SELECT 1 FROM solicitudes
+        WHERE user_id=? AND pantalla=? AND estado='pendiente'
+    """, (current_user.id, pantalla)).fetchone()
+
+    if not ya_solicitado:
+        conn.execute("""
+            INSERT INTO solicitudes (user_id, pantalla, fecha)
+            VALUES (?,?,?)
+        """, (
+            current_user.id,
+            pantalla,
+            ahora().strftime("%Y-%m-%d %H:%M")
+        ))
+        conn.commit()
+
+    conn.close()
+
+    return redirect("/panel")
+
+@app.route("/admin/crear_usuario", methods=["POST"])
+@login_required
+def crear_usuario():
+
+    if not tiene_permiso("admin"):
+        return acceso_denegado("admin_usuarios")
+
+    username = request.form.get("username")
+    password = request.form.get("password")
+    rol = request.form.get("rol")
+
+    if not username or not password:
+        return redirect("/admin/usuarios")
+
+    conn = get_db()
+
+    try:
+        conn.execute("""
+            INSERT INTO usuarios (username, password, rol)
+            VALUES (?, ?, ?)
+        """, (
+            username,
+            generate_password_hash(password),
+            rol
+        ))
+        conn.commit()
+    except:
+        conn.close()
+        return "El usuario ya existe"
+
+    conn.close()
+    return redirect("/admin/usuarios")
+
+@app.route("/admin/permisos", methods=["POST"])
+@login_required
+def guardar_permisos():
+    if not tiene_permiso("admin"):
+        return acceso_denegado("admin_usuarios")
+
+    user_id = request.form.get("user_id")
+    permisos = request.form.getlist("permisos")
+
+    conn = get_db()
+    conn.execute("DELETE FROM permisos WHERE user_id=?", (user_id,))
+
+    for p in permisos:
+        conn.execute(
+            "INSERT INTO permisos (user_id, pantalla) VALUES (?,?)",
+            (user_id, p)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin/usuarios")
+@app.route("/admin/eliminar_usuario", methods=["POST"])
+@login_required
+def eliminar_usuario():
+
+    if not tiene_permiso("admin"):
+        return "No autorizado", 403
+
+    user_id = request.form.get("user_id")
+
+    conn = get_db()
+
+    # No permitir borrar admin principal
+    u = conn.execute(
+        "SELECT username FROM usuarios WHERE id=?",
+        (user_id,)
+    ).fetchone()
+
+    if u and u["username"] == "admin":
+        conn.close()
+        return "No se puede eliminar el administrador principal"
+
+    conn.execute("DELETE FROM permisos WHERE user_id=?", (user_id,))
+    conn.execute("DELETE FROM usuarios WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin/usuarios")
+@app.route("/admin/aprobar_solicitud", methods=["POST"])
+@login_required
+def aprobar_solicitud():
+    if not tiene_permiso("admin"):
+        return "No autorizado", 403
+
+    solicitud_id = request.form.get("id")
+
+    conn = get_db()
+    s = conn.execute(
+        "SELECT * FROM solicitudes WHERE id=?",
+        (solicitud_id,)
+    ).fetchone()
+
+    if s:
+        # dar permiso
+        conn.execute(
+            "INSERT INTO permisos (user_id, pantalla) VALUES (?,?)",
+            (s["user_id"], s["pantalla"])
+        )
+
+        conn.execute(
+            "UPDATE solicitudes SET estado='aprobado' WHERE id=?",
+            (solicitud_id,)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin/usuarios")
+@app.route("/admin/rechazar_solicitud", methods=["POST"])
+@login_required
+def rechazar_solicitud():
+    if not tiene_permiso("admin"):
+        return "No autorizado", 403
+
+    solicitud_id = request.form.get("id")
+
+    conn = get_db()
+    conn.execute(
+        "UPDATE solicitudes SET estado='rechazado' WHERE id=?",
+        (solicitud_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect("/admin/usuarios")
+
+# ======================
+# LOGIN
+# ======================
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = get_db()
+        u = conn.execute(
+            "SELECT * FROM usuarios WHERE username=?",
+            (username,)
+        ).fetchone()
+        conn.close()
+
+        if u and check_password_hash(u["password"], password):
+            user = User(u["id"], u["username"], u["rol"])
+            login_user(user)
+
+            # 🔥 Redirección inteligente
+            if tiene_permiso("panel"):
+                return redirect("/panel")
+            elif tiene_permiso("form"):
+                return redirect("/form")
+            elif tiene_permiso("comercial"):
+                return redirect("/comercial")
+            elif tiene_permiso("admin"):
+                return redirect("/admin/usuarios")
+            else:
+                return "No tiene permisos asignados"
+
+        return render_template("login.html", error="Credenciales incorrectas")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect("/login")
+
 def actualizar_tabla_mercado():
     conn = get_db()
 
@@ -162,11 +534,16 @@ def actualizar_tabla_mercado():
     conn.commit()
     conn.close()
 
+
+
 # ======================
 # API — CONSULTA SILO
 # ======================
 @app.route("/api/silo/<qr>")
+@login_required
 def api_silo(qr):
+    if not tiene_permiso("form"):
+        return acceso_denegado("panel")
     conn = get_db()
 
     s = conn.execute("""
@@ -201,7 +578,10 @@ def api_silo(qr):
 # ======================
 @app.route("/")
 @app.route("/panel")
+@login_required
 def panel():
+    if not tiene_permiso("panel"):
+        return acceso_denegado("panel")
     conn = get_db()
 
     silos = conn.execute("""
@@ -307,13 +687,24 @@ def panel():
         })
 
     conn.close()
-    return render_template("panel.html", registros=registros)
+    return render_template(
+    "panel.html",
+    registros=registros,
+    puede_form=tiene_permiso("form"),
+    puede_comercial=tiene_permiso("comercial"),
+    puede_admin=tiene_permiso("admin"),
+    puede_panel=tiene_permiso("panel")
+)
     
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
 @app.route("/comercial")
+@login_required
 def comercial():
+    if not tiene_permiso("comercial"):
+        return acceso_denegado("comercial")
+
     conn = get_db()
 
     rows = conn.execute("""
@@ -350,7 +741,10 @@ def comercial():
 # COMPARADOR COMERCIAL
 # ======================
 @app.route("/comercial/<cereal>")
+@login_required
 def comparador(cereal):
+    if not tiene_permiso("comercial"):
+        return acceso_denegado("comercial")
     conn = get_db()
 
     rows = conn.execute("""
@@ -410,7 +804,10 @@ def comparador(cereal):
 # COMERCIAL – API
 # ======================
 @app.route("/api/mercado/manual", methods=["POST"])
+@login_required
 def mercado_manual():
+    if not tiene_permiso("comercial"):
+        return acceso_denegado("comercial")
     d = request.get_json()
 
     conn = get_db()
@@ -439,7 +836,10 @@ def mercado_manual():
 # FORM
 # ======================
 @app.route("/form")
+@login_required
 def form():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     return render_template("form.html")
 
 # ======================
@@ -452,7 +852,10 @@ def form():
 # REGISTRAR SILO (FIX JSON)
 # ======================
 @app.route("/api/registrar_silo", methods=["POST"])
+@login_required
 def registrar_silo():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     d = request.get_json(force=True, silent=True)
 
     if not d or not d.get("numero_qr"):
@@ -489,7 +892,10 @@ def registrar_silo():
 # API — NUEVO MUESTREO
 # ======================
 @app.route("/api/nuevo_muestreo", methods=["POST"])
+@login_required
 def api_nuevo_muestreo():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     d = request.get_json(force=True, silent=True) or {}
     qr = d.get("qr")
 
@@ -527,7 +933,10 @@ def api_nuevo_muestreo():
 # INFORMAR CALADO (DESDE FORM)
 # ======================
 @app.route("/api/informar_calado", methods=["POST"])
+@login_required
 def informar_calado():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     d = request.get_json(force=True, silent=True) or {}
     qr = d.get("numero_qr")
 
@@ -596,7 +1005,10 @@ def informar_calado():
 # ANALISIS — SECCION
 # ======================
 @app.route("/api/analisis_seccion", methods=["POST"])
+@login_required
 def guardar_analisis_seccion():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     d = request.get_json(force=True, silent=True) or {}
 
     def to_float(x):
@@ -666,7 +1078,10 @@ def guardar_analisis_seccion():
 # MONITOREO
 # ======================
 @app.route("/api/monitoreo", methods=["POST"])
+@login_required
 def nuevo_monitoreo():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     qr = request.form.get("numero_qr")
     tipo = request.form.get("tipo")
     detalle = request.form.get("detalle")
@@ -712,6 +1127,7 @@ def nuevo_monitoreo():
 # MONITOREO PENDIENTE
 # ======================
 @app.route("/api/monitoreo/pendiente/<qr>")
+@login_required
 def monitoreos_pendientes(qr):
     conn = get_db()
     rows = conn.execute("""
@@ -736,6 +1152,7 @@ def monitoreos_pendientes(qr):
 # RESOLVER MONITOREO
 # ======================
 @app.route("/api/monitoreo/resolver", methods=["POST"])
+@login_required
 def resolver_monitoreo():
     id_monitoreo = request.form.get("id_monitoreo")
     foto = request.files.get("foto")
@@ -770,6 +1187,7 @@ def resolver_monitoreo():
 # MONITOREOS RESUELTOS
 # ======================
 @app.route("/api/monitoreo/resueltos/<qr>")
+@login_required
 def monitoreos_resueltos(qr):
     conn = get_db()
     rows = conn.execute("""
@@ -791,7 +1209,10 @@ def monitoreos_resueltos(qr):
 # EXTRACCION
 # ======================
 @app.route("/api/extraccion", methods=["POST"])
+@login_required
 def registrar_extraccion():
+    if not tiene_permiso("form"):
+        return acceso_denegado("form")
     d = request.get_json(force=True, silent=True)
 
     conn = get_db()
@@ -813,7 +1234,10 @@ def registrar_extraccion():
 # SILO (DETALLE)
 # ======================
 @app.route("/silo/<qr>")
+@login_required
 def ver_silo(qr):
+    if not tiene_permiso("panel"):
+        return acceso_denegado("panel")
     conn = get_db()
 
     silo = conn.execute(
@@ -930,7 +1354,10 @@ def ver_silo(qr):
 # VER MUESTREO
 # ======================
 @app.route("/muestreo/<int:id>")
+@login_required
 def ver_muestreo(id):
+    if not tiene_permiso("panel"):
+        return acceso_denegado("panel")
     conn = get_db()
 
     muestreo = conn.execute("""
@@ -962,7 +1389,10 @@ def ver_muestreo(id):
 # EXPORT EXCEL ORDENADO
 # ======================
 @app.route("/api/export")
+@login_required
 def exportar_excel():
+    if not tiene_permiso("panel"):
+        return acceso_denegado("panel")
     from openpyxl import Workbook
     from openpyxl.styles import Font
     from datetime import datetime, timedelta
@@ -1171,7 +1601,11 @@ def obtener_pizarra_auto(cereal):
         return None
 
 @app.route("/api/actualizar_dolar", methods=["POST"])
+@login_required
 def actualizar_dolar():
+    if not tiene_permiso("comercial"):
+        return acceso_denegado("comercial")
+
     dolar = obtener_dolar_oficial()
     if dolar is None:
         return jsonify({"ok": False, "error": "No se pudo obtener el dólar"})
@@ -1208,6 +1642,7 @@ def obtener_pizarra_auto(cereal):
     }
 
 @app.route("/api/actualizar_pizarra", methods=["POST"])
+@login_required
 def actualizar_pizarra():
     conn = get_db()
     rows = conn.execute("SELECT cereal FROM mercado").fetchall()
