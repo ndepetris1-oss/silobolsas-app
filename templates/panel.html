@@ -58,7 +58,31 @@ button,select{
   padding:8px 14px;
   cursor:pointer
 }
+.nav-bar{
+  display:flex;
+  gap:12px;
+  margin-bottom:15px;
+  flex-wrap:wrap;
+}
 
+.nav-btn{
+  background:#1b5e20;
+  color:white;
+  padding:10px 16px;
+  border-radius:12px;
+  font-weight:bold;
+  border:none;
+  cursor:pointer;
+  text-decoration:none;
+}
+
+.nav-btn.locked{
+  background:#888;
+}
+
+.nav-btn.admin{
+  background:#0d47a1;
+}
 select{background:#c8e6c9;color:black}
 
 button:hover{background:#2e7d32}
@@ -106,35 +130,48 @@ th{background:#a5d6a7;cursor:pointer}
 <body>
 
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
-<div class="dashboard-nav">
+<div class="nav-bar">
 
-  {% if puede_form %}
-    <a href="/form" class="nav-btn">🧪 Form</a>
-  {% endif %}
+    <!-- FORM -->
+    {% if puede_form %}
+        <a href="/form" class="nav-btn">📝 Form</a>
+    {% else %}
+        <form method="POST" action="/solicitar_acceso/form">
+            <button class="nav-btn locked">🔒 Form</button>
+        </form>
+    {% endif %}
 
-  {% if puede_comercial %}
-    <a href="/comercial" class="nav-btn">📊 Comercial</a>
-  {% endif %}
+    <!-- COMERCIAL -->
+    {% if puede_comercial %}
+        <a href="/comercial" class="nav-btn">📊 Comercial</a>
+    {% else %}
+        <form method="POST" action="/solicitar_acceso/comercial">
+            <button class="nav-btn locked">🔒 Comercial</button>
+        </form>
+    {% endif %}
 
-  {% if puede_comercial %}
-    <a href="/comercial/Soja" class="nav-btn">📈 Comparador</a>
-  {% endif %}
+    <!-- COMPARADOR -->
+    {% if puede_comparador %}
+        <a href="/comparador" class="nav-btn">📈 Comparador</a>
+    {% else %}
+        <form method="POST" action="/solicitar_acceso/comparador">
+            <button class="nav-btn locked">🔒 Comparador</button>
+        </form>
+    {% endif %}
 
-  {% if puede_panel %}
-    <a href="/api/export" class="nav-btn">📥 Exportar Excel</a>
-  {% endif %}
-
-  {% if puede_admin %}
-    <a href="/admin/usuarios" class="nav-btn admin">👤 Administración</a>
-  {% endif %}
+    <!-- ADMIN -->
+    {% if puede_admin %}
+        <a href="/admin/usuarios" class="nav-btn admin">⚙ Administración</a>
+    {% else %}
+        <form method="POST" action="/solicitar_acceso/admin">
+            <button class="nav-btn locked admin">🔒 Administración</button>
+        </form>
+    {% endif %}
 
 </div>
 
 <div class="container">
 
-<div class="toolbar">
-  <button onclick="location.href='/api/export'">📤 Exportar CSV</button>
-</div>
 <button id="btnMapa"
         onclick="toggleMapa()"
         style="

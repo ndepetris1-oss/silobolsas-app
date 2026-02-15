@@ -53,6 +53,31 @@ button:hover{background:#2e7d32}
   font-size:12px;
   color:#555
 }
+.btn-comparar{
+  display:inline-block;
+  background:#1976d2;
+  color:white;
+  padding:6px 14px;
+  border-radius:6px;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:bold;
+  line-height:1.4;
+}
+
+.btn-comparar:hover{
+  background:#1565c0;
+}
+
+.btn-bloqueado{
+  background:#9e9e9e;
+  color:white;
+  border:none;
+  padding:6px 14px;
+  border-radius:6px;
+  font-size:13px;
+  cursor:pointer;
+}
 </style>
 </head>
 
@@ -138,14 +163,19 @@ button:hover{background:#2e7d32}
            id="dolar_{{ m.cereal }}"
            value="{{ m.dolar or '' }}">
   </td>
-
-  <td>
-    <a href="/comercial/{{ m.cereal }}">
-      <button style="background:#1976d2">
-        📊 Comparar
-      </button>
-    </a>
-  </td>
+<<td>
+  {% if puede_comparador %}
+      <a href="/comercial/{{ m.cereal }}" class="btn-comparar">
+          📊 Comparar
+      </a>
+  {% else %}
+      <form method="POST" action="/solicitar_acceso/comparador">
+          <button class="btn-bloqueado">
+              🔒 Comparar
+          </button>
+      </form>
+  {% endif %}
+</td>
 
   <td>
     <button onclick="guardar('{{ m.cereal }}')">💾</button>

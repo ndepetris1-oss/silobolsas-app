@@ -212,27 +212,35 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <p><i>Sin análisis cargado</i></p>
   {% endif %}
 
-  <button onclick='abrirAnalisis(
-  "{{ sec }}",
-  {% if a %}
-  {
-    temperatura: {{ a.temperatura if a.temperatura is not none else "null" }},
-    humedad: {{ a.humedad if a.humedad is not none else "null" }},
-    ph: {{ a.ph if a.ph is not none else "null" }},
-    danados: {{ a.danados if a.danados is not none else "null" }},
-    quebrados: {{ a.quebrados if a.quebrados is not none else "null" }},
-    materia_extrana: {{ a.materia_extrana if a.materia_extrana is not none else "null" }},
-    chamico: {{ a.chamico if a.chamico is not none else "null" }},
-    olor: {{ a.olor if a.olor is not none else 0 }},
-    moho: {{ a.moho if a.moho is not none else 0 }},
-    insectos: {{ "true" if a.insectos else "false" }}
-  }
-  {% else %}
-  null
-  {% endif %}
-)'>
-  ➕ Cargar / Editar análisis
-</button>
+  {% if puede_laboratorio %}
+    <button onclick='abrirAnalisis(
+      "{{ sec }}",
+      {% if a %}
+      {
+        temperatura: {{ a.temperatura if a.temperatura is not none else "null" }},
+        humedad: {{ a.humedad if a.humedad is not none else "null" }},
+        ph: {{ a.ph if a.ph is not none else "null" }},
+        danados: {{ a.danados if a.danados is not none else "null" }},
+        quebrados: {{ a.quebrados if a.quebrados is not none else "null" }},
+        materia_extrana: {{ a.materia_extrana if a.materia_extrana is not none else "null" }},
+        chamico: {{ a.chamico if a.chamico is not none else "null" }},
+        olor: {{ a.olor if a.olor is not none else 0 }},
+        moho: {{ a.moho if a.moho is not none else 0 }},
+        insectos: {{ "true" if a.insectos else "false" }}
+      }
+      {% else %}
+      null
+      {% endif %}
+    )'>
+      ➕ Cargar / Editar análisis
+    </button>
+{% else %}
+    <form method="POST" action="/solicitar_acceso/laboratorio">
+        <button style="background:#888">
+            🔒 Solicitar acceso a Laboratorio
+        </button>
+    </form>
+{% endif %}
 
 </div>
 

@@ -165,10 +165,17 @@ th{background:#a5d6a7}
 </div>
 {% endif %}
 
-<h3>📊 Muestreos</h3>
-<button style="margin:10px 0" onclick="nuevoMuestreo()">
-  ➕ Nuevo muestreo
-</button>
+{% if puede_calado %}
+    <a href="/nuevo_muestreo/{{ silo.numero_qr }}" class="btn">
+        ➕ Nuevo muestreo
+    </a>
+{% else %}
+    <form method="POST" action="/solicitar_acceso/calado">
+        <button class="btn" style="background:#888">
+            🔒 Solicitar acceso a Calado
+        </button>
+    </form>
+{% endif %}
 
 <script>
 async function nuevoMuestreo(){

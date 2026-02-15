@@ -340,7 +340,7 @@ def solicitar_acceso(pantalla):
 
     conn.close()
 
-    return redirect("/panel")
+    return acceso_denegado(pantalla)
 
 @app.route("/admin/crear_usuario", methods=["POST"])
 @login_required
@@ -732,10 +732,11 @@ def comercial():
     conn.close()
 
     return render_template(
-        "comercial.html",
-        mercado=rows,
-        dolar_info=dolar_info
-    )
+    "comercial.html",
+    mercado=rows,
+    dolar_info=dolar_info,
+    puede_comparador=tiene_permiso("comparador")
+)
 
 # ======================
 # COMPARADOR COMERCIAL
@@ -743,8 +744,8 @@ def comercial():
 @app.route("/comercial/<cereal>")
 @login_required
 def comparador(cereal):
-    if not tiene_permiso("comercial"):
-        return acceso_denegado("comercial")
+    if not tiene_permiso("comparador"):
+        return acceso_denegado("comparador")
     conn = get_db()
 
     rows = conn.execute("""
@@ -840,7 +841,11 @@ def mercado_manual():
 def form():
     if not tiene_permiso("form"):
         return acceso_denegado("form")
-    return render_template("form.html")
+
+    return render_template(
+        "form.html",
+        puede_calado=tiene_permiso("calado")
+    )
 
 # ======================
 # RESTO DEL ARCHIVO
@@ -894,8 +899,8 @@ def registrar_silo():
 @app.route("/api/nuevo_muestreo", methods=["POST"])
 @login_required
 def api_nuevo_muestreo():
-    if not tiene_permiso("form"):
-        return acceso_denegado("form")
+    if not tiene_permiso("calado"):
+        return redirect(url_for("no_autorizado", seccion="calado"))
     d = request.get_json(force=True, silent=True) or {}
     qr = d.get("qr")
 
@@ -935,8 +940,8 @@ def api_nuevo_muestreo():
 @app.route("/api/informar_calado", methods=["POST"])
 @login_required
 def informar_calado():
-    if not tiene_permiso("form"):
-        return acceso_denegado("form")
+    if not tiene_permiso("calado"):
+        return acceso_denegado("calado")
     d = request.get_json(force=True, silent=True) or {}
     qr = d.get("numero_qr")
 
@@ -1007,8 +1012,8 @@ def informar_calado():
 @app.route("/api/analisis_seccion", methods=["POST"])
 @login_required
 def guardar_analisis_seccion():
-    if not tiene_permiso("form"):
-        return acceso_denegado("form")
+    if not tiene_permiso("laboratorio"):
+        return acceso_denegado("calado")
     d = request.get_json(force=True, silent=True) or {}
 
     def to_float(x):
@@ -1337,18 +1342,19 @@ def ver_silo(qr):
     conn.close()
 
     return render_template(
-        "silo.html",
-        silo=silo,
-        muestreos=muestreos,
-        eventos_pendientes=eventos_pendientes,
-        eventos_resueltos=eventos_resueltos,
-        mercado=mercado,
-        precio_estimado=precio_estimado,
-        precio_usd=precio_usd,
-        factor_prom=factor_prom,
-        tas_usada=tas_usada,
-        analisis_pendiente=analisis_pendiente
-    )
+    "silo.html",
+    silo=silo,
+    muestreos=muestreos,
+    eventos_pendientes=eventos_pendientes,
+    eventos_resueltos=eventos_resueltos,
+    mercado=mercado,
+    precio_estimado=precio_estimado,
+    precio_usd=precio_usd,
+    factor_prom=factor_prom,
+    tas_usada=tas_usada,
+    analisis_pendiente=analisis_pendiente,
+    puede_calado=tiene_permiso("calado")   # 👈 agregar
+)
 
 # ======================
 # VER MUESTREO
@@ -1357,7 +1363,7 @@ def ver_silo(qr):
 @login_required
 def ver_muestreo(id):
     if not tiene_permiso("panel"):
-        return acceso_denegado("panel")
+        return redirect(url_for("no_autorizado", seccion="panel"))
     conn = get_db()
 
     muestreo = conn.execute("""
@@ -1381,10 +1387,11 @@ def ver_muestreo(id):
     conn.close()
 
     return render_template(
-        "muestreo.html",
-        muestreo=muestreo,
-        analisis=analisis
-    )
+    "muestreo.html",
+    muestreo=muestreo,
+    analisis=analisis,
+    puede_laboratorio=tiene_permiso("laboratorio")   # 👈 agregar
+)
 # ======================
 # EXPORT EXCEL ORDENADO
 # ======================
