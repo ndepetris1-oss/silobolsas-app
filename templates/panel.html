@@ -150,15 +150,6 @@ th{background:#a5d6a7;cursor:pointer}
         </form>
     {% endif %}
 
-    <!-- COMPARADOR -->
-    {% if puede_comparador %}
-        <a href="/comparador" class="nav-btn">📈 Comparador</a>
-    {% else %}
-        <form method="POST" action="/solicitar_acceso/comparador">
-            <button class="nav-btn locked">🔒 Comparador</button>
-        </form>
-    {% endif %}
-
     <!-- ADMIN -->
     {% if puede_admin %}
         <a href="/admin/usuarios" class="nav-btn admin">⚙ Administración</a>

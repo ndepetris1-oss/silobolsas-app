@@ -741,6 +741,14 @@ def comercial():
 # ======================
 # COMPARADOR COMERCIAL
 # ======================
+@app.route("/comparador")
+@login_required
+def comparador_redirect():
+    if not tiene_permiso("comparador"):
+        return acceso_denegado("comparador")
+
+    return redirect("/comercial")
+
 from calculos import calcular_merma_humedad
 @app.route("/comercial/<cereal>")
 @login_required
