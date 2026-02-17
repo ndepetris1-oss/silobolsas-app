@@ -692,10 +692,10 @@ def panel():
     registros=registros,
     puede_form=tiene_permiso("form"),
     puede_comercial=tiene_permiso("comercial"),
+    puede_comparador=tiene_permiso("comparador"),  # 👈 AGREGAR ESTA LÍNEA
     puede_admin=tiene_permiso("admin"),
     puede_panel=tiene_permiso("panel")
 )
-    
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
@@ -741,6 +741,7 @@ def comercial():
 # ======================
 # COMPARADOR COMERCIAL
 # ======================
+from calculos import calcular_merma_humedad
 @app.route("/comercial/<cereal>")
 @login_required
 def comparador(cereal):
@@ -787,13 +788,19 @@ def comparador(cereal):
 
     conn.close()
 
-    silos = [
-        {
-            **dict(r),
-            "tiene_insectos": True if r["tiene_insectos"] > 0 else False
-        }
-        for r in rows
-    ]
+    silos = []
+
+    for r in rows:
+        silo_dict = dict(r)
+
+        silo_dict["tiene_insectos"] = True if r["tiene_insectos"] > 0 else False
+
+        silo_dict["merma_humedad"] = calcular_merma_humedad(
+            cereal,
+            silo_dict.get("humedad_prom")
+        )
+
+        silos.append(silo_dict)
 
     return render_template(
         "comparador.html",

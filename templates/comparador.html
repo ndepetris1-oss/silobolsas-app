@@ -57,6 +57,47 @@ th{background:#a5d6a7}
   border-radius:10px;
   margin-top:12px;
 }
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #2e7d32;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
 .bad{color:#b71c1c;font-weight:bold}
 .good{color:#2e7d32;font-weight:bold}
 </style>
@@ -81,6 +122,7 @@ th{background:#a5d6a7}
         data-factor="{{ s.factor_prom }}"
         data-humedad="{{ s.humedad_prom or 0 }}"
         data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
+          data-merma="{{ s.merma_humedad or 0 }}"
       >
         {{ s.numero_qr }} —
         {% if s.factor_prom %}
@@ -206,12 +248,14 @@ th{background:#a5d6a7}
         <option value="3">3</option>
 </select>
 
-    <label>
-      <input type="checkbox" id="bonif_fumigada">
-      Bonificar fumigada
-    </label>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px;">
+  <span>Bonificar fumigada</span>
 
-    <hr>
+  <label class="switch">
+    <input type="checkbox" id="bonificar_fumigada">
+    <span class="slider"></span>
+  </label>
+</div>
 
     <label>🤝 Comisión (%)</label>
     <input type="number" step="0.01" id="g_comision">
@@ -227,9 +271,6 @@ th{background:#a5d6a7}
     </button>
   </div>
 </div>
-</body>
-</html>
-
 <script>
 let filaOferenteActual = null;
 let siloActual = null;
@@ -237,9 +278,9 @@ let siloActual = null;
 // humedad base por cereal
 const baseHumedad = {
   "Maíz": 14.6,
-  "Trigo": 13.5,
-  "Soja": 13.0,
-  "Girasol": 9.0
+  "Trigo": 14.1,
+  "Soja": 13.6,
+  "Girasol": 9.1
 };
 
 // volátil automático
@@ -258,7 +299,8 @@ function onCambioSilo(){
   siloActual = {
     factor: parseFloat(opt.dataset.factor),
     humedad: parseFloat(opt.dataset.humedad),
-    insectos: opt.dataset.insectos === "1"
+    insectos: opt.dataset.insectos === "1",
+    merma: parseFloat(opt.dataset.merma)
   };
 
   // 👉 Mostrar info del silo
@@ -273,7 +315,8 @@ function onCambioSilo(){
     hum.innerHTML =
       "⚠️ <b>Silo húmedo</b> — Humedad prom: " +
       siloActual.humedad.toFixed(2) +
-      "% (base " + base + "%)";
+      "% (base " + base + "%) — Merma: " +
+      siloActual.merma.toFixed(2) + "%";
     hum.style.color = "#b71c1c";
   }else{
     hum.innerHTML =
@@ -320,8 +363,11 @@ function abrirGastos(btn){
   g_manipuleo.value = gastos.manipuleo;
   bonif_secada.value = gastos.bonif_secada;
   g_comision.value = gastos.comision;
-  g_volatil.value = gastos.volatil;
+  // Volátil automático por cereal
+const volatilAuto = volatilPorCereal["{{ cereal }}"] || 0;
+g_volatil.value = volatilAuto;
 
+  const bonif_fumigada = document.getElementById("bonificar_fumigada");
   bonif_fumigada.checked = gastos.fumigada === 0;
 
   document.getElementById("modalGastos").style.display = "block";
@@ -332,6 +378,9 @@ function cerrarGastos(){
 }
 
 function aplicarGastos(){
+
+  const bonif_fumigada = document.getElementById("bonificar_fumigada");
+
   const gastos = {
     flete: +g_flete.value || 0,
     contra: +g_contra.value || 0,
@@ -438,3 +487,5 @@ function calcularComparacion(){
   });
 }
 </script>
+</body>
+</html>

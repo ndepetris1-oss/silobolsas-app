@@ -145,8 +145,9 @@ th{background:#a5d6a7}
 
   {% if factor_prom %}
     <p>Factor comercial:
-       <b>{{ factor_prom }}</b></p>
-  {% endif %}
+       <b>{{ (factor_prom * 100) | round(2) }}%</b>
+    </p>
+{% endif %}
 
   {% if tas_usada %}
     <p>TAS utilizada:
@@ -166,9 +167,9 @@ th{background:#a5d6a7}
 {% endif %}
 
 {% if puede_calado %}
-    <a href="/nuevo_muestreo/{{ silo.numero_qr }}" class="btn">
+    <button onclick="nuevoMuestreo()" class="btn">
         ➕ Nuevo muestreo
-    </a>
+    </button>
 {% else %}
     <form method="POST" action="/solicitar_acceso/calado">
         <button class="btn" style="background:#888">
