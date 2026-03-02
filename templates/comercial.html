@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Comercial</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
+
+{% block contenido %}
 
 <style>
 body{
@@ -64,11 +61,9 @@ button:hover{background:#2e7d32}
   font-weight:bold;
   line-height:1.4;
 }
-
 .btn-comparar:hover{
   background:#1565c0;
 }
-
 .btn-bloqueado{
   background:#9e9e9e;
   color:white;
@@ -79,35 +74,32 @@ button:hover{background:#2e7d32}
   cursor:pointer;
 }
 </style>
-</head>
-
-<body>
 
 <header>💰 Comercial – Precios de mercado</header>
+
 {% set ref = mercado[0] if mercado %}
 
 {% if mercado and ref.fecha %}
-  <div style="
-    margin:10px 0;
-    padding:10px;
-    background:#e3f2fd;
-    border-left:5px solid #1976d2;
-    border-radius:6px;
-    font-weight:bold;
-  ">
-    💱 Dólar oficial – <b>Bluelytics</b> – actualizado
-    {{ ref.fecha }}
-  </div>
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+  💱 Dólar oficial – <b>Bluelytics</b> – actualizado {{ fecha_dolar_arg }}
+</div>
+{% endif %}
+
+{% if fecha_pizarra %}
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+  📊 Pizarra – <b>CAC BCR</b> – actualizada {{ fecha_pizarra }}
+</div>
 {% endif %}
 
 <div class="container">
+
 <button onclick="actualizarDolar()" style="margin-bottom:10px">
   🔄 Actualizar dólar
 </button>
-<button onclick="actualizarPizarra()">📊 Actualizar pizarra</button>
 
-<div class="container">
-
+<button onclick="actualizarPizarra()">
+  📊 Actualizar pizarra
+</button>
 <table>
 <tr>
   <th>Cereal</th>
@@ -125,21 +117,18 @@ button:hover{background:#2e7d32}
 {% for m in mercado %}
 <tr>
   <td><b>{{ m.cereal }}</b></td>
-<td>
-  {% if m.pizarra_auto and m.pizarra_auto > 0 %}
-    {{ "{:,.0f}".format(m.pizarra_auto).replace(",", ".") }}
-  {% else %}
-    -
-  {% endif %}
-</td>
 
-<td>
-  {{ m.fuente if m.fuente else "-" }}
-</td>
+  <td>
+    {% if m.pizarra_auto and m.pizarra_auto > 0 %}
+      {{ "{:,.0f}".format(m.pizarra_auto).replace(",", ".") }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
 
-<td>
-  {{ m.fecha_fuente if m.fecha_fuente else "-" }}
-</td>
+  <td>{{ m.fuente if m.fuente else "-" }}</td>
+  <td>{{ m.fecha_fuente if m.fecha_fuente else "-" }}</td>
+
   <td>
     <input type="checkbox"
            id="usar_{{ m.cereal }}"
@@ -163,89 +152,198 @@ button:hover{background:#2e7d32}
            id="dolar_{{ m.cereal }}"
            value="{{ m.dolar or '' }}">
   </td>
-<<td>
-  {% if puede_comparador %}
-      <a href="/comercial/{{ m.cereal }}" class="btn-comparar">
-          📊 Comparar
-      </a>
-  {% else %}
-      <form method="POST" action="/solicitar_acceso/comparador">
-          <button class="btn-bloqueado">
-              🔒 Comparar
-          </button>
-      </form>
-  {% endif %}
-</td>
+
+  <td>
+    <a href="{{ url_for('comercial.comparador', cereal=m.cereal) }}"
+       class="btn-comparar {% if not puede_comparador %}btn-bloqueado{% endif %}">
+        {% if puede_comparador %}
+            📊 Comparar
+        {% else %}
+            🔒 Comparar
+        {% endif %}
+    </a>
+  </td>
 
   <td>
     <button onclick="guardar('{{ m.cereal }}')">💾</button>
   </td>
 </tr>
 {% endfor %}
-</table>
-
 <p class="small">
 ✔ Si “Usar manual” está tildado, el sistema ignora la pizarra automática.
 </p>
+</table>
+<h3 style="margin-top:30px;">📈 ROFEX – Dólar Futuro</h3>
+
+<button onclick="actualizarRofex()">📈 Actualizar ROFEX</button>
+
+{% if rofex and rofex|length > 0 %}
+<table style="margin-top:10px;">
+<tr>
+    <th>Posición</th>
+    <th>Ajuste</th>
+    <th>Variación</th>
+    <th>Hora</th>
+</tr>
+
+{% for r in rofex %}
+<tr>
+    <td>{{ r.posicion }}</td>
+    <td>{{ "%.2f"|format(r.ajuste) }}</td>
+    <td style="color:{% if r.variacion >= 0 %}green{% else %}red{% endif %}">
+        {{ "%.2f"|format(r.variacion) }}
+    </td>
+    <td>
+        {% set f = r.fecha %}
+        {{ f[8:10] }}/{{ f[5:7] }}/{{ f[0:4] }} {{ f[11:16] }}
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% else %}
+<p style="margin-top:10px; color:#888;">No hay datos cargados.</p>
+
+
+</table>
+{% endif %}
+
+{% if matba %}
+<h3 style="margin-top:30px;">🌾 MATBA</h3>
+<button onclick="actualizarMatba()">🌾 Actualizar MATBA</button>
+
+<table>
+<tr>
+    <th>Contrato</th>
+    <th>Precio</th>
+    <th>Variación</th>
+    <th>Fecha</th>
+</tr>
+
+{% for m in matba %}
+<tr>
+    <td>
+      {{ m.posicion }}
+      {% if m.mes %}
+        <div style="font-size:12px;color:#666;">
+          {{ m.mes }}
+        </div>
+      {% endif %}
+    </td>
+
+    <td>{{ "%.2f"|format(m.precio) }}</td>
+
+    <td style="color:{% if m.variacion >= 0 %}green{% else %}red{% endif %}">
+        {{ "%.2f"|format(m.variacion) }}
+    </td>
+
+    <td>
+        {% set f = m.fecha %}
+        {{ f[8:10] }}/{{ f[5:7] }}/{{ f[0:4] }} {{ f[11:16] }}
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
 
 </div>
 
 <script>
-function guardar(cereal){
-  fetch("/api/mercado/manual",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      cereal: cereal,
-      usar_manual: document.getElementById("usar_"+cereal).checked,
-      pizarra_manual: document.getElementById("manual_"+cereal).value,
-      obs_precio: document.getElementById("obs_"+cereal).value,
-      dolar: document.getElementById("dolar_"+cereal).value
-    })
-  }).then(r=>r.json())
-    .then(()=>alert("Guardado"));
-}
-</script>
-<script>
 async function actualizarDolar(){
+
   if(!confirm("¿Actualizar dólar oficial ahora?")) return;
 
   try{
-    const res = await fetch("/api/actualizar_dolar", {
+    const res = await fetch("/comercial/api/actualizar_dolar", {
       method: "POST"
     });
 
     const data = await res.json();
 
-    if(!data.ok){
-      alert(data.error || "Error al actualizar dólar");
-      return;
+    if(data.ok){
+      alert("💵 Dólar actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ " + (data.error || "Error al actualizar dólar"));
     }
 
-    alert("💵 Dólar actualizado: $" + data.dolar);
-    location.reload();
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+
+async function actualizarPizarra(){
+
+  if(!confirm("¿Actualizar pizarra automática ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_pizarra", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("📊 Pizarra actualizada correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar pizarra");
+    }
 
   }catch(e){
-    alert("Error de conexión");
     console.error(e);
+    alert("❌ Error de conexión");
   }
 }
 </script>
+
 <script>
-async function actualizarPizarra(){
-  if(!confirm("Actualizar pizarra automática?")) return;
+async function actualizarRofex(){
 
-  const res = await fetch("/api/actualizar_pizarra", { method:"POST" });
-  const data = await res.json();
+  if(!confirm("¿Actualizar ROFEX ahora?")) return;
 
-  if(data.ok){
-    alert("📊 Pizarra actualizada");
-    location.reload();
-  } else {
-    alert("Error al actualizar pizarra");
+  try{
+    const res = await fetch("/comercial/api/actualizar_rofex", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("✅ ROFEX actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar ROFEX");
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+
+async function actualizarMatba(){
+
+  if(!confirm("¿Actualizar MATBA ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_matba", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("✅ MATBA actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar MATBA");
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
   }
 }
 </script>
-
-</body>
-</html>
+{% endblock %}

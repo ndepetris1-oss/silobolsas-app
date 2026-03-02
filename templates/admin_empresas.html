@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Administración de Empresas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  background:#e6f4ea;
+  font-family:Arial, sans-serif;
+  padding:30px;
+  color:#1e4620;
+}
+
+h2{
+  text-align:center;
+  margin-bottom:30px;
+}
+
+.card{
+  background:#ffffff;
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:30px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+
+label{
+  font-weight:bold;
+  display:block;
+  margin-top:12px;
+}
+
+input, select{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  border:1px solid #4caf50;
+}
+
+button{
+  background:#2e7d32;
+  color:white;
+  border:none;
+  padding:12px;
+  border-radius:10px;
+  font-weight:bold;
+  margin-top:15px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#1b5e20;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th{
+  background:#4caf50;
+  color:white;
+  padding:12px;
+  text-align:left;
+}
+
+td{
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+
+.estado-activa{
+  color:#2e7d32;
+  font-weight:bold;
+}
+
+.estado-inactiva{
+  color:#c62828;
+  font-weight:bold;
+}
+
+.estado-vencida{
+  color:#d84315;
+  font-weight:bold;
+}
+
+.badge{
+  padding:6px 10px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:bold;
+}
+
+.badge-activa{
+  background:#c8e6c9;
+}
+
+.badge-inactiva{
+  background:#ffcdd2;
+}
+
+.badge-vencida{
+  background:#ffe0b2;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🏢 Administración de Empresas</h2>
+
+<div class="card">
+<h3>➕ Crear nueva empresa</h3>
+
+<form method="POST" action="/admin/empresas/crear">
+    <label>Nombre empresa</label>
+    <input name="nombre" required>
+
+    <label>Tipo de contrato</label>
+    <select name="tipo_contrato" id="tipoContrato" onchange="mostrarOpcionesSilos()">
+        <option value="">Indefinido</option>
+        <option value="Campaña">Campaña</option>
+        <option value="Anual">Anual</option>
+        <option value="Mensual">Mensual</option>
+        <option value="Silos">Por cantidad de silo bolsas</option>
+    </select>
+
+    <div id="opcionesSilos" style="display:none; margin-top:10px;">
+
+        <label>Modalidad</label>
+        <select name="modo_silos">
+            <option value="limitado">Cupo fijo</option>
+            <option value="contador">Contador libre (facturar uso real)</option>
+        </select>
+
+        <label>Cantidad permitida (si aplica)</label>
+        <input type="number" name="limite_silos" min="0">
+    </div>
+    
+    <label>Fecha vencimiento (opcional)</label>
+    <input type="date" name="fecha_vencimiento">
+
+    <button>Crear empresa</button>
+</form>
+</div>
+
+<div class="card">
+<h3>📋 Empresas registradas</h3>
+
+<table>
+<tr>
+<th>Nombre</th>
+<th>Alta</th>
+<th>Contrato</th>
+<th>Vencimiento</th>
+<th>Estado</th>
+<th>Acciones</th>
+</tr>
+
+{% for e in empresas %}
+<tr>
+<td><b>{{ e.nombre }}</b></td>
+<td>{{ e.fecha_alta }}</td>
+<td>{{ e.tipo_contrato or 'Indefinido' }}</td>
+<td>{{ e.fecha_vencimiento or '-' }}</td>
+
+<td>
+    {% if not e.activa %}
+        <span class="badge badge-inactiva estado-inactiva">Inactiva</span>
+    {% elif e.fecha_vencimiento and e.fecha_vencimiento < fecha_hoy %}
+        <span class="badge badge-vencida estado-vencida">Vencida</span>
+    {% else %}
+        <span class="badge badge-activa estado-activa">Activa</span>
+    {% endif %}
+</td>
+
+<td>
+
+  {% if e.activa == 1 %}
+
+  <!-- PAUSAR -->
+  <a href="/admin/empresa/toggle/{{ e.id }}"
+     style="background:#f39c12;
+            padding:6px 10px;
+            border-radius:6px;
+            color:white;
+            text-decoration:none;
+            font-size:13px;
+            margin-right:6px;">
+     ⏸ Pausar
+  </a>
+
+{% else %}
+
+  <!-- REACTIVAR CON NUEVA FECHA -->
+  <form method="POST"
+        action="{{ url_for('admin.reactivar_empresa', id=e.id) }}"
+        style="display:inline-flex; gap:5px; align-items:center;">
+
+      <input type="date"
+             name="nueva_fecha"
+             required
+             style="padding:4px;
+                    border-radius:6px;
+                    border:1px solid #ccc;
+                    font-size:12px;">
+
+      <button type="submit"
+              style="background:#2e7d32;
+                     padding:6px 10px;
+                     border-radius:6px;
+                     color:white;
+                     border:none;
+                     font-size:12px;">
+          ▶ Reactivar
+      </button>
+  </form>
+
+{% endif %}
+
+  <!-- ELIMINAR -->
+  <a href="/admin/empresa/eliminar/{{ e.id }}"
+     onclick="return confirm('¿Eliminar empresa y todos sus usuarios?')"
+     style="background:#c0392b;
+            padding:6px 10px;
+            border-radius:6px;
+            color:white;
+            text-decoration:none;
+            font-size:13px;">
+     🗑 Eliminar
+  </a>
+
+</td>
+
+</tr>
+{% endfor %}
+
+</table>
+</div>
+<script>
+function mostrarOpcionesSilos(){
+    var tipo = document.getElementById("tipoContrato").value;
+    var bloque = document.getElementById("opcionesSilos");
+
+    if(tipo === "Silos"){
+        bloque.style.display = "block";
+    } else {
+        bloque.style.display = "none";
+    }
+}
+</script>
+</body>
+</html>
+{% endblock %}

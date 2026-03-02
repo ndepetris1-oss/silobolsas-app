@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block contenido %}
+
+<style>
+body{
+    background:#f4f6f9;
+}
+
+.dashboard{
+    padding:30px;
+}
+
+.titulo{
+    font-size:26px;
+    font-weight:bold;
+    margin-bottom:25px;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:20px;
+    margin-bottom:30px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+
+.card h3{
+    font-size:14px;
+    color:#666;
+    margin-bottom:10px;
+}
+
+.card p{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.tabla-container{
+    background:white;
+    padding:20px;
+    border-radius:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#2e7d32;
+    color:white;
+    padding:12px;
+    text-align:left;
+    font-size:14px;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #eee;
+}
+
+tr:hover{
+    background:#f9f9f9;
+}
+
+.deuda{
+    color:#c62828;
+    font-weight:bold;
+}
+
+.sin-deuda{
+    color:#2e7d32;
+    font-weight:bold;
+}
+
+.btn{
+    background:#1976d2;
+    color:white;
+    padding:6px 12px;
+    border-radius:8px;
+    text-decoration:none;
+    font-size:13px;
+}
+
+.btn:hover{
+    background:#0d47a1;
+}
+</style>
+
+<div class="dashboard">
+
+<div class="titulo">📊 Panel Financiero</div>
+
+<!-- RESUMEN GENERAL -->
+<div class="cards">
+
+    <div class="card">
+        <h3>Empresas</h3>
+        <p>{{ resumen|length }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Total Silos Activos</h3>
+        <p>
+            {{ resumen | sum(attribute='silos') }}
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Total Facturado</h3>
+        <p>
+            ${{ resumen | sum(attribute='monto') }}
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Total Pendiente</h3>
+        <p>
+            {{ resumen | sum(attribute='pendiente') }}
+        </p>
+    </div>
+
+</div>
+
+<!-- TABLA -->
+<div class="tabla-container">
+
+<table>
+<tr>
+<th>Empresa</th>
+<th>Contrato</th>
+<th>Silos</th>
+<th>Cobrados</th>
+<th>Pendiente</th>
+<th>Total $</th>
+<th></th>
+</tr>
+
+{% for r in resumen %}
+<tr>
+<td><b>{{ r.nombre }}</b></td>
+<td>{{ r.tipo or 'Indefinido' }}</td>
+<td>{{ r.silos }}</td>
+<td>{{ r.cobrados }}</td>
+
+<td>
+    {% if r.pendiente > 0 %}
+        <span class="deuda">{{ r.pendiente }}</span>
+    {% else %}
+        <span class="sin-deuda">0</span>
+    {% endif %}
+</td>
+
+<td>${{ r.monto }}</td>
+
+<td>
+    <a class="btn"
+       href="{{ url_for('admin.registrar_pago', id=r.id) }}">
+       💵 Registrar
+    </a>
+</td>
+
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+{% endblock %}

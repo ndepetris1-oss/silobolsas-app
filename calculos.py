@@ -123,25 +123,195 @@ def grado_trigo(d):
 def factor_trigo(d):
     f = 1.0
 
-    if d.get("materia_extrana", 0) > 1.5:
-        f -= (d["materia_extrana"] - 1.5) * 0.01
+    grado = grado_trigo(d)
 
-    if d.get("danados", 0) > 3:
-        f -= (d["danados"] - 3) * 0.01
+    # ==============================
+    # TOLERANCIAS SEGÚN GRADO
+    # ==============================
 
-    if d.get("quebrados", 0) > 2:
-        f -= (d["quebrados"] - 2) * 0.005
+    tolerancias = {
+        1: {
+            "materia_extrana": 0.20,
+            "danados": 1.00,
+            "granos_carbon": 0.10,
+            "panza_blanca": 15,
+            "quebrados": 0.50,
+        },
+        2: {
+            "materia_extrana": 0.80,
+            "danados": 2.00,
+            "granos_carbon": 0.20,
+            "panza_blanca": 25,
+            "quebrados": 1.20,
+        },
+        3: {
+            "materia_extrana": 1.50,
+            "danados": 3.00,
+            "granos_carbon": 0.30,
+            "panza_blanca": 40,
+            "quebrados": 2.00,
+        }
+    }
 
-    if d.get("ph") is not None and d["ph"] < 73:
-        f -= (73 - d["ph"]) * 0.02
+    if grado in tolerancias:
+        tol = tolerancias[grado]
 
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
+        for campo, limite in tol.items():
+            valor = d.get(campo)
+            if valor is not None and valor > limite:
+                f -= (valor - limite) * 0.01
+
+    # ==============================
+    # ARBITRAJES DIRECTOS
+    # ==============================
+
+    f -= (d.get("olor") or 0) / 100
+    f -= (d.get("punta_sombreada") or 0) / 100
+    f -= (d.get("revolcado_tierra") or 0) / 100
+    f -= (d.get("punta_negra") or 0) / 100
+
+    # ==================================
+    # PROTEÍNA (TRAMOS ACUMULATIVOS)
+    # ==================================
+
+    prote = d.get("proteinas")
+    ph = d.get("ph")
+
+    if prote is not None and ph is not None and ph >= 75:
+
+        if prote < 11:
+
+            descuento = 0
+
+            # Tramo 11 → 10 (2% por punto)
+            if prote < 10:
+                descuento += 1 * 0.02
+                tramo_2 = 10 - prote
+            else:
+                tramo_2 = 11 - prote
+
+            if prote >= 10:
+                descuento += (11 - prote) * 0.02
+
+            # Tramo 10 → 9 (3% por punto)
+            if prote < 10:
+                if prote < 9:
+                    descuento += 1 * 0.03
+                    tramo_3 = 9 - prote
+                else:
+                    descuento += (10 - prote) * 0.03
+
+            # Tramo < 9 (4% por punto)
+            if prote < 9:
+                descuento += (9 - prote) * 0.04
+
+            f -= descuento
+
+        elif prote > 11:
+            # Bonificación simple proporcional
+            f += (prote - 11) * 0.02
 
     return round(max(f, 0), 4)
+# ======================================================
+# SORGO
+# ======================================================
 
+def grado_sorgo(d):
+
+    danados = d.get("danados") or 0
+    materia_extrana = d.get("materia_extrana") or 0
+    quebrados = d.get("quebrados") or 0
+    granos_picados = d.get("granos_picados") or 0
+
+    if (
+        danados > 6
+        or materia_extrana > 4
+        or quebrados > 7
+        or granos_picados > 1
+    ):
+        return None
+
+    if (
+        danados > 4
+        or materia_extrana > 3
+        or quebrados > 5
+    ):
+        return 3
+
+    if (
+        danados > 2
+        or materia_extrana > 2
+        or quebrados > 3
+    ):
+        return 2
+
+    return 1
+
+def factor_sorgo(d):
+
+    f = 1.0
+
+    danados = d.get("danados") or 0
+    materia_extrana = d.get("materia_extrana") or 0
+    quebrados = d.get("quebrados") or 0
+    granos_picados = d.get("granos_picados") or 0
+    olor = d.get("olor") or 0
+    moho = d.get("moho") or 0
+    chamico = d.get("chamico") or 0
+
+    # =========================
+    # DESCUENTO POR EXCEDENTE
+    # =========================
+
+    # Límites grado 3
+    LIM_DANADOS = 6
+    LIM_MEXT = 4
+    LIM_QUEBRADOS = 7
+    LIM_PICADOS = 1
+
+    if danados > LIM_DANADOS:
+        f -= (danados - LIM_DANADOS) * 0.01
+
+    if materia_extrana > LIM_MEXT:
+        f -= (materia_extrana - LIM_MEXT) * 0.01
+
+    if quebrados > LIM_QUEBRADOS:
+        f -= (quebrados - LIM_QUEBRADOS) * 0.005
+
+    if granos_picados > LIM_PICADOS:
+        f -= (granos_picados - LIM_PICADOS) * 0.01
+
+    # =========================
+    # OLOR
+    # =========================
+    f -= olor / 100
+
+    # =========================
+    # MOHO
+    # =========================
+    f -= moho / 100
+
+    # =========================
+    # CHAMICO (con tolerancia 2 semillas)
+    # =========================
+
+    if chamico >= 3:
+        if 3 <= chamico <= 10:
+            f -= 0.03
+        elif 11 <= chamico <= 20:
+            f -= 0.05
+        elif 21 <= chamico <= 50:
+            f -= 0.10
+        elif 51 <= chamico <= 65:
+            f -= 0.15
+        elif 66 <= chamico <= 80:
+            f -= 0.20
+        elif 81 <= chamico <= 100:
+            f -= 0.25
+        elif chamico > 100:
+            f -= 0.30
+
+    return max(f, 0)
 
 # ======================================================
 # SOJA (SIN GRADO)
@@ -175,120 +345,53 @@ def factor_soja(d):
 def factor_girasol(d):
     f = 1.0
 
-    if d.get("materia_extrana", 0) > 0:
-        f -= d["materia_extrana"] * 0.01
+    # ==================================
+    # MATERIA GRASA (BASE 42%)
+    # ==================================
+    grasa = d.get("materia_grasa")
+    if grasa is not None:
+        diferencia = grasa - 42
+        f += diferencia * 0.02  # ±2% por punto proporcional
 
-    semillas = d.get("chamico", 0)
-    if semillas:
-        f -= semillas * 0.0012
+    # ==================================
+    # ACIDEZ (BASE 1.5%)
+    # ==================================
+    acidez = d.get("acidez")
+    if acidez is not None:
+        base_acidez = 1.5
+        if acidez > base_acidez:
+            exceso = acidez - base_acidez
+            f -= exceso * 0.025  # 2.5% por punto proporcional
 
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
+    # ==================================
+    # MATERIA EXTRAÑA (TRAMOS)
+    # ==================================
+    me = d.get("materia_extrana")
+    if me is not None and me > 0:
+
+        if me <= 3:
+            f -= me * 0.01  # 1% proporcional hasta 3%
+        else:
+            f -= 3 * 0.01  # tramo 1
+            exceso = me - 3
+            f -= exceso * 0.015  # tramo 2 (1.5%)
+
+    # ==================================
+    # CHAMICO
+    # ==================================
+    chamico = d.get("chamico")
+    if chamico is not None and chamico > 0.25:
+        exceso = chamico - 0.25
+        f -= exceso * 0.001  # 0.1% por unidad
+
+    # ==================================
+    # ARBITRAJES DIRECTOS
+    # ==================================
+    f -= (d.get("olor") or 0) / 100
+    f -= (d.get("moho") or 0) / 100
 
     return round(max(f, 0), 4)
 
-
-# ======================================================
-# TAS – TABLAS
-# ======================================================
-
-TAS_MAIZ = {
-    24: {40: 1, 35: 2, 30: 2, 25: 4, 20: 8, 15: 16, 10: 26, 5: 50},
-    22: {40: 3, 35: 3, 30: 4, 25: 7, 20: 12, 15: 22, 10: 35, 5: 90},
-    20: {40: 4, 35: 5, 30: 7, 25: 12, 20: 22, 15: 39, 10: 60, 5: 150},
-    18: {40: 9, 35: 11, 30: 15, 25: 28, 20: 49, 15: 85, 10: 140, 5: 350},
-    16: {40: 17, 35: 17, 30: 23, 25: 45, 20: 80, 15: 160, 10: 265, 5: 650},
-    14: {40: 27, 35: 32, 30: 48, 25: 90, 20: 170, 15: 320, 10: 500, 5: 1000},
-}
-
-TAS_TRIGO = {
-    40: {24: 1, 22: 1, 20: 2, 18: 2, 16: 3, 14: 4},
-    35: {24: 1, 22: 4, 20: 10, 18: 13, 16: 17, 14: 25},
-    30: {24: 1, 22: 5, 20: 11, 18: 15, 16: 21, 14: 30},
-    25: {24: 1, 22: 7, 20: 12, 18: 18, 16: 35, 14: 40},
-    20: {24: 3, 22: 8, 20: 13, 18: 30, 16: 54, 14: 80},
-    15: {24: 8, 22: 10, 20: 20, 18: 41, 16: 56, 14: 105},
-    10: {24: 10, 22: 15, 20: 29, 18: 50, 16: 100, 14: 200},
-    5: {24: 13, 22: 20, 20: 36, 18: 73, 16: 180, 14: 250},
-}
-
-TAS_SOJA = {
-    24: {40: 1, 35: 1, 30: 1, 25: 1, 20: 3, 15: 8, 10: 10, 5: 13},
-    22: {40: 1, 35: 4, 30: 5, 25: 7, 20: 8, 15: 10, 10: 15, 5: 20},
-    20: {40: 2, 35: 10, 30: 11, 25: 12, 20: 13, 15: 20, 10: 29, 5: 36},
-    18: {40: 2, 35: 13, 30: 15, 25: 18, 20: 30, 15: 41, 10: 50, 5: 73},
-    16: {40: 3, 35: 17, 30: 21, 25: 36, 20: 54, 15: 56, 10: 100, 5: 180},
-    14: {40: 4, 35: 25, 30: 30, 25: 40, 20: 80, 15: 105, 10: 200, 5: 250},
-}
-
-TAS_COLZA_GIRASOL = {
-    17.0: {25: 4, 20: 4, 15: 6, 10: 11, 5: 20},
-    15.6: {25: 4, 20: 6, 15: 6, 10: 11, 5: 28},
-    13.7: {25: 4, 20: 6, 15: 11, 10: 20, 5: 46},
-    12.3: {25: 8, 20: 6, 15: 18, 10: 25, 5: 109},
-    10.6: {25: 11, 20: 18, 15: 42, 10: 42, 5: 238},
-    8.9: {25: 23, 20: 48, 15: 116, 10: 279, 5: 300},
-    6.7: {25: 29, 20: 180, 15: 300, 10: 300, 5: 300},
-}
-
-
-# ======================================================
-# TAS – FUNCIONES
-# ======================================================
-
-def tas_maiz(d):
-    return _tas_tabla_hum_temp(TAS_MAIZ, d.get("temperatura"), d.get("humedad"))
-
-
-def tas_trigo(d):
-    return _tas_tabla_temp_hum(TAS_TRIGO, d.get("temperatura"), d.get("humedad"))
-
-
-def tas_soja(d):
-    return _tas_tabla_hum_temp(TAS_SOJA, d.get("temperatura"), d.get("humedad"))
-
-
-def tas_colza_girasol(d):
-    return _tas_tabla_hum_temp(TAS_COLZA_GIRASOL, d.get("temperatura"), d.get("humedad"))
-
-
-# ======================================================
-# SELECTOR FINAL
-# ======================================================
-
-def calcular_comercial(cereal, d):
-    if cereal == "Maíz":
-        g = grado_maiz(d)
-        grado = normalizar_grado(g, usa_grado=True)
-        factor = factor_maiz(d)
-        tas = tas_maiz(d)
-
-    elif cereal == "Trigo":
-        g = grado_trigo(d)
-        grado = normalizar_grado(g, usa_grado=True)
-        factor = factor_trigo(d)
-        tas = tas_trigo(d)
-
-    elif cereal == "Soja":
-        grado = None
-        factor = factor_soja(d)
-        tas = tas_soja(d)
-
-    elif cereal in ("Girasol", "Colza"):
-        grado = None
-        factor = factor_girasol(d)
-        tas = tas_colza_girasol(d)
-
-    else:
-        raise ValueError(f"Cereal no soportado: {cereal}")
-
-    return {
-        "grado": grado,
-        "factor": factor,
-        "tas": tas,
-    }
 # ======================================================
 # UTILIDADES TAS
 # ======================================================
@@ -322,164 +425,6 @@ def normalizar_grado(grado, usa_grado=True):
         return None
     return grado if grado is not None else "F/E"
 
-
-# ======================================================
-# MAÍZ
-# ======================================================
-
-def grado_maiz(d):
-    if d.get("ph") is not None and d["ph"] < 69:
-        return None
-
-    if (
-        d.get("danados", 0) > 8
-        or d.get("quebrados", 0) > 5
-        or d.get("materia_extrana", 0) > 2
-    ):
-        return None
-
-    if (
-        d.get("danados", 0) > 5
-        or d.get("quebrados", 0) > 3
-        or d.get("materia_extrana", 0) > 1.5
-    ):
-        return 3
-
-    if (
-        d.get("danados", 0) > 3
-        or d.get("quebrados", 0) > 2
-        or d.get("materia_extrana", 0) > 1
-    ):
-        return 2
-
-    return 1
-
-
-def factor_maiz(d):
-    f = 1.0
-
-    if d.get("danados", 0) > 8:
-        f -= (d["danados"] - 8) * 0.01
-
-    if d.get("quebrados", 0) > 5:
-        f -= (d["quebrados"] - 5) * 0.0025
-
-    if d.get("materia_extrana", 0) > 2:
-        f -= (d["materia_extrana"] - 2) * 0.01
-
-    if d.get("ph") is not None and d["ph"] < 69:
-        f -= (69 - d["ph"]) * 0.01
-
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
-
-    return round(max(f, 0), 4)
-
-
-# ======================================================
-# TRIGO
-# ======================================================
-
-def grado_trigo(d):
-    if d.get("ph") is not None and d["ph"] < 73:
-        return None
-
-    if (
-        d.get("materia_extrana", 0) > 1.5
-        or d.get("danados", 0) > 3
-        or d.get("quebrados", 0) > 2
-    ):
-        return None
-
-    if (
-        d.get("materia_extrana", 0) > 0.8
-        or d.get("danados", 0) > 2
-        or d.get("quebrados", 0) > 1.2
-    ):
-        return 3
-
-    if (
-        d.get("materia_extrana", 0) > 0.2
-        or d.get("danados", 0) > 1
-        or d.get("quebrados", 0) > 0.5
-    ):
-        return 2
-
-    return 1
-
-
-def factor_trigo(d):
-    f = 1.0
-
-    if d.get("materia_extrana", 0) > 1.5:
-        f -= (d["materia_extrana"] - 1.5) * 0.01
-
-    if d.get("danados", 0) > 3:
-        f -= (d["danados"] - 3) * 0.01
-
-    if d.get("quebrados", 0) > 2:
-        f -= (d["quebrados"] - 2) * 0.005
-
-    if d.get("ph") is not None and d["ph"] < 73:
-        f -= (73 - d["ph"]) * 0.02
-
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
-
-    return round(max(f, 0), 4)
-
-
-# ======================================================
-# SOJA (SIN GRADO)
-# ======================================================
-
-def factor_soja(d):
-    f = 1.0
-
-    if d.get("materia_extrana", 0) > 1:
-        tramo1 = min(d["materia_extrana"], 3) - 1
-        f -= tramo1 * 0.01
-
-    if d.get("materia_extrana", 0) > 3:
-        f -= (d["materia_extrana"] - 3) * 0.015
-
-    if d.get("danados", 0) > 5:
-        f -= (d["danados"] - 5) * 0.01
-
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
-
-    return round(max(f, 0), 4)
-
-
-# ======================================================
-# GIRASOL / COLZA (SIN GRADO)
-# ======================================================
-
-def factor_girasol(d):
-    f = 1.0
-
-    if d.get("materia_extrana", 0) > 0:
-        f -= d["materia_extrana"] * 0.01
-
-    semillas = d.get("chamico", 0)
-    if semillas:
-        f -= semillas * 0.0012
-
-    # ===== ARBITRAJES DIRECTOS =====
-    olor = d.get("olor") or 0
-    moho = d.get("moho") or 0
-    f -= (olor + moho) / 100
-
-    return round(max(f, 0), 4)
-
-
 # ======================================================
 # TAS – TABLAS
 # ======================================================
@@ -531,6 +476,10 @@ TAS_COLZA_GIRASOL = {
 def tas_maiz(d):
     return _tas_tabla_hum_temp(TAS_MAIZ, d.get("temperatura"), d.get("humedad"))
 
+def tas_sorgo(d):
+    # TEMPORAL: usar tabla de maíz
+    return _tas_tabla_hum_temp(TAS_MAIZ, d.get("temperatura"), d.get("humedad"))
+
 
 def tas_trigo(d):
     return _tas_tabla_temp_hum(TAS_TRIGO, d.get("temperatura"), d.get("humedad"))
@@ -571,6 +520,12 @@ def calcular_comercial(cereal, d):
         factor = factor_girasol(d)
         tas = tas_colza_girasol(d)
 
+    elif cereal == "Sorgo":
+        g = grado_sorgo(d)
+        grado = normalizar_grado(g, usa_grado=True)
+        factor = factor_sorgo(d)
+        tas = tas_sorgo(d)
+
     else:
         raise ValueError(f"Cereal no soportado: {cereal}")
 
@@ -579,6 +534,7 @@ def calcular_comercial(cereal, d):
         "factor": factor,
         "tas": tas,
     }
+    
 # ======================================================
 # MERMA MAÍZ – TABLA OFICIAL
 # ======================================================
@@ -697,6 +653,47 @@ MERMA_GIRASOL = {
     24.1: 15.20, 24.2: 15.31, 24.3: 15.42, 24.4: 15.53, 24.5: 15.64,
     24.6: 15.75, 24.7: 15.87, 24.8: 15.98, 24.9: 16.09, 25.0: 16.20,
 }
+MERMA_SORGO = {
+    15.1: 1.85, 15.2: 1.97, 15.3: 2.08, 15.4: 2.20, 15.5: 2.31,
+    15.6: 2.43, 15.7: 2.54, 15.8: 2.66, 15.9: 2.77, 16.0: 2.89,
+    16.1: 3.01, 16.2: 3.12, 16.3: 3.24, 16.4: 3.35, 16.5: 3.47,
+    16.6: 3.58, 16.7: 3.70, 16.8: 3.82, 16.9: 3.93, 17.0: 4.05,
+    17.1: 4.16, 17.2: 4.28, 17.3: 4.39, 17.4: 4.51, 17.5: 4.62,
+    17.6: 4.74, 17.7: 4.86, 17.8: 4.97, 17.9: 5.09, 18.0: 5.20,
+    18.1: 5.32, 18.2: 5.43, 18.3: 5.55, 18.4: 5.66, 18.5: 5.78,
+    18.6: 5.90, 18.7: 6.01, 18.8: 6.13, 18.9: 6.24, 19.0: 6.36,
+    19.1: 6.47, 19.2: 6.59, 19.3: 6.71, 19.4: 6.82, 19.5: 6.94,
+    19.6: 7.05, 19.7: 7.17, 19.8: 7.28, 19.9: 7.40, 20.0: 7.51,
+    20.1: 7.63, 20.2: 7.75, 20.3: 7.86, 20.4: 7.98, 20.5: 8.09,
+    20.6: 8.21, 20.7: 8.32, 20.8: 8.44, 20.9: 8.55, 21.0: 8.67,
+    21.1: 8.79, 21.2: 8.90, 21.3: 9.02, 21.4: 9.13, 21.5: 9.25,
+    21.6: 9.36, 21.7: 9.48, 21.8: 9.60, 21.9: 9.71, 22.0: 9.83,
+    22.1: 9.94, 22.2: 10.06, 22.3: 10.17, 22.4: 10.29, 22.5: 10.40,
+    22.6: 10.52, 22.7: 10.64, 22.8: 10.75, 22.9: 10.87, 23.0: 10.98,
+    23.1: 11.10, 23.2: 11.21, 23.3: 11.33, 23.4: 11.45, 23.5: 11.56,
+    23.6: 11.68, 23.7: 11.79, 23.8: 11.91, 23.9: 12.02, 24.0: 12.14,
+    24.1: 12.25, 24.2: 12.37, 24.3: 12.49, 24.4: 12.60, 24.5: 12.72,
+    24.6: 12.83, 24.7: 12.95, 24.8: 13.06, 24.9: 13.18, 25.0: 13.29,
+}
+def merma_sorgo(humedad):
+
+    if humedad is None:
+        return 0
+
+    if humedad <= 15.0:
+        return 0
+
+    h = round(humedad, 1)
+
+    if h not in MERMA_SORGO:
+        h = min(MERMA_SORGO.keys(), key=lambda x: abs(x - h))
+
+    merma = MERMA_SORGO[h]
+
+    # manipuleo fijo
+    merma += 0.25
+
+    return round(merma, 2)
 def merma_maiz(humedad):
     """
     Devuelve merma oficial de maíz

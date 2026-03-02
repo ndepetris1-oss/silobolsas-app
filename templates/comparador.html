@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block contenido %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -100,6 +103,15 @@ input:checked + .slider:before {
 }
 .bad{color:#b71c1c;font-weight:bold}
 .good{color:#2e7d32;font-weight:bold}
+.matba-auto {
+  background: #fff8e1;
+  border-left: 4px solid #f9a825;
+}
+
+.matba-auto td:first-child {
+  font-weight: bold;
+  color: #e65100;
+}
 </style>
 </head>
 
@@ -110,7 +122,11 @@ input:checked + .slider:before {
 <div class="container">
 
 <button onclick="location.href='/comercial'">← Volver</button>
-
+<div style="margin-bottom:15px;padding:10px;background:#f1f8e9;border-radius:8px;">
+  <b>Precio base pizarra:</b> {{ precio_base }}
+  <br>
+  <b>Dólar:</b> {{ dolar }}
+</div>
 <div class="card">
   <h3>🌾 Seleccionar silo</h3>
 
@@ -123,6 +139,7 @@ input:checked + .slider:before {
         data-humedad="{{ s.humedad_prom or 0 }}"
         data-insectos="{{ 1 if s.tiene_insectos else 0 }}"
           data-merma="{{ s.merma_humedad or 0 }}"
+        data-tas="{{ s.tas_min }}"
       >
         {{ s.numero_qr }} —
         {% if s.factor_prom %}
@@ -139,6 +156,8 @@ input:checked + .slider:before {
     <h4>📦 Estado del silo</h4>
     <p id="infoHumedad"></p>
     <p id="infoInsectos"></p>
+    <p id="infoTAS"></p>
+    <p id="alertaTAS"></p>
   </div>
 </div>
 
@@ -147,13 +166,16 @@ input:checked + .slider:before {
   <h3>🏢 Oferentes</h3>
   
   <table>
-  <tr>
-    <th>Oferente</th>
-    <th>Precio pizarra</th>
-    <th>Gastos</th>
-    <th>Precio neto</th>
-    <th>Dif. vs mejor</th>
-  </tr>
+<thead>
+<tr>
+  <th>Oferente</th>
+  <th>Precio pizarra</th>
+  <th>Gastos</th>
+  <th>Precio neto</th>
+  <th>Dif. vs mejor</th>
+</tr>
+</thead>
+<tbody>
 
   {% for i in range(4) %}
   <tr>
@@ -182,6 +204,38 @@ input:checked + .slider:before {
     <td class="dif-mejor">-</td>
   </tr>
   {% endfor %}
+  {% for f in futuros %}
+  <tr class="matba-auto">
+
+    <td>
+      <b>📈 MATBA {{ f.posicion }}</b>
+
+      {% if f.mes %}
+      <div style="font-size:12px;color:#666;">
+      {{ f.mes }}
+      </div>
+      {% endif %}
+    </td>
+
+  <td>
+    <input type="number"
+           step="0.01"
+           value="{{ f.precio }}">
+  </td>
+
+  <td>
+    <button onclick="abrirGastos(this)" style="background:#f57f17">
+      ⚙️ Gastos
+    </button>
+    <div class="small total-gastos">0 USD/TN</div>
+  </td>
+
+  <td class="precio-neto">-</td>
+  <td class="dif-mejor">-</td>
+
+</tr>
+{% endfor %}
+</tbody>
 </table>
 
  <button
@@ -300,7 +354,8 @@ function onCambioSilo(){
     factor: parseFloat(opt.dataset.factor),
     humedad: parseFloat(opt.dataset.humedad),
     insectos: opt.dataset.insectos === "1",
-    merma: parseFloat(opt.dataset.merma)
+    merma: parseFloat(opt.dataset.merma),
+    tas: parseInt(opt.dataset.tas) || null
   };
 
   // 👉 Mostrar info del silo
@@ -308,6 +363,7 @@ function onCambioSilo(){
   const info = document.getElementById("infoSilo");
   const hum = document.getElementById("infoHumedad");
   const ins = document.getElementById("infoInsectos");
+  const tasElem = document.getElementById("infoTAS");
 
   info.style.display = "block";
 
@@ -334,7 +390,11 @@ function onCambioSilo(){
       "✔️ <b>Sin insectos</b>";
     ins.style.color = "#2e7d32";
   }
-
+  if(siloActual.tas){
+    tasElem.innerHTML =
+      "⏳ TAS mínimo: <b>" + siloActual.tas + " días</b>";
+    tasElem.style.color = "#333";
+  }
   calcularComparacion();
 }
 function abrirGastos(btn){
@@ -489,3 +549,4 @@ function calcularComparacion(){
 </script>
 </body>
 </html>
+{% endblock %}

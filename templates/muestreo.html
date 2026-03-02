@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block contenido %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -160,91 +163,94 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
   <h4>{{ sec|capitalize }}</h4>
 
   {% if a %}
-  <table>
-    <tr>
-      <th>Temp °C</th>
-      <th>Hum %</th>
-      <th>Dañados</th>
-      <th>Quebrados</th>
-      <th>M.Ext</th>
-      <th>Olor %</th>
-      <th>Moho %</th>
-      <th>Insectos</th>
-      <th>Chamico</th>
-      {% if muestreo.cereal in ("Maíz","Trigo") %}
+<table>
+  <tr>
+    <th>Temp °C</th>
+    <th>Hum %</th>
+
+    {% if muestreo.cereal == "Sorgo" %}
+      <th>Granos picados</th>
+    {% endif %}
+
+    <th>Dañados</th>
+    <th>Quebrados</th>
+    <th>M.Ext</th>
+    <th>Olor %</th>
+    <th>Moho %</th>
+    <th>Insectos</th>
+    <th>Chamico</th>
+
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
       <th>Grado</th>
-      {% endif %}
-      <th>Factor</th>
-      <th>TAS (días)</th>
-    </tr>
-    <tr>
+    {% endif %}
+
+    <th>Factor</th>
+    <th>TAS (días)</th>
+  </tr>
+
+  <tr>
+    <td>{{ a.temperatura if a.temperatura is not none else "-" }}</td>
+    <td>{{ a.humedad }}</td>
+
+    {% if muestreo.cereal == "Sorgo" %}
+      <td>{{ a.granos_picados or 0 }}</td>
+    {% endif %}
+
+    <td>{{ a.danados }}</td>
+    <td>{{ a.quebrados }}</td>
+    <td>{{ a.materia_extrana }}</td>
+    <td>{{ a.olor }}</td>
+    <td>{{ a.moho }}</td>
+    <td>{{ "Sí" if a.insectos else "No" }}</td>
+    <td>{{ a.chamico }}</td>
+
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
       <td>
-        {{ a.temperatura if a.temperatura is not none else "-" }}
-</td>
-      <td>{{ a.humedad }}</td>
-      <td>{{ a.danados }}</td>
-      <td>{{ a.quebrados }}</td>
-      <td>{{ a.materia_extrana }}</td>
-      <td>{{ a.olor }}</td>
-      <td>{{ a.moho }}</td>
-      <td>{{ "Sí" if a.insectos else "No" }}</td>
-      <td>{{ a.chamico }}</td>
-      {% if muestreo.cereal in ("Maíz","Trigo") %}
-     <td>
-       {% if a.grado is not none %}
-        <b>{{ a.grado }}</b>
-       {% else %}
-        -
-       {% endif %}
-</td>
-      {% endif %}
-      <td>
-        {% if a.factor is not none %}
-          <b>{{ (a.factor * 100)|round(2) }}%</b>
+        {% if a.grado is not none %}
+          <b>{{ a.grado }}</b>
         {% else %}
           -
         {% endif %}
-</td>
-      <td><b>{{ a.tas if a.tas is not none else "-" }}</b></td>
-    </tr>
-  </table>
-  {% else %}
-    <p><i>Sin análisis cargado</i></p>
-  {% endif %}
+      </td>
+    {% endif %}
 
-  {% if puede_laboratorio %}
-    <button onclick='abrirAnalisis(
-      "{{ sec }}",
-      {% if a %}
-      {
-        temperatura: {{ a.temperatura if a.temperatura is not none else "null" }},
-        humedad: {{ a.humedad if a.humedad is not none else "null" }},
-        ph: {{ a.ph if a.ph is not none else "null" }},
-        danados: {{ a.danados if a.danados is not none else "null" }},
-        quebrados: {{ a.quebrados if a.quebrados is not none else "null" }},
-        materia_extrana: {{ a.materia_extrana if a.materia_extrana is not none else "null" }},
-        chamico: {{ a.chamico if a.chamico is not none else "null" }},
-        olor: {{ a.olor if a.olor is not none else 0 }},
-        moho: {{ a.moho if a.moho is not none else 0 }},
-        insectos: {{ "true" if a.insectos else "false" }}
-      }
+    <td>
+      {% if a.factor is not none %}
+        <b>{{ (a.factor * 100)|round(2) }}%</b>
       {% else %}
-      null
+        -
       {% endif %}
-    )'>
-      ➕ Cargar / Editar análisis
-    </button>
+    </td>
+
+    <td>
+      {% if a.tas is not none %}
+        <b>{{ a.tas }}</b>
+      {% else %}
+        -
+      {% endif %}
+    </td>
+  </tr>
+</table>
 {% else %}
-    <form method="POST" action="/solicitar_acceso/laboratorio">
-        <button style="background:#888">
-            🔒 Solicitar acceso a Laboratorio
-        </button>
-    </form>
+<p><i>Sin análisis cargado</i></p>
 {% endif %}
 
-</div>
-
+  {% if puede_laboratorio %}
+<button onclick='abrirAnalisis(
+  "{{ sec }}",
+  {{ dict(a)|tojson if a else "null" }}
+)'>
+  ➕ Cargar / Editar análisis
+</button>
+{% else %}
+<a href="{{ url_for('permissions.acceso', pantalla='laboratorio') }}"
+   style="background:#888; display:inline-block; padding:8px 14px; border-radius:8px; color:white; text-decoration:none;">
+    🔒 Cargar / Editar análisis
+</a>
+{% endif %}
+   
 {% endfor %}
+
 
 </div>
 
@@ -257,13 +263,45 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <input id="temperatura" type="number" inputmode="decimal" placeholder="Temperatura">
     <input id="humedad" type="number" inputmode="decimal" placeholder="Humedad">
 
-    {% if muestreo.cereal not in ("Soja","Girasol") %}
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
     <input id="ph" type="number" inputmode="decimal" placeholder="PH">
     {% endif %}
 
-    <input id="danados" type="number" inputmode="decimal" placeholder="Dañados">
-    <input id="quebrados" type="number" inputmode="decimal" placeholder="Quebrados">
+    <!-- DANADOS -->
+    <div id="grupo_danados">
+      <input id="danados" type="number" placeholder="Total dañados">
+    </div>
+
+    <!-- QUEBRADOS (NO aplica a Girasol) -->
+    {% if muestreo.cereal != "Girasol" %}
+    <div id="grupo_quebrados">
+      <input id="quebrados" type="number" placeholder="Granos quebrados">
+    </div>
+    {% endif %}
+
     <input id="materia_extrana" type="number" inputmode="decimal" placeholder="Materia extraña">
+
+    <!-- RUBROS TRIGO -->
+    {% if muestreo.cereal == "Trigo" %}
+        <input id="granos_carbon" type="number" placeholder="Granos con carbón">
+        <input id="panza_blanca" type="number" placeholder="Granos panza blanca">
+        <input id="granos_picados" type="number" placeholder="Granos picados">
+        <input id="punta_sombreada" type="number" placeholder="Punta sombreada por tierra">
+        <input id="revolcado_tierra" type="number" placeholder="Revolcado en tierra">
+        <input id="punta_negra" type="number" placeholder="Punta negra por carbón">
+        <input id="proteinas" type="number" step="0.1" placeholder="Proteínas">
+    {% endif %}
+
+<!-- RUBROS SORGO -->
+{% if muestreo.cereal == "Sorgo" %}
+    <input id="granos_picados" type="number" placeholder="Granos picados">
+{% endif %}
+
+    <!-- RUBROS GIRASOL -->
+    {% if muestreo.cereal == "Girasol" %}
+    <input id="materia_grasa" type="number" step="0.1" placeholder="Materia grasa (%)">
+    <input id="acidez" type="number" step="0.1" placeholder="Acidez (%)">
+    {% endif %}
 
     <input id="chamico" type="number" inputmode="numeric" placeholder="Cantidad / semillas">
 
@@ -321,18 +359,84 @@ function abrirAnalisis(seccion, datos){
 
   // precargar si hay datos
   if(datos){
-    if(datos.temperatura !== null) temperatura.value = datos.temperatura;
-    if(datos.humedad !== null) humedad.value = datos.humedad;
+    if (document.getElementById("temperatura") && datos.temperatura !== null)
+        document.getElementById("temperatura").value = datos.temperatura;
+    if (document.getElementById("humedad") && datos.humedad !== null)
+        document.getElementById("humedad").value = datos.humedad;
     if(document.getElementById("ph") && datos.ph !== null) ph.value = datos.ph;
-    if(datos.danados !== null) danados.value = datos.danados;
-    if(datos.quebrados !== null) quebrados.value = datos.quebrados;
-    if(datos.materia_extrana !== null) materia_extrana.value = datos.materia_extrana;
-    if(datos.chamico !== null) chamico.value = datos.chamico;
+    if (document.getElementById("danados") && datos.danados !== null)
+        document.getElementById("danados").value = datos.danados;
+    if (document.getElementById("quebrados") && datos.quebrados !== null)
+        document.getElementById("quebrados").value = datos.quebrados;
+    if (document.getElementById("materia_extrana") && datos.materia_extrana !== null)
+        document.getElementById("materia_extrana").value = datos.materia_extrana;
+    if (document.getElementById("chamico") && datos.chamico !== null)
+        document.getElementById("chamico").value = datos.chamico;
     olor.value = datos.olor ?? "0";
     moho.value = datos.moho ?? "0";
     document.getElementById("insectos").checked = Boolean(datos.insectos);
-  }
+    if (document.getElementById("granos_carbon") && datos.granos_carbon !== null)
+    granos_carbon.value = datos.granos_carbon;
 
+    if (document.getElementById("panza_blanca") && datos.panza_blanca !== null)
+    panza_blanca.value = datos.panza_blanca;
+
+    if (document.getElementById("granos_picados") && datos.granos_picados !== null)
+    granos_picados.value = datos.granos_picados;
+
+    if (document.getElementById("punta_sombreada") && datos.punta_sombreada !== null)
+    punta_sombreada.value = datos.punta_sombreada;
+
+    if (document.getElementById("revolcado_tierra") && datos.revolcado_tierra !== null)
+    revolcado_tierra.value = datos.revolcado_tierra;
+
+    if (document.getElementById("punta_negra") && datos.punta_negra !== null)
+    punta_negra.value = datos.punta_negra;
+
+    if (document.getElementById("proteinas") && datos.proteinas !== null)
+        proteinas.value = datos.proteinas;
+    if (document.getElementById("materia_grasa") && datos.materia_grasa !== null)
+        materia_grasa.value = datos.materia_grasa;
+
+    if (document.getElementById("acidez") && datos.acidez !== null)
+        acidez.value = datos.acidez;
+      }
+  // ===============================
+  // Mostrar / ocultar según cereal
+  // ===============================
+
+  if ("{{ muestreo.cereal }}" === "Girasol") {
+
+    // Ocultar campos que NO aplican
+    if (document.getElementById("grupo_quebrados"))
+        document.getElementById("grupo_quebrados").style.display = "none";
+
+    if (document.getElementById("grupo_danados"))
+        document.getElementById("grupo_danados").style.display = "none";
+
+    // Limpiar valores por seguridad
+    if (document.getElementById("quebrados"))
+        document.getElementById("quebrados").value = "";
+
+    if (document.getElementById("danados"))
+        document.getElementById("danados").value = "";
+
+    // Mostrar grupo específico girasol
+    if (document.getElementById("grupo_girasol"))
+        document.getElementById("grupo_girasol").style.display = "block";
+
+  } else {
+
+    // Restaurar campos normales
+    if (document.getElementById("grupo_quebrados"))
+        document.getElementById("grupo_quebrados").style.display = "block";
+
+    if (document.getElementById("grupo_danados"))
+        document.getElementById("grupo_danados").style.display = "block";
+
+    if (document.getElementById("grupo_girasol"))
+        document.getElementById("grupo_girasol").style.display = "none";
+  }
   document.getElementById("modal").style.display = "flex";
 }
 
@@ -348,20 +452,48 @@ function guardarAnalisis(){
       id_muestreo: {{ muestreo.id }},
       cereal: "{{ muestreo.cereal }}",
       seccion: seccionActual,
-      temperatura: temperatura.value,
-      humedad: humedad.value,
-      ph: document.getElementById("ph") ? ph.value : null,
-      danados: danados.value,
-      quebrados: quebrados.value,
-      materia_extrana: materia_extrana.value,
-      olor: olor.value,
-      moho: moho.value,
-      insectos: document.getElementById("insectos").checked,
-      chamico: chamico.value
+
+      temperatura: document.getElementById("temperatura")?.value || null,
+      humedad: document.getElementById("humedad")?.value || null,
+      ph: document.getElementById("ph")?.value || null,
+
+      danados: document.getElementById("danados")?.value || null,
+      quebrados: document.getElementById("quebrados")?.value || null,
+      materia_extrana: document.getElementById("materia_extrana")?.value || null,
+
+      olor: document.getElementById("olor")?.value || 0,
+      moho: document.getElementById("moho")?.value || 0,
+      insectos: document.getElementById("insectos")?.checked || false,
+      chamico: document.getElementById("chamico")?.value || null,
+
+      granos_carbon: document.getElementById("granos_carbon")?.value || null,
+      panza_blanca: document.getElementById("panza_blanca")?.value || null,
+      granos_picados: document.getElementById("granos_picados")?.value || null,
+      punta_sombreada: document.getElementById("punta_sombreada")?.value || null,
+      revolcado_tierra: document.getElementById("revolcado_tierra")?.value || null,
+      punta_negra: document.getElementById("punta_negra")?.value || null,
+      proteinas: document.getElementById("proteinas")?.value || null,
+
+      materia_grasa: document.getElementById("materia_grasa") 
+          ? document.getElementById("materia_grasa").value
+          : null,
+      acidez: document.getElementById("acidez") 
+          ? document.getElementById("acidez").value
+          : null,
     })
-  }).then(()=>location.reload());
+  })
+  .then(r => r.json())
+  .then(data => {
+      if(data.ok){
+          location.reload();
+      } else {
+          alert("Error guardando análisis");
+      }
+  })
+  .catch(e => console.error(e));
 }
 </script>
 
 </body>
 </html>
+{% endblock %}

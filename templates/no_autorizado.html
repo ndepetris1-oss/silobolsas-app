@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block contenido %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -62,7 +65,8 @@ a{
   <h3>{{ pantalla }}</h3>
 
   {% if not solicitud_enviada %}
-  <form method="POST" action="/solicitar_acceso/{{ pantalla }}">
+  <form method="POST"
+      action="{{ url_for('admin.solicitar_acceso', pantalla=pantalla) }}">
     <button type="submit">Solicitar acceso</button>
 </form>
   {% else %}
@@ -76,3 +80,4 @@ a{
 
 </body>
 </html>
+{% endblock %}

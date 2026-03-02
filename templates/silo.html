@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block contenido %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -166,21 +169,23 @@ th{background:#a5d6a7}
 </div>
 {% endif %}
 
-{% if puede_calado %}
-    <button onclick="nuevoMuestreo()" class="btn">
-        ➕ Nuevo muestreo
-    </button>
-{% else %}
-    <form method="POST" action="/solicitar_acceso/calado">
-        <button class="btn" style="background:#888">
-            🔒 Solicitar acceso a Calado
-        </button>
-    </form>
-{% endif %}
+<form method="GET"
+      action="{{ url_for('calado.nuevo_muestreo', qr=silo.numero_qr) }}"
+      style="display:inline;">
+      
+  <button type="submit">
+      {% if puede_calado %}
+          🧪 Nuevo Muestreo
+      {% else %}
+          🔒 Nuevo Muestreo
+      {% endif %}
+  </button>
+
+</form>
 
 <script>
 async function nuevoMuestreo(){
-  const res = await fetch("/api/nuevo_muestreo",{
+  const res = await fetch("/muestreo/api/nuevo_muestreo",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
@@ -251,3 +256,4 @@ async function nuevoMuestreo(){
     </button>
   </div>
 {% endfor %}
+{% endblock %}

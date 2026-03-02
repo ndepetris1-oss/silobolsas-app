@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block contenido %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -80,6 +83,12 @@ button,select{
   background:#888;
 }
 
+.alerta-tas {
+  background: #ffdddd;
+  color: #b30000;
+  font-weight: bold;
+}
+
 .nav-btn.admin{
   background:#0d47a1;
 }
@@ -124,42 +133,21 @@ th{background:#a5d6a7;cursor:pointer}
   color:#b71c1c;
   font-weight:bold;
 }
+.nav-btn.excel{
+    background:#1f4e79;
+}
+
+.nav-btn.excel:hover{
+    background:#163a5c;
+}
 </style>
 </head>
 
 <body>
-
+<a href="/exportar_excel" class="nav-btn excel">
+    📥 Exportar Excel
+</a>
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
-<div class="nav-bar">
-
-    <!-- FORM -->
-    {% if puede_form %}
-        <a href="/form" class="nav-btn">📝 Form</a>
-    {% else %}
-        <form method="POST" action="/solicitar_acceso/form">
-            <button class="nav-btn locked">🔒 Form</button>
-        </form>
-    {% endif %}
-
-    <!-- COMERCIAL -->
-    {% if puede_comercial %}
-        <a href="/comercial" class="nav-btn">📊 Comercial</a>
-    {% else %}
-        <form method="POST" action="/solicitar_acceso/comercial">
-            <button class="nav-btn locked">🔒 Comercial</button>
-        </form>
-    {% endif %}
-
-    <!-- ADMIN -->
-    {% if puede_admin %}
-        <a href="/admin/usuarios" class="nav-btn admin">⚙ Administración</a>
-    {% else %}
-        <form method="POST" action="/solicitar_acceso/admin">
-            <button class="nav-btn locked admin">🔒 Administración</button>
-        </form>
-    {% endif %}
-
-</div>
 
 <div class="container">
 
@@ -312,7 +300,7 @@ function render(){
         <td>${r.fecha_confeccion}</td>
         <td>${r.grado ?? '-'}</td>
         <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
-        <td class="${r.tas_min !== null && r.tas_min <= 30 ? 'tas-alerta' : ''}">
+        <td class="${r.tas_min && r.tas_min <= 30 ? 'alerta-tas' : ''}">
           ${r.tas_min ?? '-'}
         </td>
         <td>${r.fecha_extraccion_estimada ?? '-'}</td>
@@ -431,3 +419,4 @@ async function confirmarExtraccion(qr){
 
 </body>
 </html>
+{% endblock %}

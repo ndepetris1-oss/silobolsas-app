@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+
+<div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.1);">
+
+<h2>✅ Empresa creada correctamente</h2>
+
+<p><strong>Usuario administrador:</strong></p>
+<p style="font-size:18px;color:#2e7d32;"><b>{{ username }}</b></p>
+
+<p><strong>Contraseña temporal:</strong></p>
+<p style="font-size:18px;color:#c62828;"><b>{{ password }}</b></p>
+
+<p style="margin-top:20px;">
+⚠ El usuario deberá cambiar la contraseña en el primer ingreso.
+</p>
+
+<a href="/admin/empresas" 
+   style="display:block;text-align:center;background:#2e7d32;color:white;padding:12px;border-radius:8px;text-decoration:none;margin-top:20px;">
+Volver a empresas
+</a>
+
+</div>
+
+{% endblock %}

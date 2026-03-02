@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>{{ titulo or "Silo Bolsas" }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  background:#e6f4ea;
+  font-family:Arial, sans-serif;
+  margin:0;
+  padding:0;
+  color:#1e4620;
+}
+
+.header{
+  background:#2e7d32;
+  color:white;
+  padding:15px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.header a{
+  color:white;
+  text-decoration:none;
+  font-weight:bold;
+}
+
+.container{
+  padding:25px;
+}
+.nav-bar{
+    background:#1e4620;
+    padding:10px;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+}
+
+.nav-btn{
+    background:#592e7d;
+    color:white;
+    padding:8px 14px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.nav-btn:hover{
+    background:#571616;
+}
+
+.nav-btn.locked{
+    background:#9e9e9e;
+}
+
+.nav-btn.logout{
+    background:#c62828;
+}
+.empresa-badge{
+    background:#ffc107;
+    color:#1e4620;
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:bold;
+}
+.nav-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+}
+.nav-finanzas{
+  background: linear-gradient(135deg, #1b5e20, #43a047);
+  padding:8px 16px;
+  border-radius:20px;
+  color:white;
+  font-weight:bold;
+  text-decoration:none;
+  transition:0.2s;
+}
+
+.nav-finanzas:hover{
+  transform: scale(1.05);
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div>
+    🌾 Silo Bolsas
+  </div>
+
+  <div>
+    {{ current_user.username }}
+    |
+    <a href="{{ url_for('auth.logout') }}">Cerrar sesión</a>
+  </div>
+</div>
+{% if current_user.is_authenticated %}
+<div class="nav-bar">
+    
+    {% if empresa_alerta %}
+    <div style="background:#fff3cd;color:#856404;padding:10px;text-align:center;">
+        ⚠ Su contrato vence el {{ empresa_alerta }}
+    </div>
+    {% endif %}
+
+    {% if empresa_vencida %}
+    <div style="background:#f8d7da;color:#721c24;padding:10px;text-align:center;">
+        🚫 Contrato vencido. Solo módulo Form habilitado.
+    </div>
+    {% endif %}
+    {% if empresa_alerta %}
+    <div class="alert-warning">
+        ⚠ Su contrato vence el {{ empresa_alerta }}
+    </div>
+    {% endif %}
+
+    {% if empresa_activa %}
+        <div class="empresa-badge">
+            🏢 Empresa activa: <strong>{{ empresa_activa }}</strong>
+        </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.es_superadmin %}
+        <a href="{{ url_for('admin.admin_empresas') }}" class="nav-btn">
+            🏢 Empresas
+        </a>
+    {% endif %}
+
+    {% if current_user.es_superadmin and empresa_nombre %}
+        <span class="nav-empresa">
+            {{ empresa_nombre }}
+        </span>
+    {% endif %} 
+
+    {% if tiene_permiso("panel") %}
+        <a href="{{ url_for('panel.panel') }}" class="nav-btn">
+            🏠 Panel
+        </a>
+    {% else %}
+        <a href="{{ url_for('panel.panel') }}" class="nav-btn locked">
+            🔒 Panel
+        </a>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.es_superadmin %}
+        <a href="{{ url_for('panel.cambiar_empresa') }}" class="nav-btn">
+            Cambiar Empresa
+        </a>
+    {% endif %}
+
+    {% if tiene_permiso("form") %}
+        <a href="{{ url_for('panel.form') }}" class="nav-btn">
+            📝 Form
+        </a>
+    {% else %}
+        <a href="{{ url_for('panel.form') }}" class="nav-btn locked">
+            🔒 Form
+        </a>
+    {% endif %}
+
+    {% if tiene_permiso("comercial") %}
+        <a href="{{ url_for('comercial.comercial') }}" class="nav-btn">
+            📊 Comercial
+        </a>
+    {% else %}
+        <a href="{{ url_for('comercial.comercial') }}" class="nav-btn locked">
+            🔒 Comercial
+        </a>
+    {% endif %}
+
+    {% if current_user.es_superadmin or tiene_permiso("admin") %}
+        <a href="{{ url_for('admin.admin_usuarios') }}" class="nav-btn admin">
+            ⚙ Administración
+        </a>
+    {% else %}
+        <a href="{{ url_for('admin.admin_usuarios') }}" class="nav-btn locked admin">
+            🔒 Administración
+        </a>
+    {% endif %}
+    {% if current_user.is_authenticated and current_user.es_superadmin == 1 %}
+        <a href="{{ url_for('admin.admin_finanzas') }}" class="nav-finanzas">
+            💼 Finanzas
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+<div class="container">
+  {% block contenido %}{% endblock %}
+</div>
+
+</body>
+</html>
