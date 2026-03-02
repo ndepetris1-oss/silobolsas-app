@@ -317,6 +317,8 @@ def aprobar_solicitud():
 
     empresa_id = empresa_actual()
 
+    conn = get_db()  # 🔥 FALTABA ESTO
+
     s = conn.execute("""
         SELECT sol.*
         FROM solicitudes sol
