@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash
 import secrets
 import string
 from panel.routes import empresa_actual
+import sqlite3
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -264,8 +265,16 @@ def crear_usuario():
     rol = request.form.get("rol")
 
     conn = get_db()
-
     empresa_id = empresa_actual()
+
+    # 🔥 buscar sucursal de la empresa
+    sucursal = conn.execute("""
+        SELECT id FROM sucursales
+        WHERE empresa_id=?
+        LIMIT 1
+    """, (empresa_id,)).fetchone()
+
+    sucursal_id = sucursal["id"] if sucursal else None
 
     conn.execute("""
         INSERT INTO usuarios (
@@ -273,14 +282,16 @@ def crear_usuario():
             password,
             rol,
             empresa_id,
+            sucursal_id,
             forzar_cambio_password
         )
-        VALUES (?,?,?,?,1)
+        VALUES (?,?,?,?,?,1)
     """, (
         username,
         generate_password_hash(password),
         rol,
-        empresa_id
+        empresa_id,
+        sucursal_id
     ))
 
     conn.commit()

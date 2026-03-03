@@ -11,7 +11,12 @@ def tiene_permiso(pantalla):
     if not current_user.is_authenticated:
         return False
 
+    # 🔥 SUPERADMIN acceso total
     if current_user.es_superadmin == 1:
+        return True
+
+    # 🔥 ADMIN EMPRESA acceso total
+    if current_user.rol == "admin_empresa":
         return True
 
     conn = get_db()
