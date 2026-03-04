@@ -207,12 +207,14 @@ button:hover{background:#2e7d32}
 </table>
 {% endif %}
 
-{% if matba %}
 <h3 style="margin-top:30px;">🌾 MATBA</h3>
+
 <button onclick="actualizarMatba()">🌾 Actualizar MATBA</button>
 
+{% if matba %}
 <table>
 <tr>
+    <th>Posición</th>
     <th>Contrato</th>
     <th>Precio</th>
     <th>Variación</th>
@@ -221,15 +223,8 @@ button:hover{background:#2e7d32}
 
 {% for m in matba %}
 <tr>
-    <td>
-      {{ m.posicion }}
-      {% if m.mes %}
-        <div style="font-size:12px;color:#666;">
-          {{ m.mes }}
-        </div>
-      {% endif %}
-    </td>
-
+    <td>{{ m.posicion }}</td>
+    <td>{{ m.mes }}</td>
     <td>{{ "%.2f"|format(m.precio) }}</td>
 
     <td style="color:{% if m.variacion >= 0 %}green{% else %}red{% endif %}">
@@ -242,7 +237,13 @@ button:hover{background:#2e7d32}
     </td>
 </tr>
 {% endfor %}
+
 </table>
+
+{% else %}
+
+<p>No hay datos MATBA cargados.</p>
+
 {% endif %}
 
 </div>

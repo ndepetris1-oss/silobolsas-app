@@ -15,7 +15,8 @@ def init_db():
             fecha_alta TEXT NOT NULL,
             tipo_contrato TEXT,
             fecha_vencimiento TEXT,
-            activa INTEGER DEFAULT 1
+            activa INTEGER DEFAULT 1,
+            criterio_futuro TEXT
         )
     """)
     
@@ -124,12 +125,21 @@ def init_db():
             moho REAL,
             insectos INTEGER,
             chamico REAL,
+            granos_carbon REAL,
+            panza_blanca REAL,
+            granos_picados REAL,
+            punta_sombreada REAL,
+            revolcado_tierra REAL,
+            punta_negra REAL,
+            proteinas REAL,
+            materia_grasa REAL,
+            Acidez REAL,
             grado INTEGER,
             factor REAL,
             tas INTEGER,
             FOREIGN KEY (empresa_id) REFERENCES empresas(id)
         )
-    """)
+        """)
 
     # =====================
     # MONITOREOS

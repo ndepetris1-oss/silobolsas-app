@@ -10,8 +10,10 @@ from comercial.routes import comercial_bp
 from calado.routes import calado_bp
 from muestreo.routes import muestreo_bp
 from permissions import permissions_bp
+from migraciones import ejecutar_migraciones
 
 app = Flask(__name__)
+ejecutar_migraciones()
 app.secret_key = SECRET_KEY
 
 login_manager.init_app(app)
