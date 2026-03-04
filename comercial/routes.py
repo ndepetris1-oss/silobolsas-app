@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, request, jsonify
+from flask import Blueprint, render_template, redirect, request, jsonify, url_for
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso, acceso_denegado
