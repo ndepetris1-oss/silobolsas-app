@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 comercial_bp = Blueprint("comercial", __name__, url_prefix="/comercial")
 
 def ahora():
-    return datetime.now()
+    return NOW()
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
@@ -322,7 +322,7 @@ def actualizar_dolar():
 
     conn.execute("""
         UPDATE mercado
-        SET dolar = ?, fecha = datetime('now')
+        SET dolar = ?, fecha = NOW()
         WHERE empresa_id = ?
     """, (dolar, current_user.empresa_id))
 
@@ -382,7 +382,7 @@ def obtener_pizarra_auto(cereal):
         return {
             "precio": precio,
             "fuente": "CAC BCR",
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
+            "fecha": NOW().strftime("%Y-%m-%d %H:%M")
         }
 
     except Exception as e:
@@ -412,11 +412,14 @@ def actualizar_pizarra():
 
         conn.execute("""
             UPDATE mercado
-            SET pizarra_auto = ?,
-                fuente = ?,
-                fecha_fuente = ?,
-                fecha = datetime('now')
-            WHERE cereal = ? AND empresa_id = ?
+            SET
+                pizarra_auto = %s,
+                fuente = %s,
+                fecha_fuente = %s,
+                dolar = %s,
+                fecha = NOW()
+            WHERE cereal=%s
+            AND empresa_id=%s
         """, (
             data["precio"],
             data["fuente"],
@@ -469,7 +472,7 @@ def actualizar_rofex():
                     variacion,
                     fecha
                 )
-                VALUES (?, ?, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, ?, NOW()
             """, (
                 item.get("CODIGO"),
                 float(item.get("AJUSTE", 0)),
