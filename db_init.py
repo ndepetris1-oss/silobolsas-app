@@ -29,12 +29,11 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS sucursales (
-            id  PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             empresa_id INTEGER NOT NULL,
             nombre TEXT NOT NULL,
             FOREIGN KEY (empresa_id) REFERENCES empresas(id)
         )
-    """)
 
     # =====================
     # USUARIOS
