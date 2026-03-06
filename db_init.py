@@ -215,23 +215,26 @@ def init_db():
         fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-   # =====================
+    # =====================
     # SUPERADMIN
     # =====================
-    c.execute("""
-    INSERT INTO usuarios (
-        username,
-        password,
-        rol,
-        es_superadmin
-    )
-    VALUES (%s,%s,%s,1)
-    ON CONFLICT (username) DO NOTHING
-    """, (
-        "superadmin",
-        generate_password_hash("Super123"),
-        "superadmin"
-    ))
 
+    c.execute(
+        """
+        INSERT INTO usuarios (
+            username,
+            password,
+            rol,
+            es_superadmin
+        )
+        VALUES (%s,%s,%s,1)
+        ON CONFLICT (username) DO NOTHING
+        """,
+        (
+            "superadmin",
+            generate_password_hash("Super123"),
+            "superadmin"
+        )
+    )
     conn.commit()
     conn.close()
