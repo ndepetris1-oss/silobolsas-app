@@ -50,11 +50,16 @@ def login():
             if u["es_superadmin"] != 1:
 
                 conn = get_db()
-                empresa = conn.execute("""
+                cur = conn.cursor()
+
+                cur.execute("""
                     SELECT activa, fecha_vencimiento
                     FROM empresas
                     WHERE id=?
-                """, (u["empresa_id"],)).fetchone()
+                """, (u["empresa_id"],))
+
+                empresa = cur.fetchone()
+
                 conn.close()
 
                 if not empresa:
