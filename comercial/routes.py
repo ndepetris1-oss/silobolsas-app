@@ -416,7 +416,7 @@ def actualizar_pizarra():
                 pizarra_auto = %s,
                 fuente = %s,
                 fecha_fuente = %s,
-                fecha = NOW()
+                "fecha": NOW().strftime("%Y-%m-%d %H:%M")
             WHERE cereal=%s
             AND empresa_id=%s
             """, (
@@ -528,20 +528,21 @@ def actualizar_matba():
             INSERT INTO matba (
                 posicion,
                 cereal,
+                mes,
                 precio,
                 precio_anterior,
                 variacion,
                 fecha
             )
-            VALUES (%s,%s,%s,%s,%s,%s)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 item["CODIGO"],
                 item["DESCRIPCION"],
+                mes_contrato,
                 float(item["AJUSTE"]),
                 float(item["CIERRE"]),
                 float(item["VARIACION"]),
-                fecha_actualizacion,
-                mes_contrato
+                fecha_actualizacion
             ))
 
         conn.commit()
