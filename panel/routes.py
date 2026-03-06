@@ -53,8 +53,9 @@ def ver_silo(qr):
 
     muestreos_raw = conn.execute("""
         SELECT m.id, m.fecha_muestreo,
-               CAST(julianday('now') - julianday(m.fecha_muestreo) AS INT) dias
+               (CURRENT_DATE - m.fecha_muestreo::date) AS dias
         FROM muestreos m
+        
         WHERE m.numero_qr=? AND empresa_id=?
         ORDER BY m.fecha_muestreo DESC
     """, (qr, empresa_id)).fetchall()
