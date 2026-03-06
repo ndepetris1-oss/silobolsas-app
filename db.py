@@ -44,7 +44,13 @@ class ConnectionAdapter:
 
     def execute(self, query, params=None):
         cur = self.cursor()
-        return cur.execute(query, params)
+
+        if params is None:
+            cur.execute(query)
+        else:
+            cur.execute(query, params)
+
+        return cur
 
     def commit(self):
         self.conn.commit()
