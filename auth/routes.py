@@ -33,10 +33,15 @@ def login():
         password = request.form.get("password")
 
         conn = get_db()
-        u = conn.execute(
+        cur = conn.cursor()
+
+        cur.execute(
             "SELECT * FROM usuarios WHERE username=?",
             (username,)
-        ).fetchone()
+        )
+
+        u = cur.fetchone()
+
         conn.close()
 
         if u and check_password_hash(u["password"], password):
