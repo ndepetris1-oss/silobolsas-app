@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 comercial_bp = Blueprint("comercial", __name__, url_prefix="/comercial")
 
 def ahora():
-    return NOW()
+    return datetime.now()
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
@@ -416,16 +416,16 @@ def actualizar_pizarra():
                 pizarra_auto = %s,
                 fuente = %s,
                 fecha_fuente = %s,
-                dolar = %s,
                 fecha = NOW()
             WHERE cereal=%s
             AND empresa_id=%s
-        """, (
-            data["precio"],
-            data["fuente"],
-            data["fecha"],
-            cereal, current_user.empresa_id
-        ))
+            """, (
+                data["precio"],
+                data["fuente"],
+                data["fecha"],
+                cereal,
+                current_user.empresa_id
+            ))
 
     conn.commit()
     conn.close()
@@ -472,13 +472,13 @@ def actualizar_rofex():
                     variacion,
                     fecha
                 )
-                VALUES (?, ?, ?, ?, NOW()
-            """, (
-                item.get("CODIGO"),
-                float(item.get("AJUSTE", 0)),
-                float(item.get("CIERRE", 0)),
-                float(item.get("VARIACION", 0))
-            ))
+                VALUES (%s,%s,%s,%s,NOW())
+                """, (
+                    item.get("CODIGO"),
+                    float(item.get("AJUSTE", 0)),
+                    float(item.get("CIERRE", 0)),
+                    float(item.get("VARIACION", 0))
+                ))
 
         conn.commit()
         conn.close()
@@ -525,16 +525,15 @@ def actualizar_matba():
             mes_contrato = item.get("MES")  # 👈 ESTO ES CLAVE
 
             conn.execute("""
-                INSERT INTO matba (
-                    posicion,
-                    cereal,
-                    precio,
-                    precio_anterior,
-                    variacion,
-                    fecha,
-                    mes
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO matba (
+                posicion,
+                cereal,
+                precio,
+                precio_anterior,
+                variacion,
+                fecha
+            )
+            VALUES (%s,%s,%s,%s,%s,%s)
             """, (
                 item["CODIGO"],
                 item["DESCRIPCION"],
@@ -542,7 +541,7 @@ def actualizar_matba():
                 float(item["CIERRE"]),
                 float(item["VARIACION"]),
                 fecha_actualizacion,
-                mes_contrato  # 👈 ESTO ES CLAVE
+                mes_contrato
             ))
 
         conn.commit()
