@@ -34,6 +34,7 @@ def init_db():
             nombre TEXT NOT NULL,
             FOREIGN KEY (empresa_id) REFERENCES empresas(id)
         )
+    """)
 
     # =====================
     # USUARIOS
