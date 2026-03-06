@@ -233,7 +233,7 @@ def panel():
         SELECT *
         FROM silos
         WHERE empresa_id=?
-        ORDER BY datetime(fecha_confeccion) DESC
+        ORDER BY fecha_confeccion DESC
     """, (empresa_id,)).fetchall()
 
     registros = []
