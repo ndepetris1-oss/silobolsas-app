@@ -1,16 +1,20 @@
 from db import get_db
 from werkzeug.security import generate_password_hash
+import os
 
 def init_db():
+
     conn = get_db()
     c = conn.cursor()
+
+    es_postgres = os.environ.get("DATABASE_URL") is not None
 
     # =====================
     # EMPRESAS
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS empresas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             nombre TEXT UNIQUE NOT NULL,
             fecha_alta TEXT NOT NULL,
             tipo_contrato TEXT,
@@ -25,7 +29,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS sucursales (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id  PRIMARY KEY,
             empresa_id INTEGER NOT NULL,
             nombre TEXT NOT NULL,
             FOREIGN KEY (empresa_id) REFERENCES empresas(id)
@@ -37,7 +41,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             rol TEXT NOT NULL,
@@ -55,7 +59,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS permisos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER,
             pantalla TEXT
         )
@@ -65,7 +69,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS solicitudes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER,
             pantalla TEXT,
             fecha TEXT,
@@ -98,7 +102,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS muestreos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             numero_qr TEXT,
             empresa_id INTEGER NOT NULL,
             fecha_muestreo TEXT,
@@ -111,7 +115,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS analisis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             id_muestreo INTEGER,
             empresa_id INTEGER NOT NULL,
             seccion TEXT,
@@ -146,7 +150,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS monitoreos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             numero_qr TEXT,
             empresa_id INTEGER NOT NULL,
             fecha_evento TEXT,
@@ -164,7 +168,7 @@ def init_db():
     # =====================
     c.execute("""
         CREATE TABLE IF NOT EXISTS mercado (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             empresa_id INTEGER NOT NULL,
             cereal TEXT,
             pizarra_auto REAL,
@@ -181,7 +185,7 @@ def init_db():
     """)
     conn.execute("""
     CREATE TABLE IF NOT EXISTS pagos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         empresa_id INTEGER,
         fecha_pago TEXT,
         monto REAL,
@@ -193,40 +197,41 @@ def init_db():
     """)
     conn.execute("""
     CREATE TABLE IF NOT EXISTS rofex (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         posicion TEXT NOT NULL,
         ajuste REAL,
         ajuste_anterior REAL,
         variacion REAL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS matba (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         posicion TEXT NOT NULL,
         cereal TEXT,
         precio REAL,
         precio_anterior REAL,
         variacion REAL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
     # =====================
     # SUPERADMIN
     # =====================
     c.execute("""
-        INSERT OR IGNORE INTO usuarios (
-            username,
-            password,
-            rol,
-            es_superadmin
-        )
-        VALUES (?,?,?,1)
+    INSERT INTO usuarios (
+        username,
+        password,
+        rol,
+        es_superadmin
+    )
+    VALUES (%s,%s,%s,1)
+    ON CONFLICT (username) DO NOTHING
     """, (
-    "superadmin",
-    generate_password_hash("Super123"),
-    "superadmin"
+        "superadmin",
+        generate_password_hash("Super123"),
+        "superadmin"
     ))
 
     conn.commit()
