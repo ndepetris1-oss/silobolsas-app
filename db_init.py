@@ -215,7 +215,7 @@ def init_db():
         fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    # =====================
+   # =====================
     # SUPERADMIN
     # =====================
     c.execute("""
