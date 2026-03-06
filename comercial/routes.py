@@ -77,7 +77,7 @@ def comercial():
     """).fetchall()
 
     matba = conn.execute("""
-        SELECT posicion, mes, precio, variacion, fecha
+        SELECT posicion, cereal, precio, variacion, fecha
         FROM matba
         ORDER BY fecha DESC
         LIMIT 18
