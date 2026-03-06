@@ -66,6 +66,7 @@ def crear_empresa():
             activa
         )
         VALUES (?,?,?,?,1)
+        RETURNING id
     """, (
         nombre,
         datetime.now().strftime("%Y-%m-%d"),
@@ -73,7 +74,7 @@ def crear_empresa():
         fecha_vencimiento
     ))
 
-    empresa_id = cur.lastrowid
+    empresa_id = cur.fetchone()["id"]
     # ======================
     # CREAR MERCADO BASE
     # ======================
@@ -89,9 +90,10 @@ def crear_empresa():
     cur.execute("""
         INSERT INTO sucursales (empresa_id, nombre)
         VALUES (?,?)
+        RETURNING id
     """, (empresa_id, "Central"))
 
-    sucursal_id = cur.lastrowid
+    sucursal_id = cur.fetchone()["id"]
 
     # 🔥 GENERAR PASSWORD TEMPORAL SEGURA
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
