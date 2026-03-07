@@ -180,7 +180,7 @@ def guardar_analisis_seccion():
     cereal_real = muestreo["cereal"]
 
     res = calcular_comercial(cereal_real, d)
-    grado = res["grado"]
+    grado = r["grado"] if r["grado"] else "F/E"
 
     if grado == "F/E":
         grado = None

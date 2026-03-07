@@ -222,7 +222,7 @@ def comparador(cereal):
                 ) AS tas_min,
 
             (
-              SELECT ROUND(AVG(a.factor),4)
+              SELECT ROUND(AVG(a.factor)::numeric,4)
               FROM analisis a
               JOIN muestreos m ON m.id = a.id_muestreo
               WHERE m.numero_qr = s.numero_qr
@@ -231,7 +231,7 @@ def comparador(cereal):
             ) AS factor_prom,
 
             (
-              SELECT ROUND(AVG(a.humedad),2)
+              SELECT ROUND(AVG(a.humedad)::numeric,2)
               FROM analisis a
               JOIN muestreos m ON m.id = a.id_muestreo
               WHERE m.numero_qr = s.numero_qr
@@ -429,7 +429,7 @@ def obtener_pizarra_auto(cereal):
         return {
             "precio": precio,
             "fuente": "CAC BCR",
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
+            "fecha": datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).strftime("%Y-%m-%d %H:%M")
         }
 
     except Exception as e:
