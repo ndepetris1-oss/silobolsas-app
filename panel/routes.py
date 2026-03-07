@@ -52,15 +52,14 @@ def ver_silo(qr):
     """, (silo["cereal"], empresa_id)).fetchone()
 
     muestreos_raw = conn.execute("""
-        SELECT m.id, m.fecha_muestreo,
-               (CURRENT_DATE - m.fecha_muestreo::date) AS dias
+        SELECT m.id, m.fecha_muestreo
         FROM muestreos m
-        
         WHERE m.numero_qr=? AND empresa_id=?
         ORDER BY m.fecha_muestreo DESC
     """, (qr, empresa_id)).fetchall()
 
     muestreos = []
+
     precio_estimado = None
     precio_usd = None
     factor_prom = None
@@ -68,6 +67,14 @@ def ver_silo(qr):
     analisis_pendiente = False
 
     for idx, m in enumerate(muestreos_raw):
+
+        fecha = m["fecha_muestreo"]
+        dias = None
+
+        if fecha:
+            if isinstance(fecha, str):
+                fecha = datetime.fromisoformat(fecha)
+            dias = (datetime.now() - fecha).days
 
         analisis = conn.execute("""
             SELECT seccion, grado, factor, tas, temperatura
@@ -81,14 +88,17 @@ def ver_silo(qr):
             if not analisis:
                 analisis_pendiente = True
             else:
+
                 factores = []
                 tass = []
 
                 for sec in ["punta", "medio", "final"]:
                     a = por_seccion.get(sec)
+
                     if a:
                         if a["factor"] is not None:
                             factores.append(a["factor"])
+
                         if a["tas"] is not None:
                             tass.append(a["tas"])
 
@@ -99,9 +109,11 @@ def ver_silo(qr):
                     tas_usada = min(tass)
 
                 if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
+
                     precio_estimado = round(
                         mercado["pizarra"] * factor_prom, 2
                     )
+
                     precio_usd = round(
                         precio_estimado / mercado["dolar"], 2
                     )
@@ -109,7 +121,7 @@ def ver_silo(qr):
         muestreos.append({
             "id": m["id"],
             "fecha_muestreo": m["fecha_muestreo"],
-            "dias": m["dias"],
+            "dias": dias,
             "punta": por_seccion.get("punta"),
             "medio": por_seccion.get("medio"),
             "final": por_seccion.get("final")

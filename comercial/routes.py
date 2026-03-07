@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 comercial_bp = Blueprint("comercial", __name__, url_prefix="/comercial")
 
 def ahora():
-    return datetime.now()
+    return datetime.CURRENT_TIMESTAMP
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
@@ -68,7 +68,6 @@ def comercial():
     # ======================
     # TRAER ROFEX Y MATBA
     # ======================
-
     rofex = conn.execute("""
         SELECT posicion, ajuste, variacion, fecha
         FROM rofex
@@ -76,12 +75,40 @@ def comercial():
         LIMIT 10
     """).fetchall()
 
+    rofex_fecha = conn.execute("""
+        SELECT fecha
+        FROM rofex
+        ORDER BY fecha DESC
+        LIMIT 1
+    """).fetchone()
+
+    fecha_rofex_arg = None
+
+    if rofex_fecha and rofex_fecha["fecha"]:
+        fecha_utc = datetime.fromisoformat(rofex_fecha["fecha"])
+        fecha_utc = fecha_utc.replace(tzinfo=ZoneInfo("UTC"))
+        fecha_arg = fecha_utc.astimezone(ZoneInfo("America/Argentina/Buenos_Aires"))
+        fecha_rofex_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
+
     matba = conn.execute("""
-        SELECT posicion, cereal, precio, variacion, fecha
+        SELECT posicion, cereal, precio, variacion, fecha, mes
         FROM matba
         ORDER BY fecha DESC
         LIMIT 18
     """).fetchall()
+
+    matba_fecha = conn.execute("""
+        SELECT fecha
+        FROM matba
+        ORDER BY fecha DESC
+        LIMIT 1
+    """).fetchone()
+
+    fecha_matba_arg = None
+
+    if matba_fecha and matba_fecha["fecha"]:
+        fecha_obj = datetime.fromisoformat(matba_fecha["fecha"])
+        fecha_matba_arg = fecha_obj.strftime("%d/%m/%Y %H:%M")
 
     conn.close()
 
@@ -92,7 +119,9 @@ def comercial():
         fecha_dolar_arg=fecha_dolar_arg,
         fecha_pizarra=fecha_pizarra,
         rofex=rofex,
+        fecha_rofex_arg=fecha_rofex_arg,
         matba=matba,
+        fecha_matba_arg=fecha_matba_arg,
         puede_comparador=tiene_permiso("comparador"),
     )
 # ======================
@@ -322,7 +351,7 @@ def actualizar_dolar():
 
     conn.execute("""
         UPDATE mercado
-        SET dolar = ?, fecha = NOW()
+        SET dolar = ?, fecha = CURRENT_TIMESTAMP
         WHERE empresa_id = ?
     """, (dolar, current_user.empresa_id))
 
@@ -341,24 +370,25 @@ def obtener_pizarra_auto(cereal):
         r = requests.get(url, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
 
-        cereal_map = {
+        mapa = {
             "Soja": "soja",
             "Maíz": "maiz",
             "Trigo": "trigo",
             "Girasol": "girasol"
         }
 
-        clase = cereal_map.get(cereal)
+        clave = mapa.get(cereal)
 
-        if not clase:
+        if not clave:
             return None
 
-        board = soup.find("div", class_=f"board board-{clase}")
+        board = soup.select_one(f".board-{clave}")
 
         if not board:
+            print("No se encontró board para:", cereal)
             return None
 
-        price_div = board.find("div", class_="price")
+        price_div = board.select_one(".price")
 
         if not price_div:
             return None
@@ -368,7 +398,6 @@ def obtener_pizarra_auto(cereal):
         if "S/C" in precio_texto:
             return None
 
-        # Limpieza del número
         precio = (
             precio_texto
             .replace("$", "")
@@ -382,7 +411,7 @@ def obtener_pizarra_auto(cereal):
         return {
             "precio": precio,
             "fuente": "CAC BCR",
-            "fecha": NOW().strftime("%Y-%m-%d %H:%M")
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
 
     except Exception as e:
@@ -413,19 +442,19 @@ def actualizar_pizarra():
         conn.execute("""
             UPDATE mercado
             SET
-                pizarra_auto = %s,
-                fuente = %s,
-                fecha_fuente = %s,
-                "fecha": NOW().strftime("%Y-%m-%d %H:%M")
-            WHERE cereal=%s
-            AND empresa_id=%s
-            """, (
-                data["precio"],
-                data["fuente"],
-                data["fecha"],
-                cereal,
-                current_user.empresa_id
-            ))
+                pizarra_auto = ?,
+                fuente = ?,
+                fecha_fuente = ?,
+                fecha = CURRENT_TIMESTAMP
+            WHERE cereal = ?
+            AND empresa_id = ?
+        """, (
+            data["precio"],
+            data["fuente"],
+            data["fecha"],
+            cereal,
+            current_user.empresa_id
+        ))
 
     conn.commit()
     conn.close()
@@ -472,7 +501,7 @@ def actualizar_rofex():
                     variacion,
                     fecha
                 )
-                VALUES (%s,%s,%s,%s,NOW())
+                VALUES (%s,%s,%s,%s,CURRENT_TIMESTAMP)
                 """, (
                     item.get("CODIGO"),
                     float(item.get("AJUSTE", 0)),
@@ -528,21 +557,21 @@ def actualizar_matba():
             INSERT INTO matba (
                 posicion,
                 cereal,
-                mes,
                 precio,
                 precio_anterior,
                 variacion,
-                fecha
+                fecha,
+                mes
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 item["CODIGO"],
                 item["DESCRIPCION"],
-                mes_contrato,
                 float(item["AJUSTE"]),
                 float(item["CIERRE"]),
                 float(item["VARIACION"]),
-                fecha_actualizacion
+                fecha_actualizacion,
+                mes_contrato
             ))
 
         conn.commit()

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso, acceso_denegado
@@ -28,12 +28,15 @@ def informar_calado():
     if not qr:
         return jsonify(ok=False, error="QR faltante"), 400
 
+    empresa_id = current_user.empresa_id
+    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     conn = get_db()
 
     # 🔒 validar silo
     silo = conn.execute(
         "SELECT estado_silo FROM silos WHERE numero_qr=? AND empresa_id=?",
-        (qr, current_user.empresa_id)
+        (qr, empresa_id)
     ).fetchone()
 
     if not silo:
@@ -48,18 +51,17 @@ def informar_calado():
         ), 400
 
     # ✅ crear muestreo
-    cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO muestreos (numero_qr, empresa_id, fecha_muestreo)
+    muestreo = conn.execute("""
+        INSERT INTO muestreos (
+            numero_qr,
+            empresa_id,
+            fecha_muestreo
+        )
         VALUES (?,?,?)
-    """, (
-        qr,
-        current_user.empresa_id,
-        ahora().strftime("%Y-%m-%d %H:%M")
-    ))
+        RETURNING id
+    """, (qr, empresa_id, fecha)).fetchone()
 
-    id_muestreo = cur.lastrowid
+    id_muestreo = muestreo["id"]
 
     # 🧪 Temperaturas
     if d.get("informar_temperatura"):
@@ -78,7 +80,7 @@ def informar_calado():
                 except:
                     temp = None
 
-            cur.execute("""
+            conn.execute("""
                 INSERT INTO analisis (
                     id_muestreo,
                     empresa_id,
@@ -88,7 +90,7 @@ def informar_calado():
                 VALUES (?,?,?,?)
             """, (
                 id_muestreo,
-                current_user.empresa_id,
+                empresa_id,
                 seccion,
                 temp
             ))
@@ -105,7 +107,7 @@ def calado():
     if not tiene_permiso("calado"):
         return acceso_denegado("calado")
 
-    return render_template("calado.html")
+    return render_template("form.html")
 
 @calado_bp.route("/nuevo_muestreo/<qr>")
 @login_required

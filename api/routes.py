@@ -99,8 +99,7 @@ def nuevo_muestreo():
         conn.close()
         return jsonify(ok=False, error="Silo extraído"), 400
 
-    cur = conn.cursor()
-    cur.execute("""
+    conn.execute("""
         INSERT INTO muestreos (numero_qr, empresa_id, fecha_muestreo)
         VALUES (?,?,?)
     """, (
@@ -152,9 +151,8 @@ def guardar_analisis_seccion():
     d["insectos"] = 1 if d.get("insectos") else 0
 
     conn = get_db()
-    cur = conn.cursor()
 
-    existente = cur.execute("""
+    existente = conn.execute("""
         SELECT id FROM analisis
         WHERE id_muestreo=? AND seccion=? AND empresa_id=?
     """, (
@@ -202,7 +200,7 @@ def guardar_analisis_seccion():
     )
 
     if existente:
-        cur.execute("""
+        conn.execute("""
             UPDATE analisis SET
                 temperatura=?,
                 humedad=?,
@@ -255,7 +253,7 @@ def guardar_analisis_seccion():
             current_user.empresa_id
         ))
     else:
-        cur.execute("""
+        conn.execute("""
             INSERT INTO analisis (
                 id_muestreo,
                 empresa_id,

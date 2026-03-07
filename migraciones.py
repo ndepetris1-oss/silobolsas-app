@@ -3,7 +3,6 @@ from db import get_db
 def ejecutar_migraciones():
 
     conn = get_db()
-    cur = conn.cursor()
 
     # ==========================
     # ANALISIS
@@ -15,7 +14,7 @@ def ejecutar_migraciones():
 
     for nombre, tipo in columnas_analisis:
         try:
-            cur.execute(f"ALTER TABLE analisis ADD COLUMN {nombre} {tipo}")
+            conn.execute(f"ALTER TABLE analisis ADD COLUMN {nombre} {tipo}")
             print(f"Migración aplicada: analisis.{nombre}")
         except:
             pass
@@ -30,7 +29,7 @@ def ejecutar_migraciones():
 
     for nombre, tipo in columnas_matba:
         try:
-            cur.execute(f"ALTER TABLE matba ADD COLUMN {nombre} {tipo}")
+            conn.execute(f"ALTER TABLE matba ADD COLUMN {nombre} {tipo}")
             print(f"Migración aplicada: matba.{nombre}")
         except:
             pass

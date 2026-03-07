@@ -1,27 +1,27 @@
-import sqlite3
 import os
+import sqlite3
 import psycopg2
 import psycopg2.extras
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_NAME = os.path.join(BASE_DIR, "silobolsas.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
+class DBWrapper:
 
-class CursorAdapter:
-
-    def __init__(self, cursor, es_postgres):
-        self.cursor = cursor
+    def __init__(self, conn, es_postgres=False):
+        self.conn = conn
+        self.cursor = conn.cursor()
         self.es_postgres = es_postgres
 
     def execute(self, query, params=None):
 
-        if self.es_postgres:
-            query = query.replace("?", "%s")
+        # Convertir %s → ? si usamos SQLite
+        if not self.es_postgres:
+            query = query.replace("%s", "?")
 
-        if params is None:
+        if params:
+            return self.cursor.execute(query, params)
+        else:
             return self.cursor.execute(query)
-
-        return self.cursor.execute(query, params)
 
     def fetchone(self):
         return self.cursor.fetchone()
@@ -29,52 +29,23 @@ class CursorAdapter:
     def fetchall(self):
         return self.cursor.fetchall()
 
-    def __getattr__(self, name):
-        return getattr(self.cursor, name)
-
-
-class ConnectionAdapter:
-
-    def __init__(self, conn, es_postgres):
-        self.conn = conn
-        self.es_postgres = es_postgres
-
-    def cursor(self):
-        return CursorAdapter(self.conn.cursor(), self.es_postgres)
-
-    def execute(self, query, params=None):
-        cur = self.cursor()
-
-        if params is None:
-            cur.execute(query)
-        else:
-            cur.execute(query, params)
-
-        return cur
-
     def commit(self):
-        self.conn.commit()
+        return self.conn.commit()
 
     def close(self):
-        self.conn.close()
+        return self.conn.close()
 
 
 def get_db():
 
-    database_url = os.environ.get("DATABASE_URL")
+    # PRODUCCIÓN (Render)
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = False
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        return DBWrapper(conn, es_postgres=True)
 
-    # PostgreSQL (Render)
-    if database_url:
-
-        conn = psycopg2.connect(
-            database_url,
-            cursor_factory=psycopg2.extras.RealDictCursor
-        )
-
-        return ConnectionAdapter(conn, True)
-
-    # SQLite (local)
-    conn = sqlite3.connect(DB_NAME)
+    # LOCAL (SQLite)
+    conn = sqlite3.connect("silobolsas.db")
     conn.row_factory = sqlite3.Row
-
-    return ConnectionAdapter(conn, False)
+    return DBWrapper(conn)

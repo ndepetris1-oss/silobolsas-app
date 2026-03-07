@@ -5,7 +5,7 @@ import os
 def init_db():
 
     conn = get_db()
-    c = conn.cursor()
+    c = conn
 
     es_postgres = os.environ.get("DATABASE_URL") is not None
 

@@ -82,9 +82,8 @@ def api_nuevo_muestreo():
             error="El silo ya fue extraído."
         ), 400
 
-    cur = conn.cursor()
 
-    cur.execute("""
+    conn.execute("""
         INSERT INTO muestreos (numero_qr, empresa_id, fecha_muestreo)
         VALUES (?,?,?)
     """, (

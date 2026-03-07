@@ -33,14 +33,11 @@ def login():
         password = request.form.get("password")
 
         conn = get_db()
-        cur = conn.cursor()
 
-        cur.execute(
+        u = conn.execute(
             "SELECT * FROM usuarios WHERE username=?",
             (username,)
-        )
-
-        u = cur.fetchone()
+        ).fetchone()
 
         conn.close()
 
@@ -50,15 +47,12 @@ def login():
             if u["es_superadmin"] != 1:
 
                 conn = get_db()
-                cur = conn.cursor()
 
-                cur.execute("""
+                empresa = conn.execute("""
                     SELECT activa, fecha_vencimiento
                     FROM empresas
                     WHERE id=?
-                """, (u["empresa_id"],))
-
-                empresa = cur.fetchone()
+                """, (u["empresa_id"],)).fetchone()
 
                 conn.close()
 

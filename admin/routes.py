@@ -54,10 +54,9 @@ def crear_empresa():
         return redirect("/admin/empresas")
 
     conn = get_db()
-    cur = conn.cursor()
 
     # Crear empresa
-    cur.execute("""
+    empresa = conn.execute("""
         INSERT INTO empresas (
             nombre,
             fecha_alta,
@@ -72,28 +71,28 @@ def crear_empresa():
         datetime.now().strftime("%Y-%m-%d"),
         tipo_contrato,
         fecha_vencimiento
-    ))
+    )).fetchone()
 
-    empresa_id = cur.fetchone()["id"]
+    empresa_id = empresa["id"]
     # ======================
     # CREAR MERCADO BASE
     # ======================
     cereales = ["Soja", "Maíz", "Trigo", "Girasol"]
 
     for cereal in cereales:
-        cur.execute("""
+        conn.execute("""
             INSERT INTO mercado (empresa_id, cereal)
             VALUES (?,?)
         """, (empresa_id, cereal))
 
     # Crear sucursal central
-    cur.execute("""
-        INSERT INTO sucursales (empresa_id, nombre)
-        VALUES (?,?)
-        RETURNING id
-    """, (empresa_id, "Central"))
+    sucursal = conn.execute("""
+    INSERT INTO sucursales (empresa_id, nombre)
+    VALUES (?,?)
+    RETURNING id
+    """, (empresa_id, "Casa Central")).fetchone()
 
-    sucursal_id = cur.fetchone()["id"]
+    sucursal_id = sucursal["id"]
 
     # 🔥 GENERAR PASSWORD TEMPORAL SEGURA
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
@@ -101,7 +100,7 @@ def crear_empresa():
     username_admin = nombre.lower().replace(" ", "_") + "_admin"
 
     # Crear usuario administrador de la empresa
-    cur.execute("""
+    conn.execute("""
         INSERT INTO usuarios (
             username,
             password,
