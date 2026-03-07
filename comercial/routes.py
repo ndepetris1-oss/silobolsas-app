@@ -69,6 +69,7 @@ def comercial():
     # ======================
     # TRAER ROFEX Y MATBA
     # ======================
+
     rofex = conn.execute("""
         SELECT posicion, ajuste, variacion, fecha
         FROM rofex
@@ -95,7 +96,8 @@ def comercial():
             ZoneInfo("America/Argentina/Buenos_Aires")
         )
 
-    fecha_rofex_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
+        fecha_rofex_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
+
 
     matba = conn.execute("""
         SELECT posicion, cereal, precio, variacion, fecha, mes
@@ -114,23 +116,11 @@ def comercial():
     fecha_matba_arg = None
 
     if matba_fecha and matba_fecha["fecha"]:
+
         fecha_obj = normalizar_fecha(matba_fecha["fecha"])
         fecha_matba_arg = fecha_obj.strftime("%d/%m/%Y %H:%M")
 
     conn.close()
-
-    return render_template(
-        "comercial.html",
-        mercado=rows,
-        dolar_info=dolar_info,
-        fecha_dolar_arg=fecha_dolar_arg,
-        fecha_pizarra=fecha_pizarra,
-        rofex=rofex,
-        fecha_rofex_arg=fecha_rofex_arg,
-        matba=matba,
-        fecha_matba_arg=fecha_matba_arg,
-        puede_comparador=tiene_permiso("comparador"),
-    )
 # ======================
 # COMPARADOR REDIRECT
 # ======================
