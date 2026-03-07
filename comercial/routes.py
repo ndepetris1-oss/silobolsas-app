@@ -70,12 +70,19 @@ def comercial():
     # TRAER ROFEX Y MATBA
     # ======================
 
+    # ======================
+    # TRAER ROFEX
+    # ======================
+
     rofex = conn.execute("""
         SELECT posicion, ajuste, variacion, fecha
         FROM rofex
         ORDER BY fecha DESC
         LIMIT 10
     """).fetchall()
+
+    rofex_fecha = None
+    fecha_rofex_arg = None
 
     rofex_fecha = conn.execute("""
         SELECT fecha
@@ -84,13 +91,13 @@ def comercial():
         LIMIT 1
     """).fetchone()
 
-    fecha_rofex_arg = None
-
     if rofex_fecha and rofex_fecha["fecha"]:
 
         fecha_utc = normalizar_fecha(rofex_fecha["fecha"])
 
-        fecha_utc = fecha_utc.replace(tzinfo=ZoneInfo("UTC"))
+        fecha_utc = fecha_utc.replace(
+            tzinfo=ZoneInfo("UTC")
+        )
 
         fecha_arg = fecha_utc.astimezone(
             ZoneInfo("America/Argentina/Buenos_Aires")
