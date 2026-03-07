@@ -180,6 +180,10 @@ def guardar_analisis_seccion():
     cereal_real = muestreo["cereal"]
 
     res = calcular_comercial(cereal_real, d)
+    grado = res["grado"]
+
+    if grado == "F/E":
+        grado = None
 
     valores = (
         d["id_muestreo"],
@@ -245,7 +249,7 @@ def guardar_analisis_seccion():
             d.get("proteinas"),
             d.get("materia_grasa"),
             d.get("acidez"),
-            res["grado"],
+            grado,
             res["factor"],
             res["tas"],
             d["id_muestreo"],
@@ -305,7 +309,7 @@ def guardar_analisis_seccion():
             d.get("proteinas"),
             d.get("materia_grasa"),
             d.get("acidez"),
-            res["grado"],
+            grado,
             res["factor"],
             res["tas"]
         ))
