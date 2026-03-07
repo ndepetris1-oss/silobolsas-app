@@ -14,8 +14,11 @@ class DBWrapper:
 
     def execute(self, query, params=None):
 
-        # Convertir %s → ? si usamos SQLite
-        if not self.es_postgres:
+        # SQLite usa ?
+        # PostgreSQL usa %s
+        if self.es_postgres:
+            query = query.replace("?", "%s")
+        else:
             query = query.replace("%s", "?")
 
         if params:
