@@ -8,6 +8,7 @@ from datetime import datetime
 from panel.routes import empresa_actual
 from bs4 import BeautifulSoup
 from zoneinfo import ZoneInfo
+from utils.fechas import normalizar_fecha
 
 comercial_bp = Blueprint("comercial", __name__, url_prefix="/comercial")
 
@@ -85,7 +86,13 @@ def comercial():
     fecha_rofex_arg = None
 
     if rofex_fecha and rofex_fecha["fecha"]:
-        fecha_utc = datetime.fromisoformat(rofex_fecha["fecha"])
+        fecha_valor = rofex_fecha["fecha"]
+
+        fecha_utc = (
+            datetime.fromisoformat(fecha_valor)
+            if isinstance(fecha_valor, str)
+            else fecha_valor
+        )
         fecha_utc = fecha_utc.replace(tzinfo=ZoneInfo("UTC"))
         fecha_arg = fecha_utc.astimezone(ZoneInfo("America/Argentina/Buenos_Aires"))
         fecha_rofex_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
