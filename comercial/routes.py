@@ -67,10 +67,6 @@ def comercial():
     if rows:
         fecha_pizarra = rows[0]["fecha_fuente"]
     # ======================
-    # TRAER ROFEX Y MATBA
-    # ======================
-
-    # ======================
     # TRAER ROFEX
     # ======================
 
@@ -81,15 +77,14 @@ def comercial():
         LIMIT 10
     """).fetchall()
 
-    rofex_fecha = None
-    fecha_rofex_arg = None
-
     rofex_fecha = conn.execute("""
         SELECT fecha
         FROM rofex
         ORDER BY fecha DESC
         LIMIT 1
     """).fetchone()
+
+    fecha_rofex_arg = None
 
     if rofex_fecha and rofex_fecha["fecha"]:
 
@@ -104,7 +99,6 @@ def comercial():
         )
 
         fecha_rofex_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
-
 
     matba = conn.execute("""
         SELECT posicion, cereal, precio, variacion, fecha, mes
