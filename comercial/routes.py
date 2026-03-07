@@ -57,7 +57,7 @@ def comercial():
     fecha_dolar_arg = None
 
     if dolar_info and dolar_info["fecha"]:
-        fecha_utc = datetime.fromisoformat(dolar_info["fecha"])
+        fecha_utc = normalizar_fecha(rofex_fecha["fecha"])
         fecha_utc = fecha_utc.replace(tzinfo=ZoneInfo("UTC"))
         fecha_arg = fecha_utc.astimezone(ZoneInfo("America/Argentina/Buenos_Aires"))
         fecha_dolar_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
@@ -114,7 +114,7 @@ def comercial():
     fecha_matba_arg = None
 
     if matba_fecha and matba_fecha["fecha"]:
-        fecha_obj = datetime.fromisoformat(matba_fecha["fecha"])
+        fecha_obj = normalizar_fecha(matba_fecha["fecha"])
         fecha_matba_arg = fecha_obj.strftime("%d/%m/%Y %H:%M")
 
     conn.close()
