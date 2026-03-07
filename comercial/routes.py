@@ -13,7 +13,7 @@ from utils.fechas import normalizar_fecha
 comercial_bp = Blueprint("comercial", __name__, url_prefix="/comercial")
 
 def ahora():
-    return datetime.CURRENT_TIMESTAMP
+    return datetime.now()
 # ======================
 # COMERCIAL – PANTALLA
 # ======================
@@ -57,14 +57,22 @@ def comercial():
     fecha_dolar_arg = None
 
     if dolar_info and dolar_info["fecha"]:
-        fecha_utc = normalizar_fecha(rofex_fecha["fecha"])
-        fecha_utc = fecha_utc.replace(tzinfo=ZoneInfo("UTC"))
-        fecha_arg = fecha_utc.astimezone(ZoneInfo("America/Argentina/Buenos_Aires"))
+
+        fecha_utc = normalizar_fecha(dolar_info["fecha"])
+
+        fecha_utc = fecha_utc.replace(
+            tzinfo=ZoneInfo("UTC")
+        )
+
+        fecha_arg = fecha_utc.astimezone(
+            ZoneInfo("America/Argentina/Buenos_Aires")
+        )
+
         fecha_dolar_arg = fecha_arg.strftime("%Y-%m-%d %H:%M:%S")
 
     fecha_pizarra = None
 
-    if rows:
+    if rows and rows[0]["fecha_fuente"]:
         fecha_pizarra = rows[0]["fecha_fuente"]
     # ======================
     # TRAER ROFEX
@@ -122,6 +130,18 @@ def comercial():
         fecha_matba_arg = fecha_obj.strftime("%d/%m/%Y %H:%M")
 
     conn.close()
+    return render_template(
+        "comercial.html",
+        mercado=rows,
+        dolar_info=dolar_info,
+        fecha_dolar_arg=fecha_dolar_arg,
+        fecha_pizarra=fecha_pizarra,
+        rofex=rofex,
+        fecha_rofex_arg=fecha_rofex_arg,
+        matba=matba,
+        fecha_matba_arg=fecha_matba_arg,
+        puede_comparador=tiene_permiso("comparador"),
+    )
 # ======================
 # COMPARADOR REDIRECT
 # ======================
