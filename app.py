@@ -37,6 +37,21 @@ from panel.routes import empresa_actual
 from db import get_db
 from datetime import datetime
 
+@app.route("/fix_matba")
+def fix_matba():
+
+    conn = get_db()
+
+    conn.execute("""
+        ALTER TABLE matba
+        ADD COLUMN mes TEXT
+    """)
+
+    conn.commit()
+    conn.close()
+
+    return "matba fixed"
+
 @app.context_processor
 def inject_estado_contrato():
 
