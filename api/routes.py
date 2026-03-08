@@ -182,9 +182,6 @@ def guardar_analisis_seccion():
     res = calcular_comercial(cereal_real, d)
     grado = res["grado"] if res["grado"] else "F/E"
 
-    if grado == "F/E":
-        grado = None
-
     valores = (
         d["id_muestreo"],
         d["seccion"],
