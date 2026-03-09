@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from io import BytesIO
+from calculos import mejor_matba
 
 panel_bp = Blueprint("panel", __name__)
 
@@ -126,6 +127,18 @@ def ver_silo(qr):
             "medio": por_seccion.get("medio"),
             "final": por_seccion.get("final")
         })
+    mejor_futuro = None
+
+    if factor_prom:
+        mejor_futuro = mejor_matba(
+            conn,
+            silo["cereal"],
+            factor_prom
+        )
+    dif_matba = None
+
+    if mejor_futuro and precio_usd:
+        dif_matba = round(mejor_futuro["neto"] - precio_usd, 2)
 
     eventos_pendientes = conn.execute("""
         SELECT tipo, fecha_evento, foto_evento
@@ -155,6 +168,8 @@ def ver_silo(qr):
         factor_prom=factor_prom,
         tas_usada=tas_usada,
         analisis_pendiente=analisis_pendiente,
+        mejor_futuro=mejor_futuro,
+        dif_matba=dif_matba,
         puede_calado=tiene_permiso("calado")
     )
 

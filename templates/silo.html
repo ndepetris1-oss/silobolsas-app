@@ -168,6 +168,46 @@ th{background:#a5d6a7}
   </p>
 </div>
 {% endif %}
+{% if mejor_futuro %}
+<div class="card" style="background:#fff8e1;margin-top:15px">
+
+<h3>📈 Mejor MATBA</h3>
+
+<p>
+<b>{{ mejor_futuro.posicion }}</b>
+
+{% if mejor_futuro.mes %}
+— {{ mejor_futuro.mes }}
+{% endif %}
+</p>
+
+<p>
+Precio MATBA: {{ mejor_futuro.precio }} USD/TN
+</p>
+
+<p>
+Precio estimado silo:
+<b>{{ mejor_futuro.neto }} USD/TN</b>
+</p>
+
+</div>
+{% endif %}
+
+{% if dif_matba is not none %}
+
+<p>
+{% if dif_matba > 0 %}
+<span style="color:#2e7d32;font-weight:bold">
+▲ +{{ dif_matba }} USD/TN vs pizarra
+</span>
+{% else %}
+<span style="color:#b71c1c;font-weight:bold">
+▼ {{ dif_matba }} USD/TN vs pizarra
+</span>
+{% endif %}
+</p>
+
+{% endif %}
 
 <form method="GET"
       action="{{ url_for('calado.nuevo_muestreo', qr=silo.numero_qr) }}"

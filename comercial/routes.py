@@ -222,22 +222,22 @@ def comparador(cereal):
                 ) AS tas_min,
 
             (
-              SELECT ROUND(AVG(a.factor)::numeric,4)
-              FROM analisis a
-              JOIN muestreos m ON m.id = a.id_muestreo
-              WHERE m.numero_qr = s.numero_qr
-                AND m.empresa_id = s.empresa_id
-                AND a.factor IS NOT NULL
-            ) AS factor_prom,
+                SELECT AVG(a.factor)
+                FROM analisis a
+                JOIN muestreos m ON m.id = a.id_muestreo
+                WHERE m.numero_qr = s.numero_qr
+                    AND m.empresa_id = s.empresa_id
+                    AND a.factor IS NOT NULL
+                ) AS factor_prom,
 
             (
-              SELECT ROUND(AVG(a.humedad)::numeric,2)
-              FROM analisis a
-              JOIN muestreos m ON m.id = a.id_muestreo
-              WHERE m.numero_qr = s.numero_qr
-                AND m.empresa_id = s.empresa_id
-                AND a.humedad IS NOT NULL
-            ) AS humedad_prom,
+                SELECT AVG(a.humedad)
+                FROM analisis a
+                JOIN muestreos m ON m.id = a.id_muestreo
+                WHERE m.numero_qr = s.numero_qr
+                    AND m.empresa_id = s.empresa_id
+                    AND a.humedad IS NOT NULL
+                ) AS humedad_prom,
 
             (
               SELECT COUNT(*)
@@ -275,6 +275,29 @@ def comparador(cereal):
 
     futuro_sugerido = elegir_futuro(futuros, criterio_futuro)
 
+    futuros_lista = []
+
+    for f in futuros:
+
+            f = dict(f)
+
+            precio = float(f["precio"]) if f["precio"] else 0
+
+            gastos = 34
+
+            f["gastos"] = gastos
+            f["precio_neto"] = precio - gastos
+
+            futuros_lista.append(f)
+
+    futuros = futuros_lista
+
+    mejor_precio = 0
+
+    for f in futuros:
+        if f["precio_neto"] > mejor_precio:
+            mejor_precio = f["precio_neto"]
+
     conn.close()
 
     silos = []
@@ -282,13 +305,21 @@ def comparador(cereal):
     for r in rows:
         silo_dict = dict(r)
 
+        if silo_dict.get("factor_prom") is not None:
+            silo_dict["factor_prom"] = round(float(silo_dict["factor_prom"]), 4)
+
+        if silo_dict.get("humedad_prom") is not None:
+            silo_dict["humedad_prom"] = round(float(silo_dict["humedad_prom"]), 2)
+
         silo_dict["tiene_insectos"] = True if r["tiene_insectos"] > 0 else False
 
         silo_dict["merma_humedad"] = calcular_merma_humedad(
             cereal,
             silo_dict.get("humedad_prom")
         )
+
         silo_dict["tas_min"] = r["tas_min"]
+
         silos.append(silo_dict)
 
     return render_template(
@@ -299,7 +330,8 @@ def comparador(cereal):
         precio_base=precio_base,
         dolar=dolar,
         futuro_sugerido=futuro_sugerido,
-        futuros=futuros
+        futuros=futuros,
+        mejor_precio=mejor_precio
     )
 
 # ======================

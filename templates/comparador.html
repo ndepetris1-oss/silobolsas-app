@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 
 {% block contenido %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
+
 <meta charset="UTF-8">
 <title>Comparador comercial – {{ cereal }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -204,18 +202,19 @@ input:checked + .slider:before {
     <td class="dif-mejor">-</td>
   </tr>
   {% endfor %}
+
   {% for f in futuros %}
   <tr class="matba-auto">
+  <td>
+  <input type="hidden" value="MATBA {{ f.posicion }}">
+  <b>📈 MATBA {{ f.posicion }}</b>
 
-    <td>
-      <b>📈 MATBA {{ f.posicion }}</b>
-
-      {% if f.mes %}
-      <div style="font-size:12px;color:#666;">
-      {{ f.mes }}
-      </div>
-      {% endif %}
-    </td>
+  {% if f.mes %}
+  <div style="font-size:12px;color:#666;">
+  {{ f.mes }}
+  </div>
+  {% endif %}
+  </td>
 
   <td>
     <input type="number"
@@ -502,13 +501,18 @@ function calcularComparacion(){
     const inputs = tr.querySelectorAll("input");
     if(inputs.length < 2) return;
 
-    const oferente = inputs[0].value;
+    let oferente = inputs[0].value;
     const precio = parseFloat(inputs[1].value);
+
+    // si es fila MATBA
+    if(!oferente && tr.classList.contains("matba-auto")){
+      oferente = tr.cells[0].innerText.trim();
+    }
     const gastos = tr.dataset.gastos
       ? JSON.parse(tr.dataset.gastos)
       : null;
 
-    if(!oferente || !precio || !gastos) return;
+    if(!precio || !gastos) return;
 
     const secada = calcularSecada(gastos);
     const fumigada = calcularFumigada(gastos);

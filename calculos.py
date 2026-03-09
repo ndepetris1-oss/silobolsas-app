@@ -813,3 +813,38 @@ def calcular_merma_humedad(cereal, humedad_prom):
         return merma_girasol(humedad_prom)
 
     return 0
+def mejor_matba(conn, cereal, factor):
+    prefijos = {
+        "Maíz": "CR",
+        "Soja": "SR",
+        "Trigo": "WR"
+    }
+
+    prefijo = prefijos.get(cereal)
+
+    if not prefijo:
+        return None
+
+    rows = conn.execute("""
+        SELECT posicion, precio, mes
+        FROM matba
+        WHERE posicion LIKE ?
+    """, (f"{prefijo}%",)).fetchall()
+
+    mejor = None
+    mejor_precio = 0
+
+    for r in rows:
+        precio = float(r["precio"])
+        neto = precio * factor
+
+        if neto > mejor_precio:
+            mejor_precio = neto
+            mejor = {
+                "posicion": r["posicion"],
+                "mes": r["mes"],
+                "precio": precio,
+                "neto": round(neto,2)
+            }
+
+    return mejor
