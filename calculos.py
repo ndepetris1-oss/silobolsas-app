@@ -679,6 +679,8 @@ def merma_sorgo(humedad):
 
     if humedad is None:
         return 0
+    
+    humedad = float(humedad)
 
     if humedad <= 15.0:
         return 0
@@ -703,6 +705,8 @@ def merma_maiz(humedad):
     if humedad is None:
         return 0
 
+    humedad = float(humedad)   # 👈 AGREGAR ESTO
+
     if humedad <= 14.5:
         return 0
 
@@ -719,7 +723,6 @@ def merma_maiz(humedad):
     merma += 0.25
 
     return round(merma, 2)
-
 def merma_soja(humedad):
     """
     Devuelve merma oficial de soja
@@ -728,6 +731,8 @@ def merma_soja(humedad):
 
     if humedad is None:
         return 0
+    
+    humedad = float(humedad)
 
     if humedad <= 13.5:
         return 0
@@ -751,6 +756,8 @@ def merma_trigo(humedad):
 
     if humedad is None:
         return 0
+    
+    humedad = float(humedad)
 
     if humedad <= 14.0:
         return 0
@@ -774,6 +781,8 @@ def merma_girasol(humedad):
 
     if humedad is None:
         return 0
+    
+    humedad = float(humedad)
 
     if humedad <= 11.0:
         return 0

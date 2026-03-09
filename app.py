@@ -37,6 +37,23 @@ from panel.routes import empresa_actual
 from db import get_db
 from datetime import datetime
 
+@app.route("/fix_grado")
+def fix_grado():
+
+    from db import get_db
+
+    conn = get_db()
+
+    conn.execute("""
+        ALTER TABLE analisis
+        ALTER COLUMN grado TYPE TEXT
+    """)
+
+    conn.commit()
+    conn.close()
+
+    return "Columna grado actualizada a TEXT"
+
 @app.context_processor
 def inject_estado_contrato():
 
