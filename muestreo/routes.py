@@ -93,7 +93,13 @@ def api_nuevo_muestreo():
     ))
 
     conn.commit()
-    mid = cur.lastrowid
+
+    id_row = conn.execute("""
+        SELECT id FROM muestreos
+        WHERE numero_qr=? AND empresa_id=?
+        ORDER BY id DESC LIMIT 1
+    """, (qr, current_user.empresa_id)).fetchone()
+    mid = id_row["id"] if id_row else None
     conn.close()
 
     return jsonify(ok=True, id_muestreo=mid)
