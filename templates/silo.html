@@ -98,10 +98,10 @@ th{background:#a5d6a7}
       📅 {{ e.fecha_evento }}<br><br>
 
       {% if e.foto_evento %}
-        <a href="/{{ e.foto_evento }}" target="_blank">
+        <a href="{{ e.foto_evento }}" target="_blank">
           <button>👁️ Ver foto</button>
         </a>
-        <a href="/{{ e.foto_evento }}" download>
+        <a href="{{ e.foto_evento }}" download>
           <button>⬇️ Descargar</button>
         </a>
       {% else %}
@@ -119,10 +119,10 @@ th{background:#a5d6a7}
       📅 {{ e.fecha_resolucion }}<br><br>
 
       {% if e.foto_resolucion %}
-        <a href="/{{ e.foto_resolucion }}" target="_blank">
+        <a href="{{ e.foto_resolucion }}" target="_blank">
           <button>👁️ Ver foto</button>
         </a>
-        <a href="/{{ e.foto_resolucion }}" download>
+        <a href="{{ e.foto_resolucion }}" download>
           <button>⬇️ Descargar</button>
         </a>
       {% else %}
