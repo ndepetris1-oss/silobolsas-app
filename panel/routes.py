@@ -51,13 +51,35 @@ def ver_silo(qr):
         WHERE cereal = ? AND empresa_id = ?
     """, (silo["cereal"], empresa_id)).fetchone()
 
-    muestreos_raw = conn.execute("""
-        SELECT m.id, m.fecha_muestreo,
-               CAST(julianday('now') - julianday(m.fecha_muestreo) AS INT) dias
+    muestreos_raw_db = conn.execute("""
+        SELECT m.id, m.fecha_muestreo
         FROM muestreos m
         WHERE m.numero_qr=? AND empresa_id=?
         ORDER BY m.fecha_muestreo DESC
     """, (qr, empresa_id)).fetchall()
+
+    # Calcular dias en Python (compatible SQLite y PostgreSQL)
+    muestreos_raw = []
+    for m in muestreos_raw_db:
+        fecha_val = m["fecha_muestreo"]
+        dias = None
+        if fecha_val:
+            try:
+                if isinstance(fecha_val, str):
+                    fecha = None
+                    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                        try:
+                            fecha = datetime.strptime(fecha_val, fmt)
+                            break
+                        except ValueError:
+                            continue
+                else:
+                    fecha = fecha_val
+                if fecha:
+                    dias = (datetime.now() - fecha).days
+            except:
+                dias = None
+        muestreos_raw.append({"id": m["id"], "fecha_muestreo": fecha_val, "dias": dias})
 
     muestreos = []
     precio_estimado = None
@@ -233,7 +255,7 @@ def panel():
         SELECT *
         FROM silos
         WHERE empresa_id=?
-        ORDER BY datetime(fecha_confeccion) DESC
+        ORDER BY fecha_confeccion DESC
     """, (empresa_id,)).fetchall()
 
     registros = []
