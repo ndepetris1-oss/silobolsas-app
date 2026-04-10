@@ -11,9 +11,9 @@ from flask import request, jsonify
 
 # Configurar Cloudinary
 cloudinary.config(
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "dgizfir3w"),
-    api_key    = os.getenv("CLOUDINARY_API_KEY", "278574888762296"),
-    api_secret = os.getenv("CLOUDINARY_API_SECRET", "68QCgNveZE3nSKrYzpiVWrz3YkI")
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key    = os.getenv("CLOUDINARY_API_KEY"),
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
 )
 
 api_bp = Blueprint("api", __name__)
@@ -117,7 +117,13 @@ def nuevo_muestreo():
         ahora().strftime("%Y-%m-%d %H:%M")
     ))
     conn.commit()
-    mid = cur.lastrowid
+
+    id_row = conn.execute("""
+        SELECT id FROM muestreos
+        WHERE numero_qr=? AND empresa_id=?
+        ORDER BY id DESC LIMIT 1
+    """, (qr, current_user.empresa_id)).fetchone()
+    mid = id_row["id"] if id_row else None
     conn.close()
 
     return jsonify(ok=True, id_muestreo=mid)
@@ -512,6 +518,75 @@ def resolver_monitoreo():
     conn.close()
 
     return jsonify(ok=True)
+
+# ======================
+# LLENADO — NUEVA CARGA
+# ======================
+@api_bp.route("/api/llenado", methods=["POST"])
+@login_required
+def nueva_carga_llenado():
+
+    if not tiene_permiso("form"):
+        return jsonify(ok=False, error="No autorizado"), 403
+
+    d = request.get_json(force=True, silent=True) or {}
+    qr = d.get("numero_qr")
+
+    if not qr:
+        return jsonify(ok=False, error="QR faltante"), 400
+
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT estado_silo, cereal FROM silos WHERE numero_qr=? AND empresa_id=?",
+        (qr, current_user.empresa_id)
+    ).fetchone()
+
+    if not silo or silo["estado_silo"] == "Extraído":
+        conn.close()
+        return jsonify(ok=False, error="Silo no válido"), 400
+
+    def to_float(x):
+        try:
+            return float(x) if x not in (None, "", "null") else None
+        except:
+            return None
+
+    datos = {
+        "temperatura": to_float(d.get("temperatura")),
+        "humedad":     to_float(d.get("humedad")),
+        "danados":     to_float(d.get("danados")),
+        "quebrados":   to_float(d.get("quebrados")),
+        "materia_extrana": to_float(d.get("materia_extrana")),
+        "olor":        to_float(d.get("olor")) or 0,
+        "moho":        to_float(d.get("moho")) or 0,
+        "chamico":     to_float(d.get("chamico")),
+        "insectos":    1 if d.get("insectos") else 0,
+    }
+    kg = to_float(d.get("kg")) or 0
+
+    from calculos import calcular_comercial
+    res = calcular_comercial(silo["cereal"], datos)
+
+    conn.execute("""
+        INSERT INTO llenado (
+            numero_qr, empresa_id, fecha, kg,
+            temperatura, humedad, danados, quebrados,
+            materia_extrana, olor, moho, insectos, chamico,
+            grado, factor, tas
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        qr, current_user.empresa_id, ahora(), kg,
+        datos["temperatura"], datos["humedad"], datos["danados"], datos["quebrados"],
+        datos["materia_extrana"], datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+        str(res.get("grado") or "F/E"), res.get("factor"), res.get("tas")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
+
 # ======================
 # EXTRACCIÓN
 # ======================
