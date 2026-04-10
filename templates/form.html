@@ -7,6 +7,7 @@
 <meta charset="UTF-8">
 <title>Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 
 <style>
 body{
@@ -147,7 +148,33 @@ button:disabled{background:#9ccc9c}
 <h2>Silo Bolsa</h2>
 
 <label>QR</label>
-<input id="qr" readonly>
+<div style="display:flex;gap:8px;align-items:center;">
+  <input id="qr" readonly style="flex:1;margin-top:0;">
+  <button type="button" onclick="abrirEscaner()"
+    style="width:auto;margin-top:0;padding:12px 16px;background:#1976d2;white-space:nowrap;">
+    📷 Escanear
+  </button>
+</div>
+
+<!-- ESCANER QR -->
+<div id="bloqueEscaner" style="display:none;margin-top:12px;">
+  <div style="position:relative;width:100%;max-width:400px;margin:0 auto;">
+    <video id="videoQR" style="width:100%;border-radius:10px;" playsinline autoplay></video>
+    <canvas id="canvasQR" style="display:none;"></canvas>
+    <div style="
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:60%;height:60%;
+      border:3px solid #4caf50;
+      border-radius:8px;
+      pointer-events:none;
+    "></div>
+  </div>
+  <button type="button" onclick="cerrarEscaner()"
+    style="background:#888;margin-top:8px;">
+    ✖ Cancelar escaneo
+  </button>
+</div>
 
 <div id="infoSilo" class="alert hidden"></div>
 
@@ -160,6 +187,19 @@ button:disabled{background:#9ccc9c}
 <!-- REGISTRO -->
 <div id="bloqueRegistro" class="card hidden">
   <h3>🆕 Registro de silo</h3>
+
+  <!-- GPS MANUAL -->
+  <div id="bloqueGPS" style="background:#e8f5e9;border-radius:10px;padding:12px;margin-bottom:14px;">
+    <p style="margin:0 0 8px 0;font-weight:bold;">📍 Ubicación del silo</p>
+    <p id="gpsEstado" style="margin:0 0 10px 0;color:#888;font-size:.9rem;">
+      Sin ubicación capturada. Parece junto al silo y presioná el botón.
+    </p>
+    <button type="button" id="btnGPS" onclick="capturarGPS()"
+      style="background:#388e3c;margin-top:0;">
+      📍 Capturar ubicación ahora
+    </button>
+  </div>
+
   <label>Cereal</label>
   <select id="cereal">
     <option value="">Seleccione…</option>
@@ -297,26 +337,28 @@ async function obtenerGPS(){
 }
 
 /* INIT */
+async function initConQR(qrCode){
+  const res = await fetch(`/api/silo/${qrCode}`);
+  await procesarRespuestaSilo(res, qrCode);
+}
+
 async function init(){
   if(!qr) return;
-
   const res = await fetch(`/api/silo/${qr}`);
+  await procesarRespuestaSilo(res, qr);
+}
+
+async function procesarRespuestaSilo(res, qrCode){
+  qr = qrCode;
   const data = await res.json();
 if(data.ultimo_calado){
   infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
 }
 
-  // 🆕 REGISTRO NUEVO → GPS OBLIGATORIO
+  // 🆕 REGISTRO NUEVO
   if(!data.existe){
     modo = "registro";
-
-    try{
-      await obtenerGPSObligatorio();
-      bloqueRegistro.classList.remove("hidden");
-    }catch{
-      btnGuardar.disabled = true;
-    }
-
+    bloqueRegistro.classList.remove("hidden");
     return;
   }
   // 🔴 BLOQUEO SI ESTÁ EXTRAÍDO
@@ -568,35 +610,98 @@ async function guardar(){
 
   btn.disabled = false;
 }
-async function obtenerGPSObligatorio(){
-  return new Promise((resolve, reject)=>{
-    if(!navigator.geolocation){
-      alert("Este dispositivo no soporta GPS");
-      reject();
-      return;
-    }
+/* GPS MANUAL — el usuario presiona el botón cuando está al lado del silo */
+async function capturarGPS(){
+  const btn = document.getElementById("btnGPS");
+  const estado = document.getElementById("gpsEstado");
 
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
-        resolve();
-      },
-      err=>{
-        alert(
-          "📍 Ubicación requerida\n\n" +
-          "Debés activar la ubicación del dispositivo para registrar el silo.\n" +
-          "Activá el GPS y aceptá el permiso."
-        );
-        reject(err);
-      },
-      {
+  btn.disabled = true;
+  btn.textContent = "⏳ Obteniendo ubicación...";
+  estado.style.color = "#888";
+  estado.textContent = "Buscando señal GPS...";
+
+  try{
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0
-      }
+      })
     );
-  });
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    estado.style.color = "#2e7d32";
+    estado.textContent = `✅ Ubicación capturada (±${Math.round(pos.coords.accuracy)}m)`;
+    btn.textContent = "📍 Recapturar ubicación";
+    btn.style.background = "#888";
+  }catch(err){
+    estado.style.color = "#b71c1c";
+    estado.textContent = "❌ No se pudo obtener la ubicación. Activá el GPS e intentá de nuevo.";
+    btn.textContent = "📍 Reintentar";
+    btn.style.background = "#388e3c";
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ESCANER QR */
+let streamQR = null;
+
+async function abrirEscaner(){
+  document.getElementById("bloqueEscaner").style.display = "block";
+  const video = document.getElementById("videoQR");
+  try{
+    streamQR = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+    video.srcObject = streamQR;
+    video.play();
+    requestAnimationFrame(escanearFrame);
+  }catch(e){
+    alert("No se pudo acceder a la cámara. Verificá los permisos.");
+    cerrarEscaner();
+  }
+}
+
+function cerrarEscaner(){
+  if(streamQR){
+    streamQR.getTracks().forEach(t => t.stop());
+    streamQR = null;
+  }
+  document.getElementById("bloqueEscaner").style.display = "none";
+}
+
+function escanearFrame(){
+  if(!streamQR) return;
+
+  const video = document.getElementById("videoQR");
+  const canvas = document.getElementById("canvasQR");
+
+  if(video.readyState !== video.HAVE_ENOUGH_DATA){
+    requestAnimationFrame(escanearFrame);
+    return;
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+  if(code){
+    document.getElementById("qr").value = code.data;
+    cerrarEscaner();
+    // Disparar init con el QR escaneado
+    initConQR(code.data);
+  } else {
+    requestAnimationFrame(escanearFrame);
+  }
+}
+
+async function obtenerGPSObligatorio(){
+  // Mantenida por compatibilidad — ahora el GPS es manual
+  return Promise.resolve();
 }
 
 init();
