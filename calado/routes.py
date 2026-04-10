@@ -51,17 +51,22 @@ def informar_calado():
         ), 400
 
     # ✅ crear muestreo
-    muestreo = conn.execute("""
+    conn.execute("""
         INSERT INTO muestreos (
             numero_qr,
             empresa_id,
             fecha_muestreo
         )
         VALUES (?,?,?)
-        RETURNING id
-    """, (qr, empresa_id, fecha)).fetchone()
+    """, (qr, empresa_id, fecha))
 
-    id_muestreo = muestreo["id"]
+    # Obtener el id recien insertado (compatible SQLite y PostgreSQL)
+    id_row = conn.execute("""
+        SELECT id FROM muestreos
+        WHERE numero_qr=? AND empresa_id=?
+        ORDER BY id DESC LIMIT 1
+    """, (qr, empresa_id)).fetchone()
+    id_muestreo = id_row["id"]
 
     # 🧪 Temperaturas
     if d.get("informar_temperatura"):
