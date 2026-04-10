@@ -70,10 +70,11 @@ def acceso_denegado(pantalla):
     if request.method == "POST" and not ya_solicitado:
         conn.execute("""
             INSERT INTO solicitudes (user_id, pantalla, fecha)
-            VALUES (?,?,datetime('now'))
+            VALUES (?,?,?)
         """, (
             current_user.id,
-            pantalla
+            pantalla,
+            datetime.now().strftime("%Y-%m-%d %H:%M")
         ))
         conn.commit()
         solicitud_enviada = True
