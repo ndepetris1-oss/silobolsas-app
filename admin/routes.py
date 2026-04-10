@@ -56,7 +56,7 @@ def crear_empresa():
     conn = get_db()
 
     # Crear empresa
-    empresa = conn.execute("""
+    conn.execute("""
         INSERT INTO empresas (
             nombre,
             fecha_alta,
@@ -65,14 +65,16 @@ def crear_empresa():
             activa
         )
         VALUES (?,?,?,?,1)
-        RETURNING id
     """, (
         nombre,
         datetime.now().strftime("%Y-%m-%d"),
         tipo_contrato,
         fecha_vencimiento
-    )).fetchone()
+    ))
 
+    empresa = conn.execute(
+        "SELECT id FROM empresas WHERE nombre=?", (nombre,)
+    ).fetchone()
     empresa_id = empresa["id"]
     # ======================
     # CREAR MERCADO BASE
@@ -86,12 +88,15 @@ def crear_empresa():
         """, (empresa_id, cereal))
 
     # Crear sucursal central
-    sucursal = conn.execute("""
+    conn.execute("""
     INSERT INTO sucursales (empresa_id, nombre)
     VALUES (?,?)
-    RETURNING id
-    """, (empresa_id, "Casa Central")).fetchone()
+    """, (empresa_id, "Casa Central"))
 
+    sucursal = conn.execute(
+        "SELECT id FROM sucursales WHERE empresa_id=? ORDER BY id DESC LIMIT 1",
+        (empresa_id,)
+    ).fetchone()
     sucursal_id = sucursal["id"]
 
     # 🔥 GENERAR PASSWORD TEMPORAL SEGURA
@@ -388,8 +393,8 @@ def solicitar_acceso(pantalla):
     if not ya_solicitado:
         conn.execute("""
             INSERT INTO solicitudes (user_id, pantalla, fecha, estado)
-            VALUES (?,?,datetime('now'),'pendiente')
-        """, (current_user.id, pantalla))
+            VALUES (?,?,?,'pendiente')
+        """, (current_user.id, pantalla, datetime.now().strftime("%Y-%m-%d %H:%M")))
 
         conn.commit()
 
