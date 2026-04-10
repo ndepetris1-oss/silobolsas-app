@@ -149,6 +149,76 @@ th{background:#a5d6a7;cursor:pointer}
 </a>
 <header>PANEL DE CONTROL · SILO BOLSAS</header>
 
+<!-- ===== RESUMEN RÁPIDO ===== -->
+<div style="
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  width:95%;
+  margin:14px auto 0 auto;
+">
+
+  <!-- Activos -->
+  <div style="
+    flex:1;min-width:130px;
+    background:#1b5e20;color:white;
+    border-radius:14px;padding:14px 18px;
+    text-align:center;
+  ">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_activos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">🌾 Silos activos</div>
+  </div>
+
+  <!-- Por cereal -->
+  {% for cereal, cant in resumen.por_cereal.items() %}
+  {% set colores = {'Soja':'#f9a825','Maíz':'#e65100','Trigo':'#78909c','Girasol':'#558b2f'} %}
+  <div style="
+    flex:1;min-width:130px;
+    background:{{ colores.get(cereal,'#455a64') }};color:white;
+    border-radius:14px;padding:14px 18px;
+    text-align:center;
+  ">
+    <div style="font-size:2rem;font-weight:bold;">{{ cant }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">{{ cereal }}</div>
+  </div>
+  {% endfor %}
+
+  <!-- Alertas TAS -->
+  <div style="
+    flex:1;min-width:130px;
+    background:{{ '#b71c1c' if resumen.con_alertas > 0 else '#37474f' }};color:white;
+    border-radius:14px;padding:14px 18px;
+    text-align:center;
+  ">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.con_alertas }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">⚠️ En alerta TAS</div>
+  </div>
+
+  <!-- Con eventos -->
+  <div style="
+    flex:1;min-width:130px;
+    background:{{ '#e65100' if resumen.con_eventos > 0 else '#37474f' }};color:white;
+    border-radius:14px;padding:14px 18px;
+    text-align:center;
+  ">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.con_eventos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">🚨 Con eventos</div>
+  </div>
+
+  <!-- Extraídos -->
+  <div style="
+    flex:1;min-width:130px;
+    background:#4e342e;color:white;
+    border-radius:14px;padding:14px 18px;
+    text-align:center;
+  ">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_extraidos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">✔ Extraídos</div>
+  </div>
+
+</div>
+<!-- ===== FIN RESUMEN ===== -->
+
 <div class="container">
 
 <button id="btnMapa"

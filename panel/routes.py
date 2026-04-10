@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from io import BytesIO
-from calculos import mejor_matba
 
 panel_bp = Blueprint("panel", __name__)
 
@@ -53,14 +52,14 @@ def ver_silo(qr):
     """, (silo["cereal"], empresa_id)).fetchone()
 
     muestreos_raw = conn.execute("""
-        SELECT m.id, m.fecha_muestreo
+        SELECT m.id, m.fecha_muestreo,
+               CAST(julianday('now') - julianday(m.fecha_muestreo) AS INT) dias
         FROM muestreos m
         WHERE m.numero_qr=? AND empresa_id=?
         ORDER BY m.fecha_muestreo DESC
     """, (qr, empresa_id)).fetchall()
 
     muestreos = []
-
     precio_estimado = None
     precio_usd = None
     factor_prom = None
@@ -68,14 +67,6 @@ def ver_silo(qr):
     analisis_pendiente = False
 
     for idx, m in enumerate(muestreos_raw):
-
-        fecha = m["fecha_muestreo"]
-        dias = None
-
-        if fecha:
-            if isinstance(fecha, str):
-                fecha = datetime.fromisoformat(fecha)
-            dias = (datetime.now() - fecha).days
 
         analisis = conn.execute("""
             SELECT seccion, grado, factor, tas, temperatura
@@ -89,17 +80,14 @@ def ver_silo(qr):
             if not analisis:
                 analisis_pendiente = True
             else:
-
                 factores = []
                 tass = []
 
                 for sec in ["punta", "medio", "final"]:
                     a = por_seccion.get(sec)
-
                     if a:
                         if a["factor"] is not None:
                             factores.append(a["factor"])
-
                         if a["tas"] is not None:
                             tass.append(a["tas"])
 
@@ -110,11 +98,9 @@ def ver_silo(qr):
                     tas_usada = min(tass)
 
                 if mercado and factor_prom and mercado["pizarra"] and mercado["dolar"]:
-
                     precio_estimado = round(
                         mercado["pizarra"] * factor_prom, 2
                     )
-
                     precio_usd = round(
                         precio_estimado / mercado["dolar"], 2
                     )
@@ -122,23 +108,11 @@ def ver_silo(qr):
         muestreos.append({
             "id": m["id"],
             "fecha_muestreo": m["fecha_muestreo"],
-            "dias": dias,
+            "dias": m["dias"],
             "punta": por_seccion.get("punta"),
             "medio": por_seccion.get("medio"),
             "final": por_seccion.get("final")
         })
-    mejor_futuro = None
-
-    if factor_prom:
-        mejor_futuro = mejor_matba(
-            conn,
-            silo["cereal"],
-            factor_prom
-        )
-    dif_matba = None
-
-    if mejor_futuro and precio_usd:
-        dif_matba = round(mejor_futuro["neto"] - precio_usd, 2)
 
     eventos_pendientes = conn.execute("""
         SELECT tipo, fecha_evento, foto_evento
@@ -168,8 +142,6 @@ def ver_silo(qr):
         factor_prom=factor_prom,
         tas_usada=tas_usada,
         analisis_pendiente=analisis_pendiente,
-        mejor_futuro=mejor_futuro,
-        dif_matba=dif_matba,
         puede_calado=tiene_permiso("calado")
     )
 
@@ -261,7 +233,7 @@ def panel():
         SELECT *
         FROM silos
         WHERE empresa_id=?
-        ORDER BY fecha_confeccion DESC
+        ORDER BY datetime(fecha_confeccion) DESC
     """, (empresa_id,)).fetchall()
 
     registros = []
@@ -363,12 +335,34 @@ def panel():
 
     conn.close()
 
+    # ==========================================
+    # RESUMEN RÁPIDO PARA EL PANEL
+    # ==========================================
+    total_activos   = sum(1 for r in registros if r.get("estado_silo") != "Extraído")
+    total_extraidos = sum(1 for r in registros if r.get("estado_silo") == "Extraído")
+    con_alertas     = sum(1 for r in registros if r.get("tas_min") is not None and r["tas_min"] <= 30)
+    con_eventos     = sum(1 for r in registros if r.get("eventos", 0) > 0)
+
+    # Conteo por cereal (sólo activos)
+    por_cereal = {}
+    for r in registros:
+        if r.get("estado_silo") != "Extraído":
+            c = r.get("cereal", "Otro")
+            por_cereal[c] = por_cereal.get(c, 0) + 1
+
     return render_template(
         "panel.html",
         registros=registros,
         puede_form=tiene_permiso("form"),
         puede_comercial=tiene_permiso("comercial"),
-        puede_admin=tiene_permiso("admin")
+        puede_admin=tiene_permiso("admin"),
+        resumen={
+            "total_activos":   total_activos,
+            "total_extraidos": total_extraidos,
+            "con_alertas":     con_alertas,
+            "con_eventos":     con_eventos,
+            "por_cereal":      por_cereal,
+        }
     )
 
 # ==========================================

@@ -222,7 +222,10 @@ Precio estimado silo:
   </button>
 
 </form>
-
+<a href="{{ url_for('silo.llenado_silo', silo_codigo=silo.numero_qr) }}" 
+   class="btn btn-primary">
+    Llenado de silo bolsa
+</a>
 <script>
 async function nuevoMuestreo(){
   const res = await fetch("/muestreo/api/nuevo_muestreo",{

@@ -1,0 +1,126 @@
+<button onclick='abrirLlenado(
+  {{ resultado|tojson if resultado else "null" }}
+)'>
+  ➕ Cargar / Editar análisis
+</button>
+<div id="modalLlenado" class="modal">
+  <div class="modal-content">
+
+    <h3>Análisis - Llenado</h3>
+
+    <input id="temperatura" type="number" placeholder="Temperatura">
+    <input id="humedad" type="number" placeholder="Humedad">
+
+    {% if silo.cereal in ("Maíz","Trigo") %}
+    <input id="ph" type="number" placeholder="PH">
+    {% endif %}
+
+    <input id="danados" type="number" placeholder="Dañados">
+    <input id="quebrados" type="number" placeholder="Quebrados">
+    <input id="materia_extrana" type="number" placeholder="Materia extraña">
+
+    <input id="chamico" type="number" placeholder="Chamico">
+
+    <!-- 🔥 NUEVO -->
+    <input id="kg" type="number" placeholder="Kg">
+
+    <label>Olor</label>
+    <select id="olor">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+    </select>
+
+    <label>Moho</label>
+    <select id="moho">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+    </select>
+
+    <label>Insectos</label>
+    <input type="checkbox" id="insectos">
+
+    <button onclick="guardarLlenado()">💾 Guardar</button>
+    <button onclick="cerrarModalLlenado()">Cancelar</button>
+
+  </div>
+</div>
+<script>
+function abrirLlenado(datos){
+
+  document.getElementById("modalLlenado").style.display = "flex";
+
+  // limpiar
+  ["temperatura","humedad","danados","quebrados","materia_extrana","chamico","kg"]
+  .forEach(id => {
+    if(document.getElementById(id)) document.getElementById(id).value = "";
+  });
+
+  if(datos){
+    temperatura.value = datos.temp || "";
+    humedad.value = datos.humedad || "";
+    danados.value = datos.danados || "";
+    quebrados.value = datos.quebrados || "";
+    materia_extrana.value = datos.mext || "";
+    chamico.value = datos.chamico || "";
+  }
+}
+
+function cerrarModalLlenado(){
+  document.getElementById("modalLlenado").style.display="none";
+}
+
+function guardarLlenado(){
+
+  fetch(window.location.href, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+
+    body: new URLSearchParams({
+      temp: temperatura.value,
+      humedad: humedad.value,
+      danados: danados.value,
+      quebrados: quebrados.value,
+      mext: materia_extrana.value,
+      chamico: chamico.value,
+      kg: kg.value,
+      olor: olor.value,
+      moho: moho.value,
+      insectos: insectos.checked ? 1 : 0
+    })
+  })
+  .then(() => location.reload());
+}
+</script>
+{% if resultado %}
+<table>
+<tr>
+<th>Temp</th>
+<th>Hum</th>
+<th>Dañados</th>
+<th>Quebrados</th>
+<th>M.Ext</th>
+<th>Olor</th>
+<th>Moho</th>
+<th>Kg</th>
+<th>Grado</th>
+<th>Factor</th>
+<th>TAS</th>
+</tr>
+
+<tr>
+<td>{{ resultado.temp }}</td>
+<td>{{ resultado.humedad }}</td>
+<td>{{ resultado.danados }}</td>
+<td>{{ resultado.quebrados }}</td>
+<td>{{ resultado.mext }}</td>
+<td>{{ resultado.olor }}</td>
+<td>{{ resultado.moho }}</td>
+<td>{{ resultado.kg or "-" }}</td>
+<td>{{ resultado.grado }}</td>
+<td>{{ (resultado.factor*100)|round(2) }}%</td>
+<td>{{ resultado.tas }}</td>
+</tr>
+</table>
+{% endif %}

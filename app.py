@@ -11,6 +11,7 @@ from calado.routes import calado_bp
 from muestreo.routes import muestreo_bp
 from permissions import permissions_bp
 from migraciones import ejecutar_migraciones
+from silo.routes import silo_bp
 
 app = Flask(__name__)
 ejecutar_migraciones()
@@ -27,6 +28,7 @@ app.register_blueprint(comercial_bp)
 app.register_blueprint(calado_bp)
 app.register_blueprint(muestreo_bp)
 app.register_blueprint(permissions_bp)
+app.register_blueprint(silo_bp)
 from permissions import tiene_permiso
 
 @app.context_processor
