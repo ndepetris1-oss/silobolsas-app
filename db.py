@@ -32,6 +32,20 @@ class DBWrapper:
     def fetchall(self):
         return self.cursor.fetchall()
 
+    def lastrowid(self):
+        """Obtiene el ID del último INSERT, compatible SQLite y PostgreSQL"""
+        if self.es_postgres:
+            row = self.cursor.fetchone()
+            if row:
+                # Si viene de RETURNING id
+                if hasattr(row, '__getitem__'):
+                    try:
+                        return row["id"]
+                    except:
+                        pass
+            return None
+        return self.cursor.lastrowid
+
     def commit(self):
         return self.conn.commit()
 
