@@ -4,8 +4,17 @@ from db import get_db
 from permissions import tiene_permiso
 from datetime import datetime
 import os
+import cloudinary
+import cloudinary.uploader
 from calculos import calcular_comercial
 from flask import request, jsonify
+
+# Configurar Cloudinary
+cloudinary.config(
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "dgizfir3w"),
+    api_key    = os.getenv("CLOUDINARY_API_KEY", "278574888762296"),
+    api_secret = os.getenv("CLOUDINARY_API_SECRET", "68QCgNveZE3nSKrYzpiVWrz3YkI")
+)
 
 api_bp = Blueprint("api", __name__)
 
@@ -426,9 +435,15 @@ def nuevo_monitoreo():
 
     path = None
     if foto:
-        os.makedirs("static/monitoreos", exist_ok=True)
-        path = f"static/monitoreos/{datetime.now().timestamp()}_{foto.filename}"
-        foto.save(path)
+        try:
+            resultado = cloudinary.uploader.upload(
+                foto,
+                folder="silobolsas/monitoreos",
+                resource_type="image"
+            )
+            path = resultado["secure_url"]
+        except Exception as e:
+            path = None
 
     conn.execute("""
         INSERT INTO monitoreos (
@@ -470,9 +485,15 @@ def resolver_monitoreo():
 
     path = None
     if foto:
-        os.makedirs("static/monitoreos", exist_ok=True)
-        path = f"static/monitoreos/resuelto_{datetime.now().timestamp()}_{foto.filename}"
-        foto.save(path)
+        try:
+            resultado = cloudinary.uploader.upload(
+                foto,
+                folder="silobolsas/resueltos",
+                resource_type="image"
+            )
+            path = resultado["secure_url"]
+        except Exception as e:
+            path = None
 
     conn.execute("""
         UPDATE monitoreos
