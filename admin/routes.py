@@ -439,22 +439,22 @@ def admin_finanzas():
     for e in empresas:
 
         total_silos = conn.execute("""
-            SELECT COUNT(*)
+            SELECT COUNT(*) AS total
             FROM silos
             WHERE empresa_id=? AND estado_silo='Activo'
-        """, (e["id"],)).fetchone()[0]
+        """, (e["id"],)).fetchone()["total"]
 
         silos_cobrados = conn.execute("""
-            SELECT COALESCE(SUM(silos_cobrados),0)
+            SELECT COALESCE(SUM(silos_cobrados),0) AS total
             FROM pagos
             WHERE empresa_id=?
-        """, (e["id"],)).fetchone()[0]
+        """, (e["id"],)).fetchone()["total"]
 
         total_monto = conn.execute("""
-            SELECT COALESCE(SUM(monto),0)
+            SELECT COALESCE(SUM(monto),0) AS total
             FROM pagos
             WHERE empresa_id=?
-        """, (e["id"],)).fetchone()[0]
+        """, (e["id"],)).fetchone()["total"]
 
         pendiente = total_silos - silos_cobrados
 
