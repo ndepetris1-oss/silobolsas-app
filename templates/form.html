@@ -317,51 +317,43 @@ button:disabled{background:#9ccc9c}
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const qr = params.get("id");
-qr && (document.getElementById("qr").value = qr);
+let qrParam = params.get("id");
+
+let qr = qrParam || null;
+if(qr) document.getElementById("qr").value = qr;
 
 let modo = null;
 let lat = null;
 let lon = null;
 let eventoPendiente = null;
 
-/* GPS */
-async function obtenerGPS(){
-  try{
-    const pos = await new Promise((ok,err)=>
-      navigator.geolocation.getCurrentPosition(ok,err)
-    );
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  }catch{}
-}
-
-/* INIT */
-async function initConQR(qrCode){
-  const res = await fetch(`/api/silo/${qrCode}`);
-  await procesarRespuestaSilo(res, qrCode);
-}
-
+/* INIT con QR de URL */
 async function init(){
   if(!qr) return;
-  const res = await fetch(`/api/silo/${qr}`);
-  await procesarRespuestaSilo(res, qr);
+  await procesarSilo(qr);
 }
 
-async function procesarRespuestaSilo(res, qrCode){
+/* INIT con QR escaneado */
+async function initConQR(qrCode){
   qr = qrCode;
-  const data = await res.json();
-if(data.ultimo_calado){
-  infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+  document.getElementById("qr").value = qrCode;
+  await procesarSilo(qrCode);
 }
 
-  // 🆕 REGISTRO NUEVO
+async function procesarSilo(qrCode){
+  const res = await fetch(`/api/silo/${qrCode}`);
+  const data = await res.json();
+
+  if(data.ultimo_calado){
+    infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+  }
+
   if(!data.existe){
     modo = "registro";
     bloqueRegistro.classList.remove("hidden");
     return;
   }
-  // 🔴 BLOQUEO SI ESTÁ EXTRAÍDO
+
   if(data.estado_silo === "Extraído"){
     infoSilo.innerHTML = `
       ⛔ <b>SILO EXTRAÍDO</b><br>
@@ -371,27 +363,22 @@ if(data.ultimo_calado){
       No se pueden cargar eventos ni extracciones.
     `;
     infoSilo.classList.remove("hidden");
-
     bloqueMonitoreo.classList.add("hidden");
     bloqueExtraccion.classList.add("hidden");
     bloqueEventosPendientes.classList.add("hidden");
     bloqueResolucion.classList.add("hidden");
-
     btnGuardar.disabled = true;
     return;
   }
 
-  // ✅ SILO ACTIVO
-modo = "operacion";
+  modo = "operacion";
 
-let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
-
-if(data.ultimo_calado){
-  info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
-}
-
-infoSilo.innerHTML = info;
-infoSilo.classList.remove("hidden");
+  let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+  if(data.ultimo_calado){
+    info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+  }
+  infoSilo.innerHTML = info;
+  infoSilo.classList.remove("hidden");
 
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
@@ -426,9 +413,10 @@ async function cargarEventosPendientes(){
 function resolverEvento(id){
   eventoPendiente={id};
   bloqueResolucion.classList.remove("hidden");
-  bloqueMonitoreo.classList.add("hidden"); // opcional
+  bloqueMonitoreo.classList.add("hidden");
 }
-  async function cargarEventosResueltos(){
+
+async function cargarEventosResueltos(){
   const res = await fetch(`/api/monitoreo/resueltos/${qr}`);
   const eventos = await res.json();
 
@@ -450,12 +438,13 @@ function resolverEvento(id){
     listaEventosResueltos.appendChild(div);
   });
 }
-  
+
 /* OTROS */
 tipo_evento.onchange=e=>{
   detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
 };
-  chkTemp.onchange = e => {
+
+chkTemp.onchange = e => {
   bloqueTemperaturas.classList.toggle("hidden", !e.target.checked);
 };
 
@@ -495,39 +484,31 @@ async function guardar(){
   const btn = btnGuardar;
   btn.disabled = true;
 
- if(modo === "registro"){
+  if(modo === "registro"){
 
-  if(!cereal.value){
-    alert("❌ Falta seleccionar el cereal");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;
-  }
+    if(!cereal.value){
+      alert("❌ Falta seleccionar el cereal");
+      btn.disabled = false;
+      return;
+    }
 
-  if(!estado_grano.value){
-    alert("❌ Falta indicar el estado del grano");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;
-  }
+    if(!estado_grano.value){
+      alert("❌ Falta indicar el estado del grano");
+      btn.disabled = false;
+      return;
+    }
 
-  if(!metros.value || Number(metros.value) <= 0){
-    alert("❌ Falta indicar los metros lineales");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;
-  }
+    if(!metros.value || Number(metros.value) <= 0){
+      alert("❌ Falta indicar los metros lineales");
+      btn.disabled = false;
+      return;
+    }
 
-  if(lat === null || lon === null){
-    alert("📍 Debe activar la ubicación para registrar el silo");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    btn.dataset.locked = "";
-    return;
-  }
+    if(lat === null || lon === null){
+      alert("📍 Debe capturar la ubicación antes de guardar");
+      btn.disabled = false;
+      return;
+    }
 
     await fetch("/api/registrar_silo",{
       method:"POST",
@@ -546,35 +527,33 @@ async function guardar(){
 
   if(tipo_evento.value && !eventoPendiente){
 
-  if(!foto.files[0]){
-    alert("❌ Debe sacar o seleccionar una foto del evento");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
+    if(!foto.files[0]){
+      alert("❌ Debe sacar o seleccionar una foto del evento");
+      btn.disabled = false;
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("numero_qr", qr);
+    fd.append("tipo", tipo_evento.value);
+    fd.append("detalle", detalle_evento.value);
+    fd.append("foto", foto.files[0]);
+
+    const res = await fetch("/api/monitoreo",{
+      method:"POST",
+      body:fd
+    });
+
+    if(!res.ok){
+      alert("❌ Error al registrar el evento");
+      btn.disabled = false;
+      return;
+    }
+
+    alert("📸 Evento registrado correctamente");
+    location.reload();
     return;
   }
-
-  const fd = new FormData();
-  fd.append("numero_qr", qr);
-  fd.append("tipo", tipo_evento.value);
-  fd.append("detalle", detalle_evento.value);
-  fd.append("foto", foto.files[0]);
-
-  const res = await fetch("/api/monitoreo",{
-    method:"POST",
-    body:fd
-  });
-
-  if(!res.ok){
-    alert("❌ Error al registrar el evento");
-    btn.disabled = false;
-    btn.innerText = "Guardar";
-    return;
-  }
-
-  alert("📸 Evento registrado correctamente");
-  location.reload();
-  return;
-}
 
   if(eventoPendiente && resuelto.checked){
     const fd = new FormData();
@@ -610,7 +589,8 @@ async function guardar(){
 
   btn.disabled = false;
 }
-/* GPS MANUAL — el usuario presiona el botón cuando está al lado del silo */
+
+/* GPS MANUAL */
 async function capturarGPS(){
   const btn = document.getElementById("btnGPS");
   const estado = document.getElementById("gpsEstado");
@@ -658,7 +638,7 @@ async function abrirEscaner(){
     video.play();
     requestAnimationFrame(escanearFrame);
   }catch(e){
-    alert("No se pudo acceder a la cámara. Verificá los permisos.");
+    alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
     cerrarEscaner();
   }
 }
@@ -690,18 +670,11 @@ function escanearFrame(){
   const code = jsQR(imageData.data, imageData.width, imageData.height);
 
   if(code){
-    document.getElementById("qr").value = code.data;
     cerrarEscaner();
-    // Disparar init con el QR escaneado
     initConQR(code.data);
   } else {
     requestAnimationFrame(escanearFrame);
   }
-}
-
-async function obtenerGPSObligatorio(){
-  // Mantenida por compatibilidad — ahora el GPS es manual
-  return Promise.resolve();
 }
 
 init();
