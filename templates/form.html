@@ -7,7 +7,7 @@
 <meta charset="UTF-8">
 <title>Silo Bolsa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
 <style>
 body{
@@ -170,8 +170,9 @@ button:disabled{background:#9ccc9c}
       pointer-events:none;
     "></div>
   </div>
+  <p id="escanerEstado" style="text-align:center;color:#555;margin:6px 0;">📷 Iniciando cámara...</p>
   <button type="button" onclick="cerrarEscaner()"
-    style="background:#888;margin-top:8px;">
+    style="background:#888;margin-top:4px;">
     ✖ Cancelar escaneo
   </button>
 </div>
@@ -317,43 +318,51 @@ button:disabled{background:#9ccc9c}
 
 <script>
 const params = new URLSearchParams(window.location.search);
-let qrParam = params.get("id");
-
-let qr = qrParam || null;
-if(qr) document.getElementById("qr").value = qr;
+const qr = params.get("id");
+qr && (document.getElementById("qr").value = qr);
 
 let modo = null;
 let lat = null;
 let lon = null;
 let eventoPendiente = null;
 
-/* INIT con QR de URL */
+/* GPS */
+async function obtenerGPS(){
+  try{
+    const pos = await new Promise((ok,err)=>
+      navigator.geolocation.getCurrentPosition(ok,err)
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  }catch{}
+}
+
+/* INIT */
+async function initConQR(qrCode){
+  const res = await fetch(`/api/silo/${qrCode}`);
+  await procesarRespuestaSilo(res, qrCode);
+}
+
 async function init(){
   if(!qr) return;
-  await procesarSilo(qr);
+  const res = await fetch(`/api/silo/${qr}`);
+  await procesarRespuestaSilo(res, qr);
 }
 
-/* INIT con QR escaneado */
-async function initConQR(qrCode){
+async function procesarRespuestaSilo(res, qrCode){
   qr = qrCode;
-  document.getElementById("qr").value = qrCode;
-  await procesarSilo(qrCode);
+  const data = await res.json();
+if(data.ultimo_calado){
+  infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
 }
 
-async function procesarSilo(qrCode){
-  const res = await fetch(`/api/silo/${qrCode}`);
-  const data = await res.json();
-
-  if(data.ultimo_calado){
-    infoSilo.innerHTML += `<br>🧪 Último calado: ${data.ultimo_calado}`;
-  }
-
+  // 🆕 REGISTRO NUEVO
   if(!data.existe){
     modo = "registro";
     bloqueRegistro.classList.remove("hidden");
     return;
   }
-
+  // 🔴 BLOQUEO SI ESTÁ EXTRAÍDO
   if(data.estado_silo === "Extraído"){
     infoSilo.innerHTML = `
       ⛔ <b>SILO EXTRAÍDO</b><br>
@@ -363,22 +372,27 @@ async function procesarSilo(qrCode){
       No se pueden cargar eventos ni extracciones.
     `;
     infoSilo.classList.remove("hidden");
+
     bloqueMonitoreo.classList.add("hidden");
     bloqueExtraccion.classList.add("hidden");
     bloqueEventosPendientes.classList.add("hidden");
     bloqueResolucion.classList.add("hidden");
+
     btnGuardar.disabled = true;
     return;
   }
 
-  modo = "operacion";
+  // ✅ SILO ACTIVO
+modo = "operacion";
 
-  let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
-  if(data.ultimo_calado){
-    info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
-  }
-  infoSilo.innerHTML = info;
-  infoSilo.classList.remove("hidden");
+let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+
+if(data.ultimo_calado){
+  info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+}
+
+infoSilo.innerHTML = info;
+infoSilo.classList.remove("hidden");
 
   bloqueMonitoreo.classList.remove("hidden");
   bloqueExtraccion.classList.remove("hidden");
@@ -413,10 +427,9 @@ async function cargarEventosPendientes(){
 function resolverEvento(id){
   eventoPendiente={id};
   bloqueResolucion.classList.remove("hidden");
-  bloqueMonitoreo.classList.add("hidden");
+  bloqueMonitoreo.classList.add("hidden"); // opcional
 }
-
-async function cargarEventosResueltos(){
+  async function cargarEventosResueltos(){
   const res = await fetch(`/api/monitoreo/resueltos/${qr}`);
   const eventos = await res.json();
 
@@ -438,13 +451,12 @@ async function cargarEventosResueltos(){
     listaEventosResueltos.appendChild(div);
   });
 }
-
+  
 /* OTROS */
 tipo_evento.onchange=e=>{
   detalle_evento.classList.toggle("hidden", e.target.value!=="Otros");
 };
-
-chkTemp.onchange = e => {
+  chkTemp.onchange = e => {
   bloqueTemperaturas.classList.toggle("hidden", !e.target.checked);
 };
 
@@ -484,31 +496,39 @@ async function guardar(){
   const btn = btnGuardar;
   btn.disabled = true;
 
-  if(modo === "registro"){
+ if(modo === "registro"){
 
-    if(!cereal.value){
-      alert("❌ Falta seleccionar el cereal");
-      btn.disabled = false;
-      return;
-    }
+  if(!cereal.value){
+    alert("❌ Falta seleccionar el cereal");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
 
-    if(!estado_grano.value){
-      alert("❌ Falta indicar el estado del grano");
-      btn.disabled = false;
-      return;
-    }
+  if(!estado_grano.value){
+    alert("❌ Falta indicar el estado del grano");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
 
-    if(!metros.value || Number(metros.value) <= 0){
-      alert("❌ Falta indicar los metros lineales");
-      btn.disabled = false;
-      return;
-    }
+  if(!metros.value || Number(metros.value) <= 0){
+    alert("❌ Falta indicar los metros lineales");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
 
-    if(lat === null || lon === null){
-      alert("📍 Debe capturar la ubicación antes de guardar");
-      btn.disabled = false;
-      return;
-    }
+  if(lat === null || lon === null){
+    alert("📍 Debe activar la ubicación para registrar el silo");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    btn.dataset.locked = "";
+    return;
+  }
 
     await fetch("/api/registrar_silo",{
       method:"POST",
@@ -527,33 +547,35 @@ async function guardar(){
 
   if(tipo_evento.value && !eventoPendiente){
 
-    if(!foto.files[0]){
-      alert("❌ Debe sacar o seleccionar una foto del evento");
-      btn.disabled = false;
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append("numero_qr", qr);
-    fd.append("tipo", tipo_evento.value);
-    fd.append("detalle", detalle_evento.value);
-    fd.append("foto", foto.files[0]);
-
-    const res = await fetch("/api/monitoreo",{
-      method:"POST",
-      body:fd
-    });
-
-    if(!res.ok){
-      alert("❌ Error al registrar el evento");
-      btn.disabled = false;
-      return;
-    }
-
-    alert("📸 Evento registrado correctamente");
-    location.reload();
+  if(!foto.files[0]){
+    alert("❌ Debe sacar o seleccionar una foto del evento");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
     return;
   }
+
+  const fd = new FormData();
+  fd.append("numero_qr", qr);
+  fd.append("tipo", tipo_evento.value);
+  fd.append("detalle", detalle_evento.value);
+  fd.append("foto", foto.files[0]);
+
+  const res = await fetch("/api/monitoreo",{
+    method:"POST",
+    body:fd
+  });
+
+  if(!res.ok){
+    alert("❌ Error al registrar el evento");
+    btn.disabled = false;
+    btn.innerText = "Guardar";
+    return;
+  }
+
+  alert("📸 Evento registrado correctamente");
+  location.reload();
+  return;
+}
 
   if(eventoPendiente && resuelto.checked){
     const fd = new FormData();
@@ -589,8 +611,7 @@ async function guardar(){
 
   btn.disabled = false;
 }
-
-/* GPS MANUAL */
+/* GPS MANUAL — el usuario presiona el botón cuando está al lado del silo */
 async function capturarGPS(){
   const btn = document.getElementById("btnGPS");
   const estado = document.getElementById("gpsEstado");
@@ -624,58 +645,37 @@ async function capturarGPS(){
   }
 }
 
-/* ESCANER QR */
-let streamQR = null;
+/* ESCANER QR — ZXing */
+let lectorQR = null;
 
 async function abrirEscaner(){
   document.getElementById("bloqueEscaner").style.display = "block";
-  const video = document.getElementById("videoQR");
+  document.getElementById("escanerEstado").textContent = "📷 Apuntá la cámara al código QR...";
   try{
-    streamQR = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
-    });
-    video.srcObject = streamQR;
-    video.play();
-    requestAnimationFrame(escanearFrame);
+    lectorQR = new ZXing.BrowserMultiFormatReader();
+    await lectorQR.decodeFromConstraints(
+      { video: { facingMode: "environment" } },
+      "videoQR",
+      (result, err) => {
+        if(result){
+          cerrarEscaner();
+          initConQR(result.getText());
+        }
+      }
+    );
   }catch(e){
-    alert("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
-    cerrarEscaner();
+    document.getElementById("escanerEstado").textContent = "❌ No se pudo acceder a la cámara.";
   }
 }
 
 function cerrarEscaner(){
-  if(streamQR){
-    streamQR.getTracks().forEach(t => t.stop());
-    streamQR = null;
+  if(lectorQR){
+    lectorQR.reset();
+    lectorQR = null;
   }
   document.getElementById("bloqueEscaner").style.display = "none";
 }
 
-function escanearFrame(){
-  if(!streamQR) return;
-
-  const video = document.getElementById("videoQR");
-  const canvas = document.getElementById("canvasQR");
-
-  if(video.readyState !== video.HAVE_ENOUGH_DATA){
-    requestAnimationFrame(escanearFrame);
-    return;
-  }
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-  if(code){
-    cerrarEscaner();
-    initConQR(code.data);
-  } else {
-    requestAnimationFrame(escanearFrame);
-  }
-}
 
 init();
 </script>
