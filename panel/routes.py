@@ -9,18 +9,12 @@ from io import BytesIO
 
 panel_bp = Blueprint("panel", __name__)
 
-# ==========================================
-# CONTEXTO EMPRESA UNIFICADO
-# ==========================================
 def empresa_actual():
     if current_user.es_superadmin:
         return session.get("empresa_contexto")
     return current_user.empresa_id
 
 
-# ==========================================
-# VER SILO
-# ==========================================
 @panel_bp.route("/silo/<qr>")
 @login_required
 def ver_silo(qr):
@@ -58,7 +52,6 @@ def ver_silo(qr):
         ORDER BY m.fecha_muestreo DESC
     """, (qr, empresa_id)).fetchall()
 
-    # Calcular dias en Python (compatible SQLite y PostgreSQL)
     muestreos_raw = []
     for m in muestreos_raw_db:
         fecha_val = m["fecha_muestreo"]
@@ -150,16 +143,19 @@ def ver_silo(qr):
         ORDER BY fecha_resolucion DESC
     """, (qr, empresa_id)).fetchall()
 
-    cargas_llenado = conn.execute("""
-        SELECT id, fecha, kg, temperatura, humedad, danados,
-               quebrados, materia_extrana, olor, moho, insectos,
-               chamico, grado, factor, tas
-        FROM llenado
-        WHERE numero_qr=? AND empresa_id=?
-        ORDER BY fecha DESC
-    """, (qr, empresa_id)).fetchall()
-
-    kg_total = sum(float(c["kg"] or 0) for c in cargas_llenado)
+    try:
+        cargas_llenado = conn.execute("""
+            SELECT id, fecha, kg, temperatura, humedad, danados,
+                   quebrados, materia_extrana, olor, moho, insectos,
+                   chamico, grado, factor, tas
+            FROM llenado
+            WHERE numero_qr=? AND empresa_id=?
+            ORDER BY fecha DESC
+        """, (qr, empresa_id)).fetchall()
+        kg_total = sum(float(c["kg"] or 0) for c in cargas_llenado)
+    except Exception:
+        cargas_llenado = []
+        kg_total = 0
 
     conn.close()
 
@@ -182,9 +178,6 @@ def ver_silo(qr):
     )
 
 
-# ==========================================
-# VER MUESTREO
-# ==========================================
 @panel_bp.route("/muestreo/<int:id>")
 @login_required
 def ver_muestreo(id):
@@ -225,24 +218,18 @@ def ver_muestreo(id):
     )
 
 
-# ==========================================
-# PANEL
-# ==========================================
 @panel_bp.route("/")
 @panel_bp.route("/panel")
 @login_required
 def panel():
-
 
     if not tiene_permiso("panel"):
         return acceso_denegado("panel")
 
     conn = get_db()
 
-    # 🔥 SUPERADMIN
     if current_user.es_superadmin:
 
-        # Si no seleccionó empresa → mostrar selector
         if "empresa_contexto" not in session:
 
             empresas = conn.execute("""
@@ -259,7 +246,6 @@ def panel():
                 empresas=empresas
             )
 
-        # Si ya seleccionó
         empresa_id = session["empresa_contexto"]
 
     else:
@@ -360,12 +346,15 @@ def panel():
             WHERE numero_qr=? AND empresa_id=? AND resuelto=0
         """, (s["numero_qr"], empresa_id)).fetchone()["cant"]
 
-        kg_row = conn.execute("""
-            SELECT COALESCE(SUM(kg), 0) as total
-            FROM llenado
-            WHERE numero_qr=? AND empresa_id=?
-        """, (s["numero_qr"], empresa_id)).fetchone()
-        kg_total = int(kg_row["total"]) if kg_row else 0
+        try:
+            kg_row = conn.execute("""
+                SELECT COALESCE(SUM(kg), 0) as total
+                FROM llenado
+                WHERE numero_qr=? AND empresa_id=?
+            """, (s["numero_qr"], empresa_id)).fetchone()
+            kg_total = int(kg_row["total"]) if kg_row else 0
+        except Exception:
+            kg_total = 0
 
         registros.append({
             **dict(s),
@@ -379,15 +368,11 @@ def panel():
 
     conn.close()
 
-    # ==========================================
-    # RESUMEN RÁPIDO PARA EL PANEL
-    # ==========================================
     total_activos   = sum(1 for r in registros if r.get("estado_silo") != "Extraído")
     total_extraidos = sum(1 for r in registros if r.get("estado_silo") == "Extraído")
     con_alertas     = sum(1 for r in registros if r.get("tas_min") is not None and r["tas_min"] <= 30)
     con_eventos     = sum(1 for r in registros if r.get("eventos", 0) > 0)
 
-    # Conteo por cereal (sólo activos)
     por_cereal = {}
     for r in registros:
         if r.get("estado_silo") != "Extraído":
@@ -409,9 +394,7 @@ def panel():
         }
     )
 
-# ==========================================
-# FORM
-# ==========================================
+
 @panel_bp.route("/form")
 @login_required
 def form():
@@ -423,9 +406,8 @@ def form():
         "form.html",
         puede_calado=tiene_permiso("calado")
     )
-# ==========================================
-# EXPORTAR EXCEL
-# ==========================================
+
+
 @panel_bp.route("/exportar_excel")
 @login_required
 def exportar_excel():
@@ -569,9 +551,6 @@ def exportar_excel():
     )
 
 
-# ==========================================
-# SELECCIONAR EMPRESA
-# ==========================================
 @panel_bp.route("/seleccionar_empresa/<int:id>")
 @login_required
 def seleccionar_empresa(id):
@@ -581,9 +560,8 @@ def seleccionar_empresa(id):
 
     session["empresa_contexto"] = id
     return redirect(url_for("panel.panel"))
-# ==========================================
-# CAMBIAR EMPRESA (SUPERADMIN)
-# ==========================================
+
+
 @panel_bp.route("/cambiar_empresa")
 @login_required
 def cambiar_empresa():
