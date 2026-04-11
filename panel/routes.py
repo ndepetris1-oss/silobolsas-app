@@ -154,6 +154,7 @@ def ver_silo(qr):
         """, (qr, empresa_id)).fetchall()
         kg_total = sum(float(c["kg"] or 0) for c in cargas_llenado)
     except Exception:
+        conn.rollback()
         cargas_llenado = []
         kg_total = 0
 
@@ -354,6 +355,7 @@ def panel():
             """, (s["numero_qr"], empresa_id)).fetchone()
             kg_total = int(kg_row["total"]) if kg_row else 0
         except Exception:
+            conn.rollback()
             kg_total = 0
 
         registros.append({
@@ -440,7 +442,6 @@ def exportar_excel():
 
     for cereal in cereales:
         ws = wb.create_sheet(title=cereal)
-
         ws["A1"] = "PRECIO BASE ($)"
         ws["A1"].font = Font(bold=True)
         ws["B1"] = 0
@@ -487,13 +488,11 @@ def exportar_excel():
                             grados.append(int(a["grado"]))
                         except:
                             pass
-
                     if a["factor"] is not None:
                         try:
                             factores.append(float(a["factor"]))
                         except:
                             pass
-
                     if a["tas"] is not None:
                         try:
                             tass.append(int(a["tas"]))
@@ -502,10 +501,8 @@ def exportar_excel():
 
                 if grados:
                     grado = max(grados)
-
                 if factores:
                     factor = round(sum(factores) / len(factores), 4)
-
                 if tass:
                     tas_min = min(tass)
 
@@ -554,10 +551,8 @@ def exportar_excel():
 @panel_bp.route("/seleccionar_empresa/<int:id>")
 @login_required
 def seleccionar_empresa(id):
-
     if not current_user.es_superadmin:
         return "No autorizado", 403
-
     session["empresa_contexto"] = id
     return redirect(url_for("panel.panel"))
 
@@ -565,9 +560,7 @@ def seleccionar_empresa(id):
 @panel_bp.route("/cambiar_empresa")
 @login_required
 def cambiar_empresa():
-
     if not current_user.es_superadmin:
         return "No autorizado", 403
-
     session.pop("empresa_contexto", None)
     return redirect(url_for("panel.panel"))
