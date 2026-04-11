@@ -150,6 +150,17 @@ def ver_silo(qr):
         ORDER BY fecha_resolucion DESC
     """, (qr, empresa_id)).fetchall()
 
+    cargas_llenado = conn.execute("""
+        SELECT id, fecha, kg, temperatura, humedad, danados,
+               quebrados, materia_extrana, olor, moho, insectos,
+               chamico, grado, factor, tas
+        FROM llenado
+        WHERE numero_qr=? AND empresa_id=?
+        ORDER BY fecha DESC
+    """, (qr, empresa_id)).fetchall()
+
+    kg_total = sum(float(c["kg"] or 0) for c in cargas_llenado)
+
     conn.close()
 
     return render_template(
@@ -165,7 +176,9 @@ def ver_silo(qr):
         tas_usada=tas_usada,
         analisis_pendiente=analisis_pendiente,
         puede_calado=tiene_permiso("calado"),
-        dif_matba=None
+        dif_matba=None,
+        cargas_llenado=cargas_llenado,
+        kg_total=kg_total
     )
 
 
@@ -347,13 +360,21 @@ def panel():
             WHERE numero_qr=? AND empresa_id=? AND resuelto=0
         """, (s["numero_qr"], empresa_id)).fetchone()["cant"]
 
+        kg_row = conn.execute("""
+            SELECT COALESCE(SUM(kg), 0) as total
+            FROM llenado
+            WHERE numero_qr=? AND empresa_id=?
+        """, (s["numero_qr"], empresa_id)).fetchone()
+        kg_total = int(kg_row["total"]) if kg_row else 0
+
         registros.append({
             **dict(s),
             "grado": grado,
             "factor": factor_prom,
             "tas_min": tas_min,
             "fecha_extraccion_estimada": fecha_estimada,
-            "eventos": eventos
+            "eventos": eventos,
+            "kg_total": kg_total
         })
 
     conn.close()
