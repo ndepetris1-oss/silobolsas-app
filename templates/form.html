@@ -162,7 +162,15 @@ async function abrirEscaner(){
       "videoQR",
       (result, err) => {
         if(result){
-          const codigo = result.getText();
+          let codigo = result.getText();
+          // Si el QR contiene una URL completa, extraer solo el id
+          try{
+            const url = new URL(codigo);
+            const idParam = url.searchParams.get("id");
+            if(idParam) codigo = idParam;
+          }catch(e){
+            // No es una URL, usar el texto directo
+          }
           cerrarEscaner();
           document.getElementById("qr").value = codigo;
           procesarSilo(codigo);
