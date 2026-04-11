@@ -46,6 +46,9 @@ class DBWrapper:
             return None
         return self.cursor.lastrowid
 
+    def rollback(self):
+        return self.conn.rollback()
+
     def commit(self):
         return self.conn.commit()
 
