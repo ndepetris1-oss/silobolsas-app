@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
+from utils.auditoria import registrar_auditoria
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso, acceso_denegado
@@ -100,6 +101,8 @@ def informar_calado():
                 temp
             ))
 
+    registrar_auditoria(conn, current_user.id, empresa_id,
+        "calado", f"Muestreo ID: {id_muestreo}", qr)
     conn.commit()
     conn.close()
 

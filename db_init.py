@@ -8,6 +8,15 @@ def init_db():
     c = conn
 
     es_postgres = os.environ.get("DATABASE_URL") is not None
+    # En SQLite SERIAL no existe, usar INTEGER PRIMARY KEY AUTOINCREMENT
+    if not es_postgres:
+        original_execute = conn.execute
+        def execute_patched(query, params=None):
+            query = query.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
+            if params:
+                return original_execute(query, params)
+            return original_execute(query)
+        conn.execute = execute_patched
 
     # =====================
     # EMPRESAS
@@ -214,6 +223,22 @@ def init_db():
         precio_anterior REAL,
         variacion REAL,
         fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    # =====================
+    # AUDITORIA
+    # =====================
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS auditoria (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        empresa_id INTEGER NOT NULL,
+        accion TEXT NOT NULL,
+        detalle TEXT,
+        numero_qr TEXT,
+        fecha TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id),
+        FOREIGN KEY (empresa_id) REFERENCES empresas(id)
     )
     """)
     # =====================

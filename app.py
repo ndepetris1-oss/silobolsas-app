@@ -12,6 +12,7 @@ from muestreo.routes import muestreo_bp
 from permissions import permissions_bp
 from migraciones import ejecutar_migraciones
 from silo.routes import silo_bp
+from auditoria.routes import auditoria_bp
 
 app = Flask(__name__)
 ejecutar_migraciones()
@@ -29,6 +30,7 @@ app.register_blueprint(calado_bp)
 app.register_blueprint(muestreo_bp)
 app.register_blueprint(permissions_bp)
 app.register_blueprint(silo_bp)
+app.register_blueprint(auditoria_bp)
 from permissions import tiene_permiso
 
 @app.context_processor

@@ -193,6 +193,13 @@ body{
             💼 Finanzas
         </a>
     {% endif %}
+
+    {% if current_user.es_superadmin or tiene_permiso("auditoria") %}
+        <a href="{{ url_for('auditoria.index') }}" class="nav-btn"
+           style="background:#37474f;">
+            📋 Auditoría
+        </a>
+    {% endif %}
 </div>
 {% endif %}
 <div class="container">

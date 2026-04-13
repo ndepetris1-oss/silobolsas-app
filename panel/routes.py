@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, session, redirect, url_for, send_file
+from utils.auditoria import registrar_auditoria
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso, acceso_denegado
@@ -534,6 +535,8 @@ def exportar_excel():
 
             row_excel += 1
 
+    registrar_auditoria(conn, current_user.id, empresa_id,
+        "exportacion_excel", "Exportación de datos", None)
     conn.close()
 
     output = BytesIO()

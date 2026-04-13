@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.auditoria import registrar_auditoria
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso
@@ -65,6 +66,10 @@ def registrar_silo():
         ahora()
     ))
 
+    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
+        "registro_silo", f"Cereal: {d.get('cereal')}, {d.get('metros')}m", d.get("numero_qr"))
+    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
+        "extraccion", f"Estado: {estado}", qr)
     conn.commit()
     conn.close()
 
@@ -325,6 +330,8 @@ def guardar_analisis_seccion():
             res["factor"],
             res["tas"]
         ))
+    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
+        "analisis", f"Sección: {d.get('seccion')}, Grado: {grado}", d.get("id_muestreo") and str(d.get("id_muestreo")))
     conn.commit()
     conn.close()
 
@@ -470,6 +477,8 @@ def nuevo_monitoreo():
             path
         ))
 
+    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
+        "evento_monitoreo", f"Tipo: {tipo}", qr)
     conn.commit()
     conn.close()
 
@@ -582,6 +591,8 @@ def nueva_carga_llenado():
         str(res.get("grado") or "F/E"), res.get("factor"), res.get("tas")
     ))
 
+    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
+        "llenado", f"{kg} kg", qr)
     conn.commit()
     conn.close()
 
