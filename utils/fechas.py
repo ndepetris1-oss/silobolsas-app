@@ -23,3 +23,5 @@ def fecha_argentina(valor):
     dt = dt.astimezone(ZoneInfo("America/Argentina/Buenos_Aires"))
 
     return dt.strftime("%d/%m/%Y %H:%M")
+def ahora():
+    return datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
