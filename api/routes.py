@@ -65,11 +65,15 @@ def registrar_silo():
         d.get("lon"),
         ahora()
     ))
-
-    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
-        "registro_silo", f"Cereal: {d.get('cereal')}, {d.get('metros')}m", d.get("numero_qr"))
-    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
-        "extraccion", f"Estado: {estado}", qr)
+    
+    registrar_auditoria(
+        conn,
+        current_user.id,
+        current_user.empresa_id,
+        "registro_silo",
+        f"Cereal: {d.get('cereal')}, {d.get('metros')}m, Estado: {d.get('estado_grano')}",
+        d.get("numero_qr")
+)
     conn.commit()
     conn.close()
 
