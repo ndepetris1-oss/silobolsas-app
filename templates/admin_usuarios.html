@@ -150,7 +150,31 @@ input:checked + .slider:before {
 }
 </style>
 </head>
+<script>
+async function resetPass(userId){
+    const nueva = prompt("Ingrese nueva contraseña:");
 
+    if(!nueva) return;
+
+    const fd = new FormData();
+    fd.append("user_id", userId);
+    fd.append("password", nueva);
+
+    const res = await fetch("/admin/reset_password", {
+        method: "POST",
+        body: fd
+    });
+
+    const data = await res.json();
+
+    if(!data.ok){
+        alert(data.error);
+        return;
+    }
+
+    alert("✅ Contraseña reseteada. El usuario deberá cambiarla al ingresar.");
+}
+</script>
 <body>
 
 <header>👤 Administración de Usuarios · SB.Pro</header>
@@ -178,10 +202,19 @@ input:checked + .slider:before {
     <h2>🔐 Permisos de usuarios</h2>
 
     {% for u in usuarios %}
-    <div class="user-card">
+<div class="user-card">
 
-        <div class="user-header">
-            👤 {{ u.username }}
+    <div class="user-header">
+        👤 {{ u.username }}
+
+        <div style="display:flex;gap:8px;align-items:center;">
+
+            <!-- RESET PASSWORD -->
+            {% if current_user.es_superadmin %}
+            <button type="button" onclick="resetPass({{ u.id }})" style="background:#1565c0;">
+                🔑 Reset
+            </button>
+            {% endif %}
 
             {% if u.username != "admin" %}
             <form method="POST" action="/admin/eliminar_usuario" 
@@ -190,31 +223,32 @@ input:checked + .slider:before {
                 <button type="submit" class="delete-btn">🗑 Eliminar</button>
             </form>
             {% endif %}
+
+        </div>
+    </div>
+
+    <form method="POST" action="/admin/permisos">
+        <input type="hidden" name="user_id" value="{{ u.id }}">
+
+        <div class="permisos">
+            {% for p in ['panel','form','calado','laboratorio','comercial','comparador','admin'] %}
+            <div class="switch-label">
+                <span>{{ p.capitalize() }}</span>
+
+                <label class="switch">
+                    <input type="checkbox" name="permisos" value="{{ p }}"
+                    {% if (u.id, p) in permisos_set %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            {% endfor %}
         </div>
 
-        <form method="POST" action="/admin/permisos">
-            <input type="hidden" name="user_id" value="{{ u.id }}">
+        <button type="submit">Guardar permisos</button>
+    </form>
 
-            <div class="permisos">
-
-                {% for p in ['panel','form','calado','laboratorio','comercial','comparador','admin'] %}
-                <div class="switch-label">
-                    <span>{{ p.capitalize() }}</span>
-
-                    <label class="switch">
-                        <input type="checkbox" name="permisos" value="{{ p }}"
-                        {% if (u.id, p) in permisos_set %}checked{% endif %}>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                {% endfor %}
-
-            </div>
-
-            <button type="submit">Guardar permisos</button>
-        </form>
-    </div>
-    {% endfor %}
+</div>
+{% endfor %}
 {% if solicitudes %}
 <div class="solicitudes-box">
   <h3>📨 Solicitudes pendientes</h3>

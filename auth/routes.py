@@ -9,9 +9,18 @@ from flask_login import (
 from werkzeug.security import check_password_hash, generate_password_hash
 from db import get_db
 from extensions import login_manager
+import re
 
 auth_bp = Blueprint("auth", __name__)
 
+def validar_password(password):
+    if len(password) < 8:
+        return "Debe tener al menos 8 caracteres"
+    if not re.search(r"[A-Z]", password):
+        return "Debe tener al menos una mayúscula"
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return "Debe tener al menos un carácter especial"
+    return None
 # ==========================
 # LOAD USER
 # ==========================
@@ -30,12 +39,19 @@ def login():
     if request.method == "POST":
 
         username = request.form.get("username")
-        password = request.form.get("password")
 
+        if not username:
+            return render_template("login.html", error="Ingrese usuario")
+
+        username = username.strip().lower()
+        password = request.form.get("password")
+        if not password:
+            return render_template("login.html", error="Ingrese contraseña")
+    
         conn = get_db()
 
         u = conn.execute(
-            "SELECT * FROM usuarios WHERE username=?",
+            "SELECT * FROM usuarios WHERE LOWER(username)=?",
             (username,)
         ).fetchone()
 
@@ -106,6 +122,41 @@ def login():
     return render_template("login.html")
 
 # ==========================
+# RESET SUPERADMIN
+# ==========================
+@auth_bp.route("/admin/reset_password", methods=["POST"])
+@login_required
+def reset_password_admin():
+
+    if not current_user.es_superadmin:
+        return {"ok": False, "error": "No autorizado"}, 403
+
+    user_id = request.form.get("user_id")
+    nueva = request.form.get("password")
+
+    if not nueva:
+        return {"ok": False, "error": "Falta contraseña"}, 400
+
+    error = validar_password(nueva)
+    if error:
+        return {"ok": False, "error": error}, 400
+
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE usuarios
+        SET password=?, forzar_cambio_password=1
+        WHERE id=?
+    """, (
+        generate_password_hash(nueva),
+        user_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return {"ok": True}
+# ==========================
 # LOGOUT
 # ==========================
 
@@ -121,9 +172,17 @@ def cambiar_password():
     if request.method == "POST":
 
         nueva = request.form.get("password")
+        confirmar = request.form.get("confirmar_password")
 
         if not nueva:
             return render_template("cambiar_password.html", error="Ingrese contraseña")
+
+        if nueva != confirmar:
+            return render_template("cambiar_password.html", error="Las contraseñas no coinciden")
+
+        error = validar_password(nueva)
+        if error:
+            return render_template("cambiar_password.html", error=error)
 
         conn = get_db()
 
