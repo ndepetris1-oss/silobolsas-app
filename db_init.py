@@ -201,6 +201,10 @@ def init_db():
         silos_cobrados INTEGER,
         periodo TEXT,
         observacion TEXT,
+        metodo_pago TEXT,
+        comprobante TEXT,
+        alias_cvu TEXT,
+        tipo_periodo TEXT,
         FOREIGN KEY (empresa_id) REFERENCES empresas(id)
     )
     """)

@@ -1,10 +1,3 @@
-login
-
-permitir usuario q ignore mayuscula, minuscula
-
-Cambio de pass pedir doble confirmacion q tenga minimo 8 caracteres, minimo 1 mayuscula y minimo un 
-caracter especial
-
 
 finanzas
 
@@ -12,17 +5,13 @@ que registre fecha de pago y metodo de pago (transferencia, efectivo, que billet
 que genere un pdf como recibo por el servicio, si es por cantidad de silo bolsas (cantidad de silo
 bolsas pagados y pendientes de pagar) o por mes, campaña o año.
 
-llenado de silo bolsas
-
-no funciona, queda "guardando" y queda tildado. 
-
 
 exportar a excel
 
 mejorar la visualizacion, en forma de tabla. No trae fecha de confeccion ni fecha de extraccion estimada. Mostrar factor
 con 100%
 
-Colocar en tabla aparte precio rofex y matba con fecha del precio.
+Colocar en tabla aparte precio rofex y matba con fecha del precio en hoja aparte con el nombre de la fecha.
 
 agregar la hoja del grano sorgo 
 
