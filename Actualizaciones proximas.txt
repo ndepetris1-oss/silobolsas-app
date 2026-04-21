@@ -1,11 +1,4 @@
 
-finanzas
-
-que registre fecha de pago y metodo de pago (transferencia, efectivo, que billetera virtual se usa) 
-que genere un pdf como recibo por el servicio, si es por cantidad de silo bolsas (cantidad de silo
-bolsas pagados y pendientes de pagar) o por mes, campaña o año.
-
-
 exportar a excel
 
 mejorar la visualizacion, en forma de tabla. No trae fecha de confeccion ni fecha de extraccion estimada. Mostrar factor
@@ -17,14 +10,15 @@ agregar la hoja del grano sorgo
 
 
 ACTUALIZACIONES POSTERIORES
-modulo aparte donde colocar datos del terreno, recorriendo el terreno capturar con el GPS partes del lote donde hay
-posibles encharcamientos u obstaculos para realizar posteriormente los silo bolsas. Se podria realizar un mapeo con
-los puntos del GPS todo el terreno, tomando puntos para medir el terreno, luego con una regla proyectar las colocaciones
+modulo aparte donde colocar datos del terreno a donde se van a realizar los silo bolsas, recorriendo el terreno
+capturar con el GPS partes del lote donde hay posibles encharcamientos u obstaculos para realizar posteriormente
+los silos bolsas. Se podria realizar un mapeo con los puntos del GPS todo el terreno, tomando puntos para medir
+el terreno, luego con una regla proyectar las colocaciones
 de los posibles silo bolsas y calles. 
 
 Registro de lluvia
 
-Modulo aparte para la extraccion, se extrae el silo bolsa a un camion q va a puerto o a la planta, identificarlo. 
+2) Modulo aparte para la extraccion, se extrae el silo bolsa a un camion q va a puerto o a la planta, identificarlo. 
 Cuando Form registra la extraccion del silo se habilita el "Vaciado de silo bolsa".Se registra el calado del mismo
 con analisis, fecha y hora, kg y dominio de camion.
 

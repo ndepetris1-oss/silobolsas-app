@@ -230,6 +230,31 @@ def init_db():
     )
     """)
     # =====================
+    # LLENADO
+    # =====================
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS llenado (
+        id SERIAL PRIMARY KEY,
+        numero_qr TEXT NOT NULL,
+        empresa_id INTEGER NOT NULL,
+        fecha TEXT NOT NULL,
+        kg REAL,
+        temperatura REAL,
+        humedad REAL,
+        danados REAL,
+        quebrados REAL,
+        materia_extrana REAL,
+        olor REAL,
+        moho REAL,
+        insectos INTEGER DEFAULT 0,
+        chamico REAL,
+        grado TEXT,
+        factor REAL,
+        tas INTEGER,
+        FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)
+""")
+    # =====================
     # AUDITORIA
     # =====================
     conn.execute("""

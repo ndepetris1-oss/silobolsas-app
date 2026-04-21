@@ -345,50 +345,57 @@ def factor_soja(d):
 def factor_girasol(d):
     f = 1.0
 
-    # ==================================
-    # MATERIA GRASA (BASE 42%)
-    # ==================================
-    grasa = d.get("materia_grasa")
+    def to_float(x):
+        try:
+            return float(x)
+        except:
+            return None
+
+    # =========================
+    # MATERIA GRASA
+    # =========================
+    grasa = to_float(d.get("materia_grasa"))
+
     if grasa is not None:
         diferencia = grasa - 42
-        f += diferencia * 0.02  # ±2% por punto proporcional
+        f += diferencia * 0.02
 
-    # ==================================
-    # ACIDEZ (BASE 1.5%)
-    # ==================================
-    acidez = d.get("acidez")
-    if acidez is not None:
-        base_acidez = 1.5
-        if acidez > base_acidez:
-            exceso = acidez - base_acidez
-            f -= exceso * 0.025  # 2.5% por punto proporcional
+    # =========================
+    # ACIDEZ
+    # =========================
+    acidez = to_float(d.get("acidez"))
 
-    # ==================================
-    # MATERIA EXTRAÑA (TRAMOS)
-    # ==================================
-    me = d.get("materia_extrana")
+    if acidez is not None and acidez > 1.5:
+        f -= (acidez - 1.5) * 0.025
+
+    # =========================
+    # MATERIA EXTRAÑA
+    # =========================
+    me = to_float(d.get("materia_extrana"))
+
     if me is not None and me > 0:
-
         if me <= 3:
-            f -= me * 0.01  # 1% proporcional hasta 3%
+            f -= me * 0.01
         else:
-            f -= 3 * 0.01  # tramo 1
-            exceso = me - 3
-            f -= exceso * 0.015  # tramo 2 (1.5%)
+            f -= 3 * 0.01
+            f -= (me - 3) * 0.015
 
-    # ==================================
+    # =========================
     # CHAMICO
-    # ==================================
-    chamico = d.get("chamico")
-    if chamico is not None and chamico > 0.25:
-        exceso = chamico - 0.25
-        f -= exceso * 0.001  # 0.1% por unidad
+    # =========================
+    chamico = to_float(d.get("chamico"))
 
-    # ==================================
-    # ARBITRAJES DIRECTOS
-    # ==================================
-    f -= (d.get("olor") or 0) / 100
-    f -= (d.get("moho") or 0) / 100
+    if chamico is not None and chamico > 0.25:
+        f -= (chamico - 0.25) * 0.001
+
+    # =========================
+    # ARBITRAJES
+    # =========================
+    olor = to_float(d.get("olor")) or 0
+    moho = to_float(d.get("moho")) or 0
+
+    f -= olor / 100
+    f -= moho / 100
 
     return round(max(f, 0), 4)
 

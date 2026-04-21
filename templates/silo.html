@@ -366,57 +366,114 @@ async function nuevoMuestreo(){
 ">
   <div style="
     background:white;border-radius:14px;padding:24px;
-    width:90%;max-width:480px;max-height:90vh;overflow-y:auto;
+    width:90%;max-width:500px;max-height:90vh;overflow-y:auto;
     border-top:5px solid #e65100;
   ">
-    <h3 style="color:#e65100;margin-top:0;">🌽 Nueva Carga — Llenado</h3>
+    <h3 style="color:#e65100;margin-top:0;">
+      🌽 Nueva Carga — {{ silo.cereal }}
+    </h3>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 
+      <!-- KG — siempre visible -->
       <div>
         <label style="font-size:.85rem;color:#555;">KG de la carga *</label>
         <input id="ll_kg" type="number" placeholder="Ej: 25000"
           style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
       </div>
 
+      <!-- Temperatura — siempre -->
       <div>
-        <label style="font-size:.85rem;color:#555;">Temperatura</label>
-        <input id="ll_temperatura" type="number" step="0.1" placeholder="°C"
+        <label style="font-size:.85rem;color:#555;">Temperatura °C</label>
+        <input id="ll_temperatura" type="number" step="0.1"
           style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
       </div>
 
+      <!-- Humedad — siempre -->
       <div>
         <label style="font-size:.85rem;color:#555;">Humedad %</label>
         <input id="ll_humedad" type="number" step="0.1"
           style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
       </div>
 
-      <div>
-        <label style="font-size:.85rem;color:#555;">Dañados %</label>
-        <input id="ll_danados" type="number" step="0.1"
-          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
-      </div>
-
-      <div>
-        <label style="font-size:.85rem;color:#555;">Quebrados %</label>
-        <input id="ll_quebrados" type="number" step="0.1"
-          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
-      </div>
-
+      <!-- Materia Extraña — todos excepto cuando no aplica -->
       <div>
         <label style="font-size:.85rem;color:#555;">Materia Extraña %</label>
         <input id="ll_materia_extrana" type="number" step="0.1"
           style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
       </div>
 
+      <!-- Dañados — Maíz, Soja, Trigo, Sorgo (NO Girasol) -->
+      {% if silo.cereal in ["Maíz", "Soja", "Trigo", "Sorgo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Dañados %</label>
+        <input id="ll_danados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Quebrados — Maíz, Trigo, Sorgo (NO Soja, NO Girasol) -->
+      {% if silo.cereal in ["Maíz", "Trigo", "Sorgo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Quebrados %</label>
+        <input id="ll_quebrados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- PH — Maíz, Trigo -->
+      {% if silo.cereal in ["Maíz", "Trigo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">PH</label>
+        <input id="ll_ph" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Chamico — Girasol, Sorgo -->
+      {% if silo.cereal in ["Girasol", "Sorgo"] %}
       <div>
         <label style="font-size:.85rem;color:#555;">Chamico %</label>
         <input id="ll_chamico" type="number" step="0.1"
           style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
       </div>
+      {% endif %}
+
+      <!-- Materia Grasa — solo Girasol -->
+      {% if silo.cereal == "Girasol" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Materia Grasa % (base 42)</label>
+        <input id="ll_materia_grasa" type="number" step="0.1" placeholder="42"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;">Acidez % (base 1.5)</label>
+        <input id="ll_acidez" type="number" step="0.1" placeholder="1.5"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Proteínas — solo Trigo -->
+      {% if silo.cereal == "Trigo" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Proteínas %</label>
+        <input id="ll_proteinas" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Granos picados — solo Sorgo -->
+      {% if silo.cereal == "Sorgo" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Granos picados %</label>
+        <input id="ll_granos_picados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
 
     </div>
 
+    <!-- Olor, Moho, Insectos — siempre -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
       <div>
         <label style="font-size:.85rem;color:#555;">Olor % (0.5 a 2)</label>
@@ -453,10 +510,13 @@ async function nuevoMuestreo(){
 <script>
 function abrirModalLlenado(){
   document.getElementById("modalLlenado").style.display = "flex";
-  // limpiar campos
-  ["ll_kg","ll_temperatura","ll_humedad","ll_danados",
-   "ll_quebrados","ll_materia_extrana","ll_chamico","ll_olor","ll_moho"].forEach(id => {
-    document.getElementById(id).value = "";
+  // limpiar todos los campos posibles
+  ["ll_kg","ll_temperatura","ll_humedad","ll_danados","ll_quebrados",
+   "ll_materia_extrana","ll_chamico","ll_olor","ll_moho",
+   "ll_ph","ll_materia_grasa","ll_acidez","ll_proteinas","ll_granos_picados"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = "";
   });
   document.getElementById("ll_insectos").checked = false;
   document.getElementById("ll_error").style.display = "none";
@@ -485,21 +545,28 @@ async function guardarLlenado(){
   document.getElementById("btnGuardarLlenado").disabled = true;
   document.getElementById("btnGuardarLlenado").textContent = "Guardando...";
 
+  function getVal(id){ const el = document.getElementById(id); return el ? (el.value || null) : null; }
+
   const res = await fetch("/api/llenado", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      numero_qr:      "{{ silo.numero_qr }}",
-      kg:             kg,
-      temperatura:    document.getElementById("ll_temperatura").value || null,
-      humedad:        document.getElementById("ll_humedad").value || null,
-      danados:        document.getElementById("ll_danados").value || null,
-      quebrados:      document.getElementById("ll_quebrados").value || null,
-      materia_extrana:document.getElementById("ll_materia_extrana").value || null,
-      chamico:        document.getElementById("ll_chamico").value || null,
-      olor:           document.getElementById("ll_olor").value,
-      moho:           document.getElementById("ll_moho").value,
-      insectos:       document.getElementById("ll_insectos").checked
+      numero_qr:       "{{ silo.numero_qr }}",
+      kg:              kg,
+      temperatura:     getVal("ll_temperatura"),
+      humedad:         getVal("ll_humedad"),
+      materia_extrana: getVal("ll_materia_extrana"),
+      danados:         getVal("ll_danados"),
+      quebrados:       getVal("ll_quebrados"),
+      ph:              getVal("ll_ph"),
+      chamico:         getVal("ll_chamico"),
+      materia_grasa:   getVal("ll_materia_grasa"),
+      acidez:          getVal("ll_acidez"),
+      proteinas:       getVal("ll_proteinas"),
+      granos_picados:  getVal("ll_granos_picados"),
+      olor:            getVal("ll_olor"),
+      moho:            getVal("ll_moho"),
+      insectos:        document.getElementById("ll_insectos").checked
     })
   });
 

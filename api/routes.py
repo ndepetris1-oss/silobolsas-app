@@ -572,6 +572,8 @@ def nueva_carga_llenado():
         "danados":     to_float(d.get("danados")),
         "quebrados":   to_float(d.get("quebrados")),
         "materia_extrana": to_float(d.get("materia_extrana")),
+        "materia_grasa": to_float(d.get("materia_grasa")),
+        "acidez": to_float(d.get("acidez")),
         "olor":        to_float(d.get("olor")) or 0,
         "moho":        to_float(d.get("moho")) or 0,
         "chamico":     to_float(d.get("chamico")),
