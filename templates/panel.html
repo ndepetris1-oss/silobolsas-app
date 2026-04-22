@@ -219,6 +219,79 @@ th{background:#a5d6a7;cursor:pointer}
 </div>
 <!-- ===== FIN RESUMEN ===== -->
 
+<!-- ===== RESUMEN COMERCIAL POR CEREAL ===== -->
+{% if resumen_comercial %}
+<div style="width:95%;margin:12px auto 0 auto;">
+  <div style="
+    background:white;border-radius:14px;padding:16px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  ">
+    <h3 style="margin:0 0 12px 0;color:#1b5e20;font-size:1rem;">
+      📊 Resumen comercial por cereal
+    </h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+        <thead>
+          <tr style="background:#a5d6a7;">
+            <th style="padding:8px;text-align:left;">Cereal</th>
+            <th style="padding:8px;text-align:center;">Silos</th>
+            <th style="padding:8px;text-align:right;">KG estimados</th>
+            <th style="padding:8px;text-align:center;">Factor pond.</th>
+            <th style="padding:8px;text-align:right;">Pizarra</th>
+            <th style="padding:8px;text-align:right;">Precio ARS/TN</th>
+            <th style="padding:8px;text-align:right;">Precio USD/TN</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cereal, d in resumen_comercial.items() %}
+          <tr style="border-bottom:1px solid #e8f5e9;">
+            <td style="padding:8px;font-weight:bold;">{{ cereal }}</td>
+            <td style="padding:8px;text-align:center;">{{ d.silos }}</td>
+            <td style="padding:8px;text-align:right;">
+              {{ "{:,.0f}".format(d.kg_total) }} kg
+            </td>
+            <td style="padding:8px;text-align:center;">
+              {% if d.factor_pond %}
+                {{ d.factor_pond }}%
+              {% else %}
+                <span style="color:#aaa;">—</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;text-align:right;">
+              {% if d.pizarra %}
+                ${{ "{:,.0f}".format(d.pizarra) }}
+              {% else %}
+                <span style="color:#aaa;">—</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;text-align:right;font-weight:bold;">
+              {% if d.precio_ars %}
+                ${{ "{:,.2f}".format(d.precio_ars) }}
+              {% else %}
+                <span style="color:#aaa;">Sin pizarra</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px;text-align:right;color:#1976d2;font-weight:bold;">
+              {% if d.precio_usd %}
+                u$s {{ "{:,.2f}".format(d.precio_usd) }}
+              {% else %}
+                <span style="color:#aaa;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.75rem;color:#999;margin:8px 0 0 0;">
+      * KG estimados: usa KG reales de llenado. Si no hay llenado, estima metros × 1000.
+      Factor ponderado por KG. Precio = pizarra × factor.
+    </p>
+  </div>
+</div>
+{% endif %}
+<!-- ===== FIN RESUMEN COMERCIAL ===== -->
+
 <div class="container">
 
 <button id="btnMapa"
@@ -369,7 +442,10 @@ function render(){
         <td>${r.estado_silo ?? 'Activo'}</td>
         <td>${r.fecha_confeccion}</td>
         <td>${r.grado ?? '-'}</td>
-        <td>${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}</td>
+        <td>
+          ${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}
+          ${r.fuente_calidad === 'llenado' ? '<br><span style="font-size:.75rem;color:#e65100;font-weight:bold;">🌽 Llenado</span>' : ''}
+        </td>
         <td class="${r.tas_min && r.tas_min <= 30 ? 'alerta-tas' : ''}">
           ${r.tas_min ?? '-'}
         </td>
