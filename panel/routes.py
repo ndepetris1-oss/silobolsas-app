@@ -367,21 +367,27 @@ def panel():
                     SELECT kg, factor, tas, fecha
                     FROM llenado
                     WHERE numero_qr=? AND empresa_id=?
-                      AND factor IS NOT NULL
-                      AND tas IS NOT NULL
                     ORDER BY fecha DESC
                 """, (s["numero_qr"], empresa_id)).fetchall()
 
                 if cargas:
                     fuente = "llenado"
-                    kg_total_pond = sum(float(c["kg"] or 0) for c in cargas)
-                    if kg_total_pond > 0:
-                        factor_pond = sum(
-                            float(c["factor"]) * float(c["kg"] or 0)
-                            for c in cargas
-                        ) / kg_total_pond
-                        factor_prom = round(factor_pond, 4)
+                    # Factor ponderado por KG (solo cargas con factor)
+                    cargas_con_factor = [c for c in cargas if c["factor"] is not None]
+                    if cargas_con_factor:
+                        kg_total_pond = sum(float(c["kg"] or 0) for c in cargas_con_factor)
+                        if kg_total_pond > 0:
+                            factor_pond = sum(
+                                float(c["factor"]) * float(c["kg"] or 0)
+                                for c in cargas_con_factor
+                            ) / kg_total_pond
+                            factor_prom = round(factor_pond, 4)
+                        else:
+                            # Si no hay KG, promedio simple
+                            factores = [float(c["factor"]) for c in cargas_con_factor]
+                            factor_prom = round(sum(factores) / len(factores), 4)
 
+                    # TAS mínimo de cargas con TAS
                     tas_vals = [int(c["tas"]) for c in cargas if c["tas"] is not None]
                     if tas_vals:
                         tas_min = min(tas_vals)
