@@ -167,11 +167,23 @@ th{background:#a5d6a7;cursor:pointer}
   ">
     <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_activos }}</div>
     <div style="font-size:.85rem;margin-top:4px;">🌾 Silos activos</div>
+    {% set factor_general_num = namespace(suma_kg=0, suma_kgf=0) %}
+    {% for cereal, d in resumen_comercial.items() %}
+      {% if d.factor_pond %}
+        {% set factor_general_num.suma_kg = factor_general_num.suma_kg + d.kg_total %}
+        {% set factor_general_num.suma_kgf = factor_general_num.suma_kgf + (d.factor_pond * d.kg_total) %}
+      {% endif %}
+    {% endfor %}
+    {% if factor_general_num.suma_kg > 0 %}
+    <div style="font-size:.9rem;margin-top:6px;opacity:.9;">
+      Factor: <b>{{ (factor_general_num.suma_kgf / factor_general_num.suma_kg) | round(2) }}%</b>
+    </div>
+    {% endif %}
   </div>
 
   <!-- Por cereal -->
   {% for cereal, cant in resumen.por_cereal.items() %}
-  {% set colores = {'Soja':'#f9a825','Maíz':'#e65100','Trigo':'#78909c','Girasol':'#558b2f'} %}
+  {% set colores = {'Soja':'#f9a825','Maíz':'#e65100','Trigo':'#78909c','Girasol':'#558b2f','Sorgo':'#6d4c41'} %}
   <div style="
     flex:1;min-width:130px;
     background:{{ colores.get(cereal,'#455a64') }};color:white;
@@ -180,6 +192,11 @@ th{background:#a5d6a7;cursor:pointer}
   ">
     <div style="font-size:2rem;font-weight:bold;">{{ cant }}</div>
     <div style="font-size:.85rem;margin-top:4px;">{{ cereal }}</div>
+    {% if resumen_comercial and cereal in resumen_comercial and resumen_comercial[cereal].factor_pond %}
+    <div style="font-size:.9rem;margin-top:6px;opacity:.9;">
+      Factor: <b>{{ resumen_comercial[cereal].factor_pond }}%</b>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 

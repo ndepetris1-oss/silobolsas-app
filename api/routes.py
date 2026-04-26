@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from utils.auditoria import registrar_auditoria
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso
@@ -9,7 +8,6 @@ import cloudinary
 import cloudinary.uploader
 from calculos import calcular_comercial
 from flask import request, jsonify
-from utils.fechas import ahora
 
 # Configurar Cloudinary
 cloudinary.config(
@@ -66,15 +64,7 @@ def registrar_silo():
         d.get("lon"),
         ahora()
     ))
-    
-    registrar_auditoria(
-        conn,
-        current_user.id,
-        current_user.empresa_id,
-        "registro_silo",
-        f"Cereal: {d.get('cereal')}, {d.get('metros')}m, Estado: {d.get('estado_grano')}",
-        d.get("numero_qr")
-)
+
     conn.commit()
     conn.close()
 
@@ -335,8 +325,6 @@ def guardar_analisis_seccion():
             res["factor"],
             res["tas"]
         ))
-    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
-        "analisis", f"Sección: {d.get('seccion')}, Grado: {grado}", d.get("id_muestreo") and str(d.get("id_muestreo")))
     conn.commit()
     conn.close()
 
@@ -482,8 +470,6 @@ def nuevo_monitoreo():
             path
         ))
 
-    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
-        "evento_monitoreo", f"Tipo: {tipo}", qr)
     conn.commit()
     conn.close()
 
@@ -572,8 +558,6 @@ def nueva_carga_llenado():
         "danados":     to_float(d.get("danados")),
         "quebrados":   to_float(d.get("quebrados")),
         "materia_extrana": to_float(d.get("materia_extrana")),
-        "materia_grasa": to_float(d.get("materia_grasa")),
-        "acidez": to_float(d.get("acidez")),
         "olor":        to_float(d.get("olor")) or 0,
         "moho":        to_float(d.get("moho")) or 0,
         "chamico":     to_float(d.get("chamico")),
@@ -598,8 +582,6 @@ def nueva_carga_llenado():
         str(res.get("grado") or "F/E"), res.get("factor"), res.get("tas")
     ))
 
-    registrar_auditoria(conn, current_user.id, current_user.empresa_id,
-        "llenado", f"{kg} kg", qr)
     conn.commit()
     conn.close()
 
@@ -656,4 +638,102 @@ def registrar_extraccion():
     conn.commit()
     conn.close()
 
+    return jsonify(ok=True)
+
+
+# ======================
+# LLENADO — EDITAR
+# ======================
+@api_bp.route("/api/llenado/<int:id>", methods=["PUT"])
+@login_required
+def editar_carga_llenado(id):
+
+    if not tiene_permiso("form"):
+        return jsonify(ok=False, error="No autorizado"), 403
+
+    d = request.get_json(force=True, silent=True) or {}
+    conn = get_db()
+
+    carga = conn.execute(
+        "SELECT numero_qr FROM llenado WHERE id=? AND empresa_id=?",
+        (id, current_user.empresa_id)
+    ).fetchone()
+
+    if not carga:
+        conn.close()
+        return jsonify(ok=False, error="Carga no encontrada"), 404
+
+    silo = conn.execute(
+        "SELECT cereal FROM silos WHERE numero_qr=? AND empresa_id=?",
+        (carga["numero_qr"], current_user.empresa_id)
+    ).fetchone()
+
+    def to_float(x):
+        try:
+            return float(x) if x not in (None, "", "null") else None
+        except:
+            return None
+
+    datos = {
+        "temperatura":     to_float(d.get("temperatura")),
+        "humedad":         to_float(d.get("humedad")),
+        "danados":         to_float(d.get("danados")),
+        "quebrados":       to_float(d.get("quebrados")),
+        "materia_extrana": to_float(d.get("materia_extrana")),
+        "olor":            to_float(d.get("olor")) or 0,
+        "moho":            to_float(d.get("moho")) or 0,
+        "chamico":         to_float(d.get("chamico")),
+        "insectos":        1 if d.get("insectos") else 0,
+        "materia_grasa":   to_float(d.get("materia_grasa")),
+        "acidez":          to_float(d.get("acidez")),
+        "proteinas":       to_float(d.get("proteinas")),
+        "granos_picados":  to_float(d.get("granos_picados")),
+    }
+    kg = to_float(d.get("kg")) or 0
+
+    res = calcular_comercial(silo["cereal"], datos)
+
+    conn.execute("""
+        UPDATE llenado SET
+            kg=?, temperatura=?, humedad=?, danados=?, quebrados=?,
+            materia_extrana=?, olor=?, moho=?, insectos=?, chamico=?,
+            grado=?, factor=?, tas=?
+        WHERE id=? AND empresa_id=?
+    """, (
+        kg, datos["temperatura"], datos["humedad"], datos["danados"], datos["quebrados"],
+        datos["materia_extrana"], datos["olor"], datos["moho"], datos["insectos"], datos["chamico"],
+        str(res.get("grado") or "F/E"), res.get("factor"), res.get("tas"),
+        id, current_user.empresa_id
+    ))
+
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
+
+
+# ======================
+# LLENADO — ELIMINAR
+# ======================
+@api_bp.route("/api/llenado/<int:id>", methods=["DELETE"])
+@login_required
+def eliminar_carga_llenado(id):
+
+    if not tiene_permiso("form"):
+        return jsonify(ok=False, error="No autorizado"), 403
+
+    conn = get_db()
+
+    carga = conn.execute(
+        "SELECT id FROM llenado WHERE id=? AND empresa_id=?",
+        (id, current_user.empresa_id)
+    ).fetchone()
+
+    if not carga:
+        conn.close()
+        return jsonify(ok=False, error="Carga no encontrada"), 404
+
+    conn.execute("DELETE FROM llenado WHERE id=? AND empresa_id=?",
+                 (id, current_user.empresa_id))
+    conn.commit()
+    conn.close()
     return jsonify(ok=True)

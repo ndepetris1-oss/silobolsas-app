@@ -168,18 +168,52 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
     <th>Temp °C</th>
     <th>Hum %</th>
 
-    {% if muestreo.cereal == "Sorgo" %}
-      <th>Granos picados</th>
+    {# === ENCABEZADOS POR CEREAL === #}
+
+    {# Maíz, Trigo, Sorgo → Dañados #}
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo","Soja") %}
+      <th>Dañados %</th>
     {% endif %}
 
-    <th>Dañados</th>
-    <th>Quebrados</th>
-    <th>M.Ext</th>
+    {# Maíz, Trigo, Sorgo → Quebrados (NO Soja, NO Girasol) #}
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <th>Quebrados %</th>
+    {% endif %}
+
+    {# Todos → M.Ext #}
+    <th>M.Ext %</th>
+
+    {# Maíz, Trigo → PH #}
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <th>PH</th>
+    {% endif %}
+
+    {# Sorgo → Granos picados #}
+    {% if muestreo.cereal == "Sorgo" %}
+      <th>Gr. picados</th>
+    {% endif %}
+
+    {# Girasol → Materia grasa y Acidez #}
+    {% if muestreo.cereal == "Girasol" %}
+      <th>Mat. grasa %</th>
+      <th>Acidez %</th>
+    {% endif %}
+
+    {# Trigo → Proteínas #}
+    {% if muestreo.cereal == "Trigo" %}
+      <th>Proteínas %</th>
+    {% endif %}
+
+    {# Girasol, Sorgo → Chamico #}
+    {% if muestreo.cereal in ("Girasol","Sorgo") %}
+      <th>Chamico</th>
+    {% endif %}
+
     <th>Olor %</th>
     <th>Moho %</th>
     <th>Insectos</th>
-    <th>Chamico</th>
 
+    {# Grado solo para Maíz, Trigo, Sorgo #}
     {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
       <th>Grado</th>
     {% endif %}
@@ -190,44 +224,61 @@ Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
 
   <tr>
     <td>{{ a.temperatura if a.temperatura is not none else "-" }}</td>
-    <td>{{ a.humedad }}</td>
+    <td>{{ a.humedad if a.humedad is not none else "-" }}</td>
 
-    {% if muestreo.cereal == "Sorgo" %}
-      <td>{{ a.granos_picados or 0 }}</td>
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo","Soja") %}
+      <td>{{ a.danados if a.danados is not none else "-" }}</td>
     {% endif %}
 
-    <td>{{ a.danados }}</td>
-    <td>{{ a.quebrados }}</td>
-    <td>{{ a.materia_extrana }}</td>
-    <td>{{ a.olor }}</td>
-    <td>{{ a.moho }}</td>
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <td>{{ a.quebrados if a.quebrados is not none else "-" }}</td>
+    {% endif %}
+
+    <td>{{ a.materia_extrana if a.materia_extrana is not none else "-" }}</td>
+
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <td>{{ a.ph if a.ph is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Sorgo" %}
+      <td>{{ a.granos_picados if a.granos_picados is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Girasol" %}
+      <td>{{ a.materia_grasa if a.materia_grasa is not none else "-" }}</td>
+      <td>{{ a.Acidez if a.Acidez is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Trigo" %}
+      <td>{{ a.proteinas if a.proteinas is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal in ("Girasol","Sorgo") %}
+      <td>{{ a.chamico if a.chamico is not none else "-" }}</td>
+    {% endif %}
+
+    <td>{{ a.olor if a.olor is not none else "-" }}</td>
+    <td>{{ a.moho if a.moho is not none else "-" }}</td>
     <td>{{ "Sí" if a.insectos else "No" }}</td>
-    <td>{{ a.chamico }}</td>
 
     {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
       <td>
         {% if a.grado is not none %}
           <b>{{ a.grado }}</b>
-        {% else %}
-          -
-        {% endif %}
+        {% else %}-{% endif %}
       </td>
     {% endif %}
 
     <td>
       {% if a.factor is not none %}
         <b>{{ (a.factor * 100)|round(2) }}%</b>
-      {% else %}
-        -
-      {% endif %}
+      {% else %}-{% endif %}
     </td>
 
     <td>
       {% if a.tas is not none %}
         <b>{{ a.tas }}</b>
-      {% else %}
-        -
-      {% endif %}
+      {% else %}-{% endif %}
     </td>
   </tr>
 </table>

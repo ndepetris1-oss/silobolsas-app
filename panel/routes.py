@@ -145,15 +145,19 @@ def ver_silo(qr):
     """, (qr, empresa_id)).fetchall()
 
     try:
-        cargas_llenado = conn.execute("""
+        cargas_raw = conn.execute("""
             SELECT id, fecha, kg, temperatura, humedad, danados,
-                   quebrados, materia_extrana, olor, moho, insectos,
-                   chamico, grado, factor, tas
+                quebrados, materia_extrana, olor, moho, insectos,
+                chamico, grado, factor, tas
             FROM llenado
             WHERE numero_qr=? AND empresa_id=?
             ORDER BY fecha DESC
         """, (qr, empresa_id)).fetchall()
+
+        cargas_llenado = [dict(x) for x in cargas_raw]
+
         kg_total = sum(float(c["kg"] or 0) for c in cargas_llenado)
+
     except Exception:
         conn.rollback()
         cargas_llenado = []
@@ -372,7 +376,6 @@ def panel():
 
                 if cargas:
                     fuente = "llenado"
-                    # Factor ponderado por KG (solo cargas con factor)
                     cargas_con_factor = [c for c in cargas if c["factor"] is not None]
                     if cargas_con_factor:
                         kg_total_pond = sum(float(c["kg"] or 0) for c in cargas_con_factor)
@@ -383,16 +386,13 @@ def panel():
                             ) / kg_total_pond
                             factor_prom = round(factor_pond, 4)
                         else:
-                            # Si no hay KG, promedio simple
                             factores = [float(c["factor"]) for c in cargas_con_factor]
                             factor_prom = round(sum(factores) / len(factores), 4)
 
-                    # TAS mínimo de cargas con TAS
                     tas_vals = [int(c["tas"]) for c in cargas if c["tas"] is not None]
                     if tas_vals:
                         tas_min = min(tas_vals)
 
-                    # Fecha estimada desde la carga más reciente
                     if tas_min and cargas[0]["fecha"]:
                         fecha_str = cargas[0]["fecha"]
                         try:
@@ -433,7 +433,6 @@ def panel():
         if r.get("estado_silo") != "Extraído":
             c = r.get("cereal", "Otro")
             por_cereal[c] = por_cereal.get(c, 0) + 1
-
     # ==========================================
     # RESUMEN COMERCIAL POR CEREAL
     # ==========================================
@@ -441,7 +440,6 @@ def panel():
     resumen_comercial = {}
 
     for cereal in por_cereal.keys():
-        # Traer pizarra y dólar del mercado para este cereal
         mercado = conn2.execute("""
             SELECT
                 CASE WHEN usar_manual = 1 THEN pizarra_manual
@@ -462,13 +460,10 @@ def panel():
         if not silos_cereal:
             continue
 
-        # Calcular factor ponderado por KG
-        # Si tiene KG de llenado lo usa, sino usa metros como proxy
         kg_con_factor = []
         for r in silos_cereal:
             kg = r.get("kg_total") or 0
             if kg == 0:
-                # Sin llenado: usar metros * 1000 como estimación
                 kg = (r.get("metros") or 0) * 1000
             if kg > 0:
                 kg_con_factor.append((kg, r["factor"]))
@@ -503,11 +498,11 @@ def panel():
         puede_comercial=tiene_permiso("comercial"),
         puede_admin=tiene_permiso("admin"),
         resumen={
-            "total_activos":    total_activos,
-            "total_extraidos":  total_extraidos,
-            "con_alertas":      con_alertas,
-            "con_eventos":      con_eventos,
-            "por_cereal":       por_cereal,
+            "total_activos":   total_activos,
+            "total_extraidos": total_extraidos,
+            "con_alertas":     con_alertas,
+            "con_eventos":     con_eventos,
+            "por_cereal":      por_cereal,
         },
         resumen_comercial=resumen_comercial
     )

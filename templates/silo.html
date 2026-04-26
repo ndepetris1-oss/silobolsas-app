@@ -328,12 +328,11 @@ async function nuevoMuestreo(){
         <th>KG</th>
         <th>Temp</th>
         <th>Hum %</th>
-        <th>Dañados %</th>
-        <th>Quebrados %</th>
         <th>M.Ext %</th>
         <th>Grado</th>
         <th>Factor</th>
         <th>TAS</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -343,12 +342,37 @@ async function nuevoMuestreo(){
         <td><b>{{ "{:,.0f}".format(c.kg or 0) }}</b></td>
         <td>{{ c.temperatura or "-" }}</td>
         <td>{{ c.humedad or "-" }}</td>
-        <td>{{ c.danados or "-" }}</td>
-        <td>{{ c.quebrados or "-" }}</td>
         <td>{{ c.materia_extrana or "-" }}</td>
         <td>{{ c.grado or "-" }}</td>
         <td>{{ ((c.factor or 0)*100)|round(2) }}%</td>
         <td>{{ c.tas or "-" }}</td>
+        <td>
+          <button
+            class="btn-editar-carga"
+            data-id="{{ c.id }}"
+            data-kg="{{ c.kg or '' }}"
+            data-temperatura="{{ c.temperatura or '' }}"
+            data-humedad="{{ c.humedad or '' }}"
+            data-danados="{{ c.danados or '' }}"
+            data-quebrados="{{ c.quebrados or '' }}"
+            data-materia_extrana="{{ c.materia_extrana or '' }}"
+            data-chamico="{{ c.chamico or '' }}"
+            data-olor="{{ c.olor or '' }}"
+            data-moho="{{ c.moho or '' }}"
+            data-insectos="{{ c.insectos or 0 }}"
+            data-ph="{{ c.ph or '' }}"
+            data-materia_grasa="{{ c.materia_grasa or '' }}"
+            data-acidez="{{ c.acidez or '' }}"
+            data-proteinas="{{ c.proteinas or '' }}"
+            data-granos_picados="{{ c.granos_picados or '' }}"
+            style="background:#1976d2;padding:4px 8px;font-size:.8rem;margin:2px;">
+            ✏️
+          </button>
+          <button onclick="eliminarCarga({{ c.id }})"
+            style="background:#c62828;padding:4px 8px;font-size:.8rem;margin:2px;">
+            🗑️
+          </button>
+        </td>
       </tr>
     {% endfor %}
     </tbody>
@@ -369,9 +393,10 @@ async function nuevoMuestreo(){
     width:90%;max-width:500px;max-height:90vh;overflow-y:auto;
     border-top:5px solid #e65100;
   ">
-    <h3 style="color:#e65100;margin-top:0;">
+    <h3 id="tituloModalLlenado" style="color:#e65100;margin-top:0;">
       🌽 Nueva Carga — {{ silo.cereal }}
     </h3>
+    <input type="hidden" id="ll_id" value="">
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 
@@ -508,18 +533,55 @@ async function nuevoMuestreo(){
 </div>
 
 <script>
-function abrirModalLlenado(){
-  document.getElementById("modalLlenado").style.display = "flex";
-  // limpiar todos los campos posibles
-  ["ll_kg","ll_temperatura","ll_humedad","ll_danados","ll_quebrados",
+const CAMPOS_LL = ["ll_kg","ll_temperatura","ll_humedad","ll_danados","ll_quebrados",
    "ll_materia_extrana","ll_chamico","ll_olor","ll_moho",
-   "ll_ph","ll_materia_grasa","ll_acidez","ll_proteinas","ll_granos_picados"
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.value = "";
-  });
+   "ll_ph","ll_materia_grasa","ll_acidez","ll_proteinas","ll_granos_picados"];
+
+function abrirModalLlenado(){
+  document.getElementById("ll_id").value = "";
+  document.getElementById("tituloModalLlenado").textContent = "🌽 Nueva Carga — {{ silo.cereal }}";
+  document.getElementById("btnGuardarLlenado").textContent = "💾 Guardar carga";
+  document.getElementById("btnGuardarLlenado").style.background = "#e65100";
+  CAMPOS_LL.forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; });
   document.getElementById("ll_insectos").checked = false;
   document.getElementById("ll_error").style.display = "none";
+  document.getElementById("modalLlenado").style.display = "flex";
+}
+
+// Event delegation para botones de editar
+document.addEventListener("click", function(e){
+  const btn = e.target.closest(".btn-editar-carga");
+  if(!btn) return;
+
+  const d = btn.dataset;
+  document.getElementById("ll_id").value = d.id;
+  document.getElementById("tituloModalLlenado").textContent = "✏️ Editar Carga — {{ silo.cereal }}";
+  document.getElementById("btnGuardarLlenado").textContent = "💾 Actualizar carga";
+  document.getElementById("btnGuardarLlenado").style.background = "#1976d2";
+  document.getElementById("ll_error").style.display = "none";
+
+  const map = {
+    ll_kg: "kg", ll_temperatura: "temperatura", ll_humedad: "humedad",
+    ll_danados: "danados", ll_quebrados: "quebrados",
+    ll_materia_extrana: "materia_extrana", ll_chamico: "chamico",
+    ll_olor: "olor", ll_moho: "moho", ll_ph: "ph",
+    ll_materia_grasa: "materia_grasa", ll_acidez: "acidez",
+    ll_proteinas: "proteinas", ll_granos_picados: "granos_picados"
+  };
+  Object.entries(map).forEach(([elId, campo]) => {
+    const el = document.getElementById(elId);
+    if(el) el.value = d[campo] ?? "";
+  });
+  document.getElementById("ll_insectos").checked = d.insectos === "1";
+  document.getElementById("modalLlenado").style.display = "flex";
+});
+
+async function eliminarCarga(id){
+  if(!confirm("¿Eliminar esta carga? Esta acción no se puede deshacer.")) return;
+  const res = await fetch(`/api/llenado/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  if(data.ok){ location.reload(); }
+  else { alert(data.error || "Error al eliminar."); }
 }
 
 function cerrarModalLlenado(){
@@ -533,7 +595,6 @@ async function guardarLlenado(){
     document.getElementById("ll_error").style.display = "block";
     return;
   }
-
   const olor_val = parseFloat(document.getElementById("ll_olor").value) || 0;
   const moho_val = parseFloat(document.getElementById("ll_moho").value) || 0;
   if(olor_val > 2 || moho_val > 2){
@@ -547,13 +608,16 @@ async function guardarLlenado(){
 
   function getVal(id){ const el = document.getElementById(id); return el ? (el.value || null) : null; }
 
-  const res = await fetch("/api/llenado", {
-    method: "POST",
+  const id_carga = document.getElementById("ll_id").value;
+  const url    = id_carga ? `/api/llenado/${id_carga}` : "/api/llenado";
+  const method = id_carga ? "PUT" : "POST";
+
+  const res = await fetch(url, {
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       numero_qr:       "{{ silo.numero_qr }}",
-      kg:              kg,
-      temperatura:     getVal("ll_temperatura"),
+      kg, temperatura: getVal("ll_temperatura"),
       humedad:         getVal("ll_humedad"),
       materia_extrana: getVal("ll_materia_extrana"),
       danados:         getVal("ll_danados"),
@@ -571,7 +635,6 @@ async function guardarLlenado(){
   });
 
   const data = await res.json();
-
   if(data.ok){
     cerrarModalLlenado();
     location.reload();
@@ -579,7 +642,7 @@ async function guardarLlenado(){
     document.getElementById("ll_error").textContent = data.error || "Error al guardar.";
     document.getElementById("ll_error").style.display = "block";
     document.getElementById("btnGuardarLlenado").disabled = false;
-    document.getElementById("btnGuardarLlenado").textContent = "💾 Guardar carga";
+    document.getElementById("btnGuardarLlenado").textContent = id_carga ? "💾 Actualizar carga" : "💾 Guardar carga";
   }
 }
 </script>
