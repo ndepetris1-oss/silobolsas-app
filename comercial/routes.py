@@ -424,7 +424,8 @@ def obtener_pizarra_auto(cereal):
             "Soja": "soja",
             "Maíz": "maiz",
             "Trigo": "trigo",
-            "Girasol": "girasol"
+            "Girasol": "girasol",
+            "Sorgo": "sorgo"
         }
 
         clave = mapa.get(cereal)

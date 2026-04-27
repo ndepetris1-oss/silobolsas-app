@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, send_file, make_response
+from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 from db import get_db
 from permissions import tiene_permiso, acceso_denegado
@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 import secrets
 import string
 from panel.routes import empresa_actual
-from utils.recibo_pdf import generar_recibo_pdf
+import sqlite3
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -79,7 +79,7 @@ def crear_empresa():
     # ======================
     # CREAR MERCADO BASE
     # ======================
-    cereales = ["Soja", "Maíz", "Trigo", "Girasol"]
+    cereales = ["Soja", "Maíz", "Trigo", "Girasol", "Sorgo"]
 
     for cereal in cereales:
         conn.execute("""
@@ -490,6 +490,7 @@ def registrar_pago(id):
 
     conn = get_db()
 
+    # 🔹 Traer nombre empresa
     empresa = conn.execute(
         "SELECT nombre FROM empresas WHERE id=?",
         (id,)
@@ -497,15 +498,10 @@ def registrar_pago(id):
 
     if request.method == "POST":
 
-        fecha_pago    = request.form.get("fecha_pago")
-        monto         = request.form.get("monto")
-        metodo_pago   = request.form.get("metodo_pago")
-        comprobante   = request.form.get("comprobante")
-        alias_cvu     = request.form.get("alias_cvu")
-        tipo_periodo  = request.form.get("tipo_periodo")
-        silos         = request.form.get("silos_cobrados") or 0
-        periodo       = request.form.get("periodo")
-        observacion   = request.form.get("observacion")
+        monto = request.form.get("monto")
+        silos = request.form.get("silos_cobrados")
+        observacion = request.form.get("observacion")
+        fecha_pago = request.form.get("fecha_pago")
 
         conn.execute("""
             INSERT INTO pagos (
@@ -513,45 +509,21 @@ def registrar_pago(id):
                 fecha_pago,
                 monto,
                 silos_cobrados,
-                periodo,
                 observacion
             )
-            VALUES (?,?,?,?,?,?)
-        """, (id, fecha_pago, monto, silos, periodo, observacion))
+            VALUES (?,?,?,?,?)
+        """, (
+            id,
+            fecha_pago,
+            monto,
+            silos,
+            observacion
+        ))
 
         conn.commit()
-
-        # Obtener el ID del pago recién insertado
-        pago_row = conn.execute("""
-            SELECT id FROM pagos
-            WHERE empresa_id=?
-            ORDER BY id DESC LIMIT 1
-        """, (id,)).fetchone()
-        pago_id = pago_row["id"] if pago_row else 0
-
         conn.close()
 
-        # Generar PDF recibo
-        datos_pago = {
-            "id":             pago_id,
-            "empresa_nombre": empresa["nombre"],
-            "fecha_pago":     fecha_pago,
-            "monto":          monto,
-            "metodo_pago":    metodo_pago,
-            "comprobante":    comprobante,
-            "alias_cvu":      alias_cvu,
-            "tipo_periodo":   tipo_periodo,
-            "silos_cobrados": silos,
-            "periodo":        periodo,
-            "observacion":    observacion,
-        }
-
-        pdf_buffer = generar_recibo_pdf(datos_pago)
-
-        response = make_response(pdf_buffer.read())
-        response.headers["Content-Type"] = "application/pdf"
-        response.headers["Content-Disposition"] = f'attachment; filename="recibo_{pago_id}_{empresa["nombre"].replace(" ","_")}.pdf"'
-        return response
+        return redirect(url_for("admin.admin_finanzas"))
 
     conn.close()
 

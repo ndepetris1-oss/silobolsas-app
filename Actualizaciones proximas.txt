@@ -6,7 +6,6 @@ con 100%
 
 Colocar en tabla aparte precio rofex y matba con fecha del precio en hoja aparte con el nombre de la fecha.
 
-agregar la hoja del grano sorgo 
 
 
 ACTUALIZACIONES POSTERIORES

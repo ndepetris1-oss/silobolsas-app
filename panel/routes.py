@@ -531,6 +531,58 @@ def exportar_excel():
     conn = get_db()
     empresa_id = empresa_actual()
 
+    from openpyxl import Workbook
+    from openpyxl.styles import (
+        Font, PatternFill, Border, Side,
+        Alignment
+    )
+    from openpyxl.utils import get_column_letter
+    from openpyxl.formatting.rule import CellIsRule
+    from io import BytesIO
+
+    # =====================================================
+    # ESTILOS
+    # =====================================================
+    VERDE = "1B5E20"
+    VERDE2 = "43A047"
+    VERDE3 = "E8F5E9"
+    AZUL = "1565C0"
+    GRIS = "F5F5F5"
+    BLANCO = "FFFFFF"
+    ROJO = "C62828"
+    AMARILLO = "FFF9C4"
+
+    thin = Side(style="thin", color="CCCCCC")
+
+    def borde():
+        return Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def fill(c):
+        return PatternFill("solid", start_color=c, end_color=c)
+
+    def center():
+        return Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    def estilo_titulo(celda, color=VERDE):
+        celda.font = Font(bold=True, color=BLANCO, size=14)
+        celda.fill = fill(color)
+        celda.alignment = center()
+
+    def estilo_header(celda, color=VERDE2):
+        celda.font = Font(bold=True, color=BLANCO)
+        celda.fill = fill(color)
+        celda.alignment = center()
+        celda.border = borde()
+
+    def estilo_body(celda, color=None):
+        if color:
+            celda.fill = fill(color)
+        celda.border = borde()
+        celda.alignment = center()
+
+    # =====================================================
+    # DATOS BASE
+    # =====================================================
     silos = conn.execute("""
         SELECT s.*,
         (
@@ -540,50 +592,163 @@ def exportar_excel():
             AND m.empresa_id = s.empresa_id
             ORDER BY m.id DESC
             LIMIT 1
-        ) AS ultimo_muestreo
+        ) ultimo_muestreo
         FROM silos s
         WHERE s.empresa_id=?
         ORDER BY s.cereal, s.numero_qr
     """, (empresa_id,)).fetchall()
 
+    mercado_rows = conn.execute("""
+        SELECT cereal,
+        CASE
+            WHEN usar_manual=1 THEN pizarra_manual
+            ELSE pizarra_auto
+        END pizarra,
+        dolar
+        FROM mercado
+        WHERE empresa_id=?
+    """, (empresa_id,)).fetchall()
+
+    mercado = {r["cereal"]: r for r in mercado_rows}
+
+    try:
+        matba_rows = conn.execute("""
+            SELECT cereal, posicion, mes, precio
+            FROM matba
+            WHERE empresa_id=?
+            ORDER BY cereal, posicion
+        """, (empresa_id,)).fetchall()
+    except:
+        matba_rows = []
+
     wb = Workbook()
     wb.remove(wb.active)
 
-    cereales = ["Soja", "Maíz", "Trigo", "Girasol"]
+    cereales = ["Soja", "Maíz", "Trigo", "Girasol", "Sorgo"]
+
+    # =====================================================
+    # HOJA RESUMEN
+    # =====================================================
+    ws = wb.create_sheet("Resumen", 0)
+
+    ws.merge_cells("A1:H1")
+    ws["A1"] = "RESUMEN GENERAL SILO BOLSAS"
+    estilo_titulo(ws["A1"])
+
+    ws.merge_cells("A2:H2")
+    ws["A2"] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws["A2"].alignment = center()
+
+    headers = [
+        "Cereal", "Silos Activos", "Silos Extraídos",
+        "KG Est.", "Pizarra", "USD", "Valor ARS/TN", "Valor USD/TN"
+    ]
+
+    row = 4
+    for c, h in enumerate(headers, 1):
+        ws.cell(row=row, column=c, value=h)
+        estilo_header(ws.cell(row=row, column=c))
+
+    row += 1
 
     for cereal in cereales:
-        ws = wb.create_sheet(title=cereal)
-        ws["A1"] = "PRECIO BASE ($)"
-        ws["A1"].font = Font(bold=True)
-        ws["B1"] = 0
 
-        headers = [
-            "QR", "Fecha confección", "Estado silo", "Estado grano",
-            "Metros", "Grado", "Factor", "TAS mín",
-            "Fecha extracción estimada", "Precio estimado"
+        silos_cereal = [x for x in silos if x["cereal"] == cereal]
+
+        if not silos_cereal:
+            continue
+
+        activos = [x for x in silos_cereal if x["estado_silo"] != "Extraído"]
+        extraidos = [x for x in silos_cereal if x["estado_silo"] == "Extraído"]
+
+        kg_total = 0
+        for s in activos:
+            try:
+                kg = conn.execute("""
+                    SELECT COALESCE(SUM(kg),0) total
+                    FROM llenado
+                    WHERE numero_qr=? AND empresa_id=?
+                """, (s["numero_qr"], empresa_id)).fetchone()["total"]
+            except:
+                kg = 0
+
+            if not kg:
+                kg = (s["metros"] or 0) * 1000
+
+            kg_total += kg
+
+        merc = mercado.get(cereal)
+
+        pizarra = merc["pizarra"] if merc else None
+        dolar = merc["dolar"] if merc else None
+
+        precio_usd = round(pizarra / dolar, 2) if pizarra and dolar else None
+
+        vals = [
+            cereal,
+            len(activos),
+            len(extraidos),
+            int(kg_total),
+            pizarra,
+            dolar,
+            pizarra,
+            precio_usd
         ]
 
-        ws.append([])
-        ws.append(headers)
+        for c, v in enumerate(vals, 1):
+            ws.cell(row=row, column=c, value=v)
+            estilo_body(ws.cell(row=row, column=c),
+                        GRIS if row % 2 == 0 else None)
 
-        for col in range(1, len(headers) + 1):
-            ws.cell(row=3, column=col).font = Font(bold=True)
+        row += 1
 
-        row_excel = 4
+    # =====================================================
+    # HOJAS POR CEREAL
+    # =====================================================
+    for cereal in cereales:
 
-        for s in silos:
+        silos_cereal = [x for x in silos if x["cereal"] == cereal]
 
-            if s["cereal"] != cereal:
-                continue
+        if not silos_cereal:
+            continue
+
+        ws = wb.create_sheet(cereal)
+
+        ws.merge_cells("A1:L1")
+        ws["A1"] = f"{cereal.upper()} - SILOS"
+        estilo_titulo(ws["A1"])
+
+        headers = [
+            "QR",
+            "Fecha Confección",
+            "Estado Silo",
+            "Estado Grano",
+            "Metros",
+            "KG",
+            "Grado",
+            "Factor %",
+            "TAS",
+            "Fecha Extracción Est.",
+            "Precio ARS",
+            "Precio USD"
+        ]
+
+        for c, h in enumerate(headers, 1):
+            ws.cell(row=3, column=c, value=h)
+            estilo_header(ws.cell(row=3, column=c))
+
+        row = 4
+
+        for s in silos_cereal:
 
             grado = None
             factor = None
-            tas_min = None
-            fecha_estimada = None
+            tas = None
+            fecha_est = None
 
             if s["ultimo_muestreo"]:
 
-                analisis = conn.execute("""
+                ana = conn.execute("""
                     SELECT grado, factor, tas
                     FROM analisis
                     WHERE id_muestreo=? AND empresa_id=?
@@ -593,60 +758,201 @@ def exportar_excel():
                 factores = []
                 tass = []
 
-                for a in analisis:
+                for a in ana:
+
                     if a["grado"] is not None:
                         try:
                             grados.append(int(a["grado"]))
                         except:
                             pass
+
                     if a["factor"] is not None:
-                        try:
-                            factores.append(float(a["factor"]))
-                        except:
-                            pass
+                        factores.append(float(a["factor"]))
+
                     if a["tas"] is not None:
-                        try:
-                            tass.append(int(a["tas"]))
-                        except:
-                            pass
+                        tass.append(int(a["tas"]))
 
                 if grados:
                     grado = max(grados)
+
                 if factores:
                     factor = round(sum(factores) / len(factores), 4)
-                if tass:
-                    tas_min = min(tass)
 
-                    row_fecha = conn.execute("""
+                if tass:
+                    tas = min(tass)
+
+                    f = conn.execute("""
                         SELECT fecha_muestreo
                         FROM muestreos
                         WHERE id=? AND empresa_id=?
                     """, (s["ultimo_muestreo"], empresa_id)).fetchone()
 
-                    if row_fecha and row_fecha["fecha_muestreo"]:
+                    if f and f["fecha_muestreo"]:
                         try:
-                            fm = datetime.strptime(
-                                row_fecha["fecha_muestreo"],
+                            base = datetime.strptime(
+                                f["fecha_muestreo"],
                                 "%Y-%m-%d %H:%M"
                             )
-                            fecha_estimada = fm + timedelta(days=int(tas_min))
+                            fecha_est = (
+                                base + timedelta(days=tas)
+                            ).strftime("%Y-%m-%d")
                         except:
                             pass
 
-            ws.cell(row=row_excel, column=1, value=s["numero_qr"])
-            ws.cell(row=row_excel, column=3, value=s["estado_silo"])
-            ws.cell(row=row_excel, column=4, value=s["estado_grano"])
-            ws.cell(row=row_excel, column=5, value=s["metros"])
-            ws.cell(row=row_excel, column=6, value=grado)
-            ws.cell(row=row_excel, column=7, value=factor)
-            ws.cell(row=row_excel, column=8, value=tas_min)
-            ws.cell(row=row_excel, column=9, value=fecha_estimada)
-            ws.cell(row=row_excel, column=10, value=f"=B1*G{row_excel}")
+            try:
+                kg = conn.execute("""
+                    SELECT COALESCE(SUM(kg),0) total
+                    FROM llenado
+                    WHERE numero_qr=? AND empresa_id=?
+                """, (s["numero_qr"], empresa_id)).fetchone()["total"]
+            except:
+                kg = 0
 
-            row_excel += 1
+            if not kg:
+                kg = (s["metros"] or 0) * 1000
 
-    registrar_auditoria(conn, current_user.id, empresa_id,
-        "exportacion_excel", "Exportación de datos", None)
+            merc = mercado.get(cereal)
+
+            precio_ars = None
+            precio_usd = None
+
+            if factor and merc and merc["pizarra"]:
+                precio_ars = round(merc["pizarra"] * factor, 2)
+
+                if merc["dolar"]:
+                    precio_usd = round(precio_ars / merc["dolar"], 2)
+
+            vals = [
+                s["numero_qr"],
+                s["fecha_confeccion"],
+                s["estado_silo"],
+                s["estado_grano"],
+                s["metros"],
+                int(kg),
+                grado,
+                round(factor * 100, 2) if factor else None,
+                tas,
+                fecha_est,
+                precio_ars,
+                precio_usd
+            ]
+
+            alerta = (
+                s["estado_silo"] == "Extraído"
+            )
+
+            for c, v in enumerate(vals, 1):
+                ws.cell(row=row, column=c, value=v)
+
+                color = None
+
+                if alerta:
+                    color = "FFEBEE"
+                elif row % 2 == 0:
+                    color = GRIS
+
+                estilo_body(ws.cell(row=row, column=c), color)
+
+            row += 1
+
+        for col in range(1, 13):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+
+        ws.auto_filter.ref = f"A3:L{row}"
+
+    # =====================================================
+    # FUTUROS MATBA
+    # =====================================================
+    ws = wb.create_sheet("Futuros")
+
+    ws.merge_cells("A1:H1")
+    ws["A1"] = "PIZARRA VS FUTUROS MATBA"
+    estilo_titulo(ws["A1"], AZUL)
+
+    headers = [
+        "Cereal",
+        "Posición",
+        "Mes",
+        "Futuro USD",
+        "Pizarra ARS",
+        "USD Hoy",
+        "Diferencia %",
+        "Recomendación"
+    ]
+
+    for c, h in enumerate(headers, 1):
+        ws.cell(row=3, column=c, value=h)
+        estilo_header(ws.cell(row=3, column=c), AZUL)
+
+    row = 4
+
+    for m in matba_rows:
+
+        cereal = m["cereal"]
+        merc = mercado.get(cereal)
+
+        if not merc:
+            continue
+
+        hoy_usd = None
+        dif = None
+        rec = "Sin dato"
+
+        if merc["pizarra"] and merc["dolar"]:
+            hoy_usd = round(
+                merc["pizarra"] / merc["dolar"],
+                2
+            )
+
+            if hoy_usd > 0:
+                dif = round(
+                    ((m["precio"] - hoy_usd) / hoy_usd) * 100,
+                    2
+                )
+
+                rec = "Esperar" if dif > 5 else "Vender Hoy"
+
+        vals = [
+            cereal,
+            m["posicion"],
+            m["mes"],
+            m["precio"],
+            merc["pizarra"],
+            hoy_usd,
+            dif,
+            rec
+        ]
+
+        for c, v in enumerate(vals, 1):
+            ws.cell(row=row, column=c, value=v)
+
+            color = None
+            if dif and dif > 5:
+                color = VERDE3
+            elif dif and dif < 0:
+                color = "FFEBEE"
+
+            estilo_body(ws.cell(row=row, column=c), color)
+
+        row += 1
+
+    for col in range(1, 9):
+        ws.column_dimensions[get_column_letter(col)].width = 18
+
+    ws.auto_filter.ref = f"A3:H{row}"
+
+    # =====================================================
+    # GUARDAR
+    # =====================================================
+    registrar_auditoria(
+        conn,
+        current_user.id,
+        empresa_id,
+        "exportacion_excel",
+        "Exportación de datos",
+        None
+    )
+
     conn.close()
 
     output = BytesIO()
@@ -656,7 +962,7 @@ def exportar_excel():
     return send_file(
         output,
         as_attachment=True,
-        download_name="silos_comercial.xlsx",
+        download_name=f"silos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
