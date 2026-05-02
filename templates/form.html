@@ -113,6 +113,23 @@ button:disabled{background:#9ccc9c}
   </select>
 </div>
 
+{% if current_user.rol == 'admin_empresa' or current_user.es_superadmin %}
+<div id="bloqueActualizarGPS" class="card hidden"
+  style="border-left:4px solid #1976d2;">
+  <h3 style="color:#1976d2;">📍 Actualizar GPS del silo</h3>
+  <p style="font-size:.9rem;color:#555;">
+    Parece junto al silo y capturá las coordenadas nuevas.
+  </p>
+  <p id="gpsUpdateEstado" style="color:#888;font-size:.9rem;margin:6px 0;">
+    Sin ubicación capturada.
+  </p>
+  <button type="button" id="btnGPSUpdate" onclick="capturarGPSUpdate()"
+    style="background:#1976d2;margin-top:0;">
+    📍 Capturar nueva ubicación
+  </button>
+</div>
+{% endif %}
+
 <div id="bloqueCalado" class="card hidden">
   <h3>🧪 Calado</h3>
   <div class="alert">Presione el botón luego de realizar el calado físico del silo.</div>
@@ -257,6 +274,10 @@ async function procesarSilo(codigo){
     document.getElementById("bloqueExtraccion").classList.remove("hidden");
     document.getElementById("bloqueCalado").classList.remove("hidden");
 
+    // Mostrar opción GPS para admin
+    const bloqueGPSUpdate = document.getElementById("bloqueActualizarGPS");
+    if(bloqueGPSUpdate) bloqueGPSUpdate.classList.remove("hidden");
+
     await cargarEventosPendientes();
     await cargarEventosResueltos();
 
@@ -396,6 +417,66 @@ async function guardar(){
   }
 
   btn.disabled = false;
+}
+
+/* ===== GPS UPDATE (admin) ===== */
+let latUpdate = null;
+let lonUpdate = null;
+
+async function capturarGPSUpdate(){
+  const btn = document.getElementById("btnGPSUpdate");
+  const estado = document.getElementById("gpsUpdateEstado");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Obteniendo ubicación...";
+  estado.style.color = "#888";
+  estado.textContent = "Buscando señal GPS...";
+
+  try{
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 0
+      })
+    );
+    latUpdate = pos.coords.latitude;
+    lonUpdate = pos.coords.longitude;
+    estado.style.color = "#1565c0";
+    estado.textContent = `✅ Ubicación capturada (±${Math.round(pos.coords.accuracy)}m)`;
+    btn.textContent = "📍 Recapturar";
+    btn.style.background = "#888";
+
+    // Confirmar y guardar
+    if(confirm(`¿Actualizar GPS del silo ${qrActual}?\nLat: ${latUpdate.toFixed(6)}\nLon: ${lonUpdate.toFixed(6)}`)){
+      const res = await fetch("/api/actualizar_gps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numero_qr: qrActual, lat: latUpdate, lon: lonUpdate })
+      });
+      const data = await res.json();
+      if(data.ok){
+        estado.style.color = "#2e7d32";
+        estado.textContent = "✅ GPS actualizado correctamente";
+        btn.textContent = "✔ GPS actualizado";
+        btn.disabled = true;
+      } else {
+        estado.style.color = "#b71c1c";
+        estado.textContent = "❌ " + (data.error || "Error al actualizar");
+        btn.disabled = false;
+        btn.textContent = "📍 Reintentar";
+        btn.style.background = "#1976d2";
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = "📍 Capturar nueva ubicación";
+      btn.style.background = "#1976d2";
+    }
+  }catch(err){
+    estado.style.color = "#b71c1c";
+    estado.textContent = "❌ No se pudo obtener la ubicación.";
+    btn.disabled = false;
+    btn.textContent = "📍 Reintentar";
+    btn.style.background = "#1976d2";
+  }
 }
 
 init();
