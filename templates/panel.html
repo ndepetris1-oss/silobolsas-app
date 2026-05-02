@@ -481,11 +481,20 @@ function render(){
     r.estado_silo !== "Extraído"
       ? `<button
             onclick="confirmarExtraccion('${r.numero_qr}')"
-            style="background:#c62828;color:white">
+            style="background:#c62828;color:white;margin-top:4px">
             🗑 Marcar como extraído
          </button>`
       : `<span style="color:#388e3c;font-weight:bold">✔ Extraído</span>`
   }
+
+  {% if current_user.rol == 'admin_empresa' or current_user.es_superadmin %}
+  <br>
+  <button
+    onclick="abrirEditorSilo('${r.numero_qr}','${r.cereal}','${r.estado_grano}','${r.fecha_confeccion}','${r.metros}','${r.estado_silo}')"
+    style="background:#1976d2;color:white;margin-top:4px">
+    ✏️ Editar
+  </button>
+  {% endif %}
 </td>
       </tr>
     `;
@@ -586,4 +595,119 @@ async function confirmarExtraccion(qr){
 
 </body>
 </html>
+
+<!-- MODAL EDITAR SILO -->
+<div id="modalEditarSilo" style="
+  display:none;position:fixed;top:0;left:0;
+  width:100%;height:100%;background:rgba(0,0,0,0.5);
+  z-index:9999;justify-content:center;align-items:center;
+">
+  <div style="
+    background:white;border-radius:14px;padding:24px;
+    width:90%;max-width:480px;
+    border-top:5px solid #1976d2;
+  ">
+    <h3 style="color:#1976d2;margin-top:0;">✏️ Editar Silo <span id="editQRtitulo"></span></h3>
+
+    <input type="hidden" id="editQR">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Cereal</label>
+        <select id="editCereal" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+          <option>Maíz</option>
+          <option>Soja</option>
+          <option>Trigo</option>
+          <option>Girasol</option>
+          <option>Sorgo</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Estado grano</label>
+        <select id="editEstadoGrano" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+          <option>Seco</option>
+          <option>Humedo</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Fecha confección</label>
+        <input type="datetime-local" id="editFecha"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Metros lineales</label>
+        <input type="number" id="editMetros"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+    </div>
+
+    <p id="editError" style="color:red;display:none;margin-top:8px;"></p>
+
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="btnGuardarEdicion" onclick="guardarEdicionSilo()"
+        style="flex:1;background:#1976d2;padding:10px;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
+        💾 Guardar cambios
+      </button>
+      <button onclick="cerrarEditorSilo()"
+        style="flex:1;background:#888;padding:10px;color:white;border:none;border-radius:8px;cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirEditorSilo(qr, cereal, estadoGrano, fecha, metros, estadoSilo){
+  document.getElementById("editQR").value = qr;
+  document.getElementById("editQRtitulo").textContent = qr;
+  document.getElementById("editCereal").value = cereal;
+  document.getElementById("editEstadoGrano").value = estadoGrano;
+  // Convertir fecha a formato datetime-local
+  const f = fecha ? fecha.replace(" ", "T") : "";
+  document.getElementById("editFecha").value = f;
+  document.getElementById("editMetros").value = metros;
+  document.getElementById("editError").style.display = "none";
+  document.getElementById("modalEditarSilo").style.display = "flex";
+}
+
+function cerrarEditorSilo(){
+  document.getElementById("modalEditarSilo").style.display = "none";
+}
+
+async function guardarEdicionSilo(){
+  const qr = document.getElementById("editQR").value;
+  const cereal = document.getElementById("editCereal").value;
+  const estado_grano = document.getElementById("editEstadoGrano").value;
+  const fecha = document.getElementById("editFecha").value.replace("T", " ");
+  const metros = document.getElementById("editMetros").value;
+
+  if(!metros || Number(metros) <= 0){
+    document.getElementById("editError").textContent = "❌ Los metros deben ser mayor a 0";
+    document.getElementById("editError").style.display = "block";
+    return;
+  }
+
+  document.getElementById("btnGuardarEdicion").disabled = true;
+  document.getElementById("btnGuardarEdicion").textContent = "Guardando...";
+
+  const res = await fetch("/api/editar_silo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ numero_qr: qr, cereal, estado_grano, fecha_confeccion: fecha, metros })
+  });
+
+  const data = await res.json();
+
+  if(data.ok){
+    cerrarEditorSilo();
+    location.reload();
+  } else {
+    document.getElementById("editError").textContent = data.error || "Error al guardar";
+    document.getElementById("editError").style.display = "block";
+    document.getElementById("btnGuardarEdicion").disabled = false;
+    document.getElementById("btnGuardarEdicion").textContent = "💾 Guardar cambios";
+  }
+}
+</script>
+
 {% endblock %}
