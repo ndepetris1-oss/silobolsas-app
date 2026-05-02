@@ -491,7 +491,11 @@ function render(){
     `;
 
     if(r.lat && r.lon){
-      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)}).addTo(map);
+      const tooltip = `<b>${r.numero_qr}</b><br>${r.cereal}<br>${r.estado_silo}`;
+      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)})
+        .bindTooltip(tooltip, {permanent:false, direction:"top", offset:[0,-10]})
+        .bindPopup(`<b>${r.numero_qr}</b><br>🌾 ${r.cereal}<br>📅 ${r.fecha_confeccion}<br>Estado: ${r.estado_silo}`)
+        .addTo(map);
       markers.push(m);
       bounds.push([r.lat,r.lon]);
     }
