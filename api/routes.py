@@ -688,3 +688,42 @@ def editar_silo():
     conn.close()
 
     return jsonify(ok=True)
+
+
+# ======================
+# ACTUALIZAR GPS (admin)
+# ======================
+@api_bp.route("/api/actualizar_gps", methods=["POST"])
+@login_required
+def actualizar_gps():
+
+    if current_user.rol not in ("admin_empresa",) and not current_user.es_superadmin:
+        return jsonify(ok=False, error="No autorizado"), 403
+
+    d = request.get_json(force=True, silent=True) or {}
+    qr  = d.get("numero_qr")
+    lat = d.get("lat")
+    lon = d.get("lon")
+
+    if not qr or lat is None or lon is None:
+        return jsonify(ok=False, error="Datos incompletos"), 400
+
+    conn = get_db()
+
+    silo = conn.execute(
+        "SELECT numero_qr FROM silos WHERE numero_qr=? AND empresa_id=?",
+        (qr, current_user.empresa_id)
+    ).fetchone()
+
+    if not silo:
+        conn.close()
+        return jsonify(ok=False, error="Silo no encontrado"), 404
+
+    conn.execute(
+        "UPDATE silos SET lat=?, lon=? WHERE numero_qr=? AND empresa_id=?",
+        (lat, lon, qr, current_user.empresa_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify(ok=True)
