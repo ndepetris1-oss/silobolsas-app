@@ -230,10 +230,10 @@ button:hover{background:#2e7d32}
     <td>{{ m.cereal }}</td>
     <td>{{ m.mes }}</td>
 
-    <td>{{ "%.2f"|format(m.precio) }}</td>
+    <td>{{ "%.2f"|format(m.precio) if m.precio is not none else "-" }}</td>
 
-    <td style="color:{% if m.variacion >= 0 %}green{% else %}red{% endif %}">
-        {{ "%.2f"|format(m.variacion) }}
+    <td style="color:{% if m.variacion and m.variacion >= 0 %}green{% elif m.variacion %}red{% else %}inherit{% endif %}">
+        {{ "%.2f"|format(m.variacion) if m.variacion is not none else "-" }}
     </td>
 </tr>
 {% endfor %}

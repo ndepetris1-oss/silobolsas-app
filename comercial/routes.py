@@ -694,6 +694,10 @@ def actualizar_matba():
 
             mes_contrato = item.get("MES")  # 👈 ESTO ES CLAVE
 
+            def _f(v):
+                try: return float(v) if v not in (None, "", "null") else None
+                except: return None
+
             conn.execute("""
             INSERT INTO matba (
                 posicion,
@@ -708,9 +712,9 @@ def actualizar_matba():
             """, (
                 item["CODIGO"],
                 item["DESCRIPCION"],
-                float(item["AJUSTE"]),
-                float(item["CIERRE"]),
-                float(item["VARIACION"]),
+                _f(item.get("AJUSTE")),
+                _f(item.get("CIERRE")),
+                _f(item.get("VARIACION")),
                 fecha_actualizacion,
                 mes_contrato
             ))
