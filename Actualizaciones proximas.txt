@@ -1,0 +1,34 @@
+
+exportar a excel
+
+mejorar la visualizacion, en forma de tabla. No trae fecha de confeccion ni fecha de extraccion estimada. Mostrar factor
+con 100%
+
+Colocar en tabla aparte precio rofex y matba con fecha del precio en hoja aparte con el nombre de la fecha.
+
+
+
+ACTUALIZACIONES POSTERIORES
+modulo aparte donde colocar datos del terreno a donde se van a realizar los silo bolsas, recorriendo el terreno
+capturar con el GPS partes del lote donde hay posibles encharcamientos u obstaculos para realizar posteriormente
+los silos bolsas. Se podria realizar un mapeo con los puntos del GPS todo el terreno, tomando puntos para medir
+el terreno, luego con una regla proyectar las colocaciones
+de los posibles silo bolsas y calles. 
+
+Registro de lluvia
+
+2) Modulo aparte para la extraccion, se extrae el silo bolsa a un camion q va a puerto o a la planta, identificarlo. 
+Cuando Form registra la extraccion del silo se habilita el "Vaciado de silo bolsa".Se registra el calado del mismo
+con analisis, fecha y hora, kg y dominio de camion.
+
+MODULO APARTE
+Flujo de planta, agregar a la app flujo de planta cuando se extrae el silo bolsa. 
+
+MODULO APARTE
+Se registra servicio de 3ro que realiza el silo bolsa, la extraccion y el acarreo del silo bolsa. Buscar la forma de 
+registrar el silo bolsa con los kg.- Lugar para colocar el precio de cada servicio para que se calcule el total a 
+facturar y dejar acentado si el proveedor nos paso la factura (foto). 
+
+Registrar ventas en tn fijando precio y silo bolsas a vender. generar un comprobante interno, hacer precio promedio 
+de las ventas que se vallan realizando.
+

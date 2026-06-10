@@ -1,0 +1,796 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Silo {{ silo.numero_qr }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#e8f5e9;
+  margin:0;
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:20px;
+}
+.container{
+  width:95%;
+  margin:15px auto;
+  background:white;
+  border-radius:14px;
+  padding:15px;
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer;
+  font-weight:bold;
+}
+button:hover{background:#2e7d32}
+.info{
+  background:#eeeeee;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:12px;
+}
+.alerta{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin:10px 0;
+  font-weight:bold;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #c8e6c9;
+  text-align:center;
+}
+th{background:#a5d6a7}
+</style>
+</head>
+
+<body>
+
+<header>SILO · {{ silo.numero_qr }}</header>
+
+<div class="container">
+
+<button onclick="location.href='/panel'">← Volver al panel</button>
+
+<div class="info" style="margin-top:10px">
+  <b>Cereal:</b> {{ silo.cereal }} |
+  <b>Estado grano:</b> {{ silo.estado_grano }} |
+  <b>Metros:</b> {{ silo.metros }} |
+  <b>Fecha confección:</b> {{ silo.fecha_confeccion }}
+</div>
+
+<hr>
+  
+<h3>📸 Eventos</h3>
+
+{% if not eventos_pendientes and not eventos_resueltos %}
+  <div class="alerta">
+    ✔ Este silo no tiene eventos registrados.
+  </div>
+{% endif %}
+
+{% if eventos_pendientes %}
+  <h4>⚠️ Eventos pendientes</h4>
+  {% for e in eventos_pendientes %}
+    <div class="alerta">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_evento }}<br><br>
+
+      {% if e.foto_evento %}
+        <a href="{{ e.foto_evento }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="{{ e.foto_evento }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+{% if eventos_resueltos %}
+  <h4>✅ Eventos resueltos</h4>
+  {% for e in eventos_resueltos %}
+    <div class="alerta" style="background:#e8f5e9">
+      <b>{{ e.tipo }}</b><br>
+      📅 {{ e.fecha_resolucion }}<br><br>
+
+      {% if e.foto_resolucion %}
+        <a href="{{ e.foto_resolucion }}" target="_blank">
+          <button>👁️ Ver foto</button>
+        </a>
+        <a href="{{ e.foto_resolucion }}" download>
+          <button>⬇️ Descargar</button>
+        </a>
+      {% else %}
+        Sin foto
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+  
+{% if analisis_pendiente and muestreos and muestreos|length > 0 %}
+  <div class="alerta">
+    🧪 <b>Último calado:</b> {{ muestreos[0].fecha_muestreo }}<br>
+    ⚠️ Análisis pendiente de carga
+  </div>
+{% endif %}
+
+{% if puede_comercial %}
+{% if precio_estimado and mercado and mercado.pizarra and mercado.dolar %}
+  {% if fuente_precio == "llenado" %}
+<div class="alert" style="background:#fff3e0;border-left:6px solid #e65100;padding:12px;border-radius:8px;margin:10px 0;">
+  <h3>💰 Precio estimado
+    <span style="font-size:.75rem;background:#e65100;color:white;padding:2px 8px;border-radius:10px;margin-left:8px;">
+      Fuente: Llenado
+    </span>
+  </h3>
+  {% else %}
+<div class="alert" style="background:#e8f5e9;border-left:6px solid #2e7d32;padding:12px;border-radius:8px;margin:10px 0;">
+  <h3>💰 Precio estimado
+    <span style="font-size:.75rem;background:#2e7d32;color:white;padding:2px 8px;border-radius:10px;margin-left:8px;">
+      Fuente: Calado
+    </span>
+  </h3>
+  {% endif %}
+
+  <p>Pizarra {{ silo.cereal }}:
+     <b>{{ mercado.pizarra }} ARS/TN</b></p>
+
+  {% if factor_prom %}
+  <p>Factor comercial:
+     <b>{{ (factor_prom * 100) | round(2) }}%</b></p>
+  {% endif %}
+
+  {% if tas_usada %}
+  <p>TAS utilizada:
+     <b>{{ tas_usada }} días</b></p>
+  {% endif %}
+
+  <p>Precio ajustado:
+     <b>{{ precio_estimado }} ARS/TN</b></p>
+
+  <p>Dólar:
+     <b>{{ mercado.dolar }}</b></p>
+
+  <p style="font-size:18px">
+    👉 <b>{{ precio_usd }} USD/TN</b>
+  </p>
+</div>
+{% endif %}
+
+{% if mejor_futuro %}
+<div class="card" style="background:#fff8e1;margin-top:15px">
+
+<h3>📈 Mejor MATBA</h3>
+
+<p>
+<b>{{ mejor_futuro.posicion }}</b>
+
+{% if mejor_futuro.mes %}
+— {{ mejor_futuro.mes }}
+{% endif %}
+</p>
+
+<p>
+Precio MATBA: {{ mejor_futuro.precio }} USD/TN
+</p>
+
+<p>
+Precio estimado silo:
+<b>{{ mejor_futuro.neto }} USD/TN</b>
+</p>
+
+</div>
+{% endif %}
+
+{% if dif_matba is not none %}
+
+<p>
+{% if dif_matba > 0 %}
+<span style="color:#2e7d32;font-weight:bold">
+▲ +{{ dif_matba }} USD/TN vs pizarra
+</span>
+{% else %}
+<span style="color:#b71c1c;font-weight:bold">
+▼ {{ dif_matba }} USD/TN vs pizarra
+</span>
+{% endif %}
+</p>
+
+{% endif %}
+{% endif %}{# fin puede_comercial #}
+
+<form method="GET"
+      action="{{ url_for('calado.nuevo_muestreo', qr=silo.numero_qr) }}"
+      style="display:inline;">
+      
+  <button type="submit">
+      {% if puede_calado %}
+          🧪 Nuevo Muestreo
+      {% else %}
+          🔒 Nuevo Muestreo
+      {% endif %}
+  </button>
+
+</form>
+{% if silo.estado_silo != "En extracción" %}
+<button onclick="abrirModalLlenado()"
+  style="background:#e65100;margin-left:8px;">
+  🌽 Llenado de Silo Bolsa
+</button>
+{% endif %}
+<script>
+async function nuevoMuestreo(){
+  const res = await fetch("/muestreo/api/nuevo_muestreo",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ qr: "{{ silo.numero_qr }}" })
+  });
+
+  const data = await res.json();
+
+  if(data.id_muestreo){
+    location.href = "/muestreo/" + data.id_muestreo;
+  }else{
+    alert(data.error || "Error al crear muestreo");
+  }
+}
+</script>
+
+{% if not muestreos %}
+  <div class="alerta">⚠ Este silo aún no tiene muestreos cargados.</div>
+{% endif %}
+
+{% for m in muestreos %}
+  <div class="info" style="margin-top:15px">
+    <b>📅 Muestreo:</b> {{ m.fecha_muestreo }}
+    <span style="margin-left:10px;color:#555">
+      ({{ m.dias }} días)
+    </span>
+
+    <table style="margin-top:8px">
+      <tr>
+        <th>Sección</th>
+        <th>Grado</th>
+        <th>Factor</th>
+        <th>TAS (días)</th>
+      </tr>
+
+      {% for sec in ["punta","medio","final"] %}
+        {% set a = m[sec] %}
+        <tr>
+          <td><b>{{ sec|capitalize }}</b></td>
+
+        <td>
+          {{ a.grado if a and a.grado is not none else "-" }}
+        </td>
+
+        <td>
+          {% if a and a.factor is not none %}
+            {{ (a.factor * 100)|round(2) }}%
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td
+          {% if a and a.tas is not none and a.tas <= 30 %}
+            style="color:#b71c1c;font-weight:bold"
+          {% endif %}
+        >
+          {{ a.tas if a and a.tas is not none else "-" }}
+        </td>
+      </tr>
+
+      {% endfor %}
+    </table>
+
+    <button
+      style="margin-top:6px"
+      onclick="location.href='/muestreo/{{ m.id }}'">
+      Ver detalle
+    </button>
+  </div>
+{% endfor %}
+
+
+<!-- ===================== LLENADO DE SILO BOLSA ===================== -->
+<div class="container" style="margin-top:10px;">
+  <h3 style="color:#e65100;border-bottom:2px solid #e65100;padding-bottom:6px;">
+    🌽 Llenado de Silo Bolsa
+  </h3>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">
+    <div style="background:#fff3e0;border-radius:10px;padding:12px 20px;font-size:1.1rem;">
+      <b>KG Totales acumulados:</b>
+      <span style="font-size:1.4rem;font-weight:bold;color:#e65100;">
+        {{ "{:,.0f}".format(kg_total) }} kg
+      </span>
+    </div>
+    {% if silo.estado_silo != "En extracción" %}
+    <button onclick="abrirModalLlenado()"
+      style="background:#e65100;align-self:center;">
+      ➕ Registrar nueva carga
+    </button>
+    {% else %}
+    <span style="background:#888;color:white;padding:8px 14px;border-radius:8px;font-weight:bold;align-self:center;">
+      🔒 Llenado bloqueado (silo en extracción)
+    </span>
+    {% endif %}
+  </div>
+
+  {% if cargas_llenado %}
+  <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+    <thead>
+      <tr style="background:#ffe0b2;">
+        <th style="padding:7px;border-bottom:1px solid #ffcc80;">Fecha</th>
+        <th>KG</th>
+        <th>Temp</th>
+        <th>Hum %</th>
+        <th>M.Ext %</th>
+        <th>Grado</th>
+        <th>Factor</th>
+        <th>TAS</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in cargas_llenado %}
+      <tr style="text-align:center;border-bottom:1px solid #ffe0b2;">
+        <td style="padding:6px;">{{ c.fecha }}</td>
+        <td><b>{{ "{:,.0f}".format(c.kg or 0) }}</b></td>
+        <td>{{ c.temperatura or "-" }}</td>
+        <td>{{ c.humedad or "-" }}</td>
+        <td>{{ c.materia_extrana or "-" }}</td>
+        <td>{{ c.grado or "-" }}</td>
+        <td>{{ ((c.factor or 0)*100)|round(2) }}%</td>
+        <td>{{ c.tas or "-" }}</td>
+        <td>
+          {% if silo.estado_silo != "En extracción" %}
+          <button
+            class="btn-editar-carga"
+            data-id="{{ c.id }}"
+            data-kg="{{ c.kg or '' }}"
+            data-temperatura="{{ c.temperatura or '' }}"
+            data-humedad="{{ c.humedad or '' }}"
+            data-danados="{{ c.danados or '' }}"
+            data-quebrados="{{ c.quebrados or '' }}"
+            data-materia_extrana="{{ c.materia_extrana or '' }}"
+            data-chamico="{{ c.chamico or '' }}"
+            data-olor="{{ c.olor or '' }}"
+            data-moho="{{ c.moho or '' }}"
+            data-insectos="{{ c.insectos or 0 }}"
+            data-ph="{{ c.ph or '' }}"
+            data-materia_grasa="{{ c.materia_grasa or '' }}"
+            data-acidez="{{ c.acidez or '' }}"
+            data-proteinas="{{ c.proteinas or '' }}"
+            data-granos_picados="{{ c.granos_picados or '' }}"
+            style="background:#1976d2;padding:4px 8px;font-size:.8rem;margin:2px;">
+            ✏️
+          </button>
+          {% if puede_admin %}
+          <button onclick="eliminarCarga({{ c.id }})"
+            style="background:#c62828;padding:4px 8px;font-size:.8rem;margin:2px;">
+            🗑️
+          </button>
+          {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p style="color:#888;">Todavía no hay cargas registradas.</p>
+  {% endif %}
+</div>
+
+<!-- MODAL LLENADO -->
+<div id="modalLlenado" style="
+  display:none;position:fixed;top:0;left:0;
+  width:100%;height:100%;background:rgba(0,0,0,0.5);
+  z-index:9999;justify-content:center;align-items:center;
+">
+  <div style="
+    background:white;border-radius:14px;padding:24px;
+    width:90%;max-width:500px;max-height:90vh;overflow-y:auto;
+    border-top:5px solid #e65100;
+  ">
+    <h3 id="tituloModalLlenado" style="color:#e65100;margin-top:0;">
+      🌽 Nueva Carga — {{ silo.cereal }}
+    </h3>
+    <input type="hidden" id="ll_id" value="">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+
+      <!-- KG — siempre visible -->
+      <div>
+        <label style="font-size:.85rem;color:#555;">KG de la carga *</label>
+        <input id="ll_kg" type="number" placeholder="Ej: 25000"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+
+      <!-- Temperatura — siempre -->
+      <div>
+        <label style="font-size:.85rem;color:#555;">Temperatura °C</label>
+        <input id="ll_temperatura" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+
+      <!-- Humedad — siempre -->
+      <div>
+        <label style="font-size:.85rem;color:#555;">Humedad %</label>
+        <input id="ll_humedad" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+
+      <!-- Materia Extraña — todos excepto cuando no aplica -->
+      <div>
+        <label style="font-size:.85rem;color:#555;">Materia Extraña %</label>
+        <input id="ll_materia_extrana" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+
+      <!-- Dañados — Maíz, Soja, Trigo, Sorgo (NO Girasol) -->
+      {% if silo.cereal in ["Maíz", "Soja", "Trigo", "Sorgo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Dañados %</label>
+        <input id="ll_danados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Quebrados — Maíz, Trigo, Sorgo (NO Soja, NO Girasol) -->
+      {% if silo.cereal in ["Maíz", "Trigo", "Sorgo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Quebrados %</label>
+        <input id="ll_quebrados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- PH — Maíz, Trigo -->
+      {% if silo.cereal in ["Maíz", "Trigo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">PH</label>
+        <input id="ll_ph" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Chamico — Girasol, Sorgo -->
+      {% if silo.cereal in ["Girasol", "Sorgo"] %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Chamico %</label>
+        <input id="ll_chamico" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Materia Grasa — solo Girasol -->
+      {% if silo.cereal == "Girasol" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Materia Grasa % (base 42)</label>
+        <input id="ll_materia_grasa" type="number" step="0.1" placeholder="42"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;">Acidez % (base 1.5)</label>
+        <input id="ll_acidez" type="number" step="0.1" placeholder="1.5"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Proteínas — solo Trigo -->
+      {% if silo.cereal == "Trigo" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Proteínas %</label>
+        <input id="ll_proteinas" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+      <!-- Granos picados — solo Sorgo -->
+      {% if silo.cereal == "Sorgo" %}
+      <div>
+        <label style="font-size:.85rem;color:#555;">Granos picados %</label>
+        <input id="ll_granos_picados" type="number" step="0.1"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Olor, Moho, Insectos — siempre -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
+      <div>
+        <label style="font-size:.85rem;color:#555;">Olor % (0.5 a 2)</label>
+        <input id="ll_olor" type="number" step="0.5" min="0" max="2" placeholder="0"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;">Moho % (0.5 a 2)</label>
+        <input id="ll_moho" type="number" step="0.5" min="0" max="2" placeholder="0"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end;">
+        <label style="font-size:.85rem;color:#555;">Insectos</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 0;">
+          <input type="checkbox" id="ll_insectos"> Sí
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="btnGuardarLlenado" onclick="guardarLlenado()"
+        style="flex:1;background:#e65100;padding:10px;">
+        💾 Guardar carga
+      </button>
+      <button onclick="cerrarModalLlenado()"
+        style="flex:1;background:#888;padding:10px;">
+        Cancelar
+      </button>
+    </div>
+    <p id="ll_error" style="color:red;display:none;margin-top:8px;"></p>
+  </div>
+</div>
+
+<script>
+const CAMPOS_LL = ["ll_kg","ll_temperatura","ll_humedad","ll_danados","ll_quebrados",
+   "ll_materia_extrana","ll_chamico","ll_olor","ll_moho",
+   "ll_ph","ll_materia_grasa","ll_acidez","ll_proteinas","ll_granos_picados"];
+
+function abrirModalLlenado(){
+  document.getElementById("ll_id").value = "";
+  document.getElementById("tituloModalLlenado").textContent = "🌽 Nueva Carga — {{ silo.cereal }}";
+  document.getElementById("btnGuardarLlenado").textContent = "💾 Guardar carga";
+  document.getElementById("btnGuardarLlenado").style.background = "#e65100";
+  CAMPOS_LL.forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; });
+  document.getElementById("ll_insectos").checked = false;
+  document.getElementById("ll_error").style.display = "none";
+  document.getElementById("modalLlenado").style.display = "flex";
+}
+
+// Event delegation para botones de editar
+document.addEventListener("click", function(e){
+  const btn = e.target.closest(".btn-editar-carga");
+  if(!btn) return;
+
+  const d = btn.dataset;
+  document.getElementById("ll_id").value = d.id;
+  document.getElementById("tituloModalLlenado").textContent = "✏️ Editar Carga — {{ silo.cereal }}";
+  document.getElementById("btnGuardarLlenado").textContent = "💾 Actualizar carga";
+  document.getElementById("btnGuardarLlenado").style.background = "#1976d2";
+  document.getElementById("ll_error").style.display = "none";
+
+  const map = {
+    ll_kg: "kg", ll_temperatura: "temperatura", ll_humedad: "humedad",
+    ll_danados: "danados", ll_quebrados: "quebrados",
+    ll_materia_extrana: "materia_extrana", ll_chamico: "chamico",
+    ll_olor: "olor", ll_moho: "moho", ll_ph: "ph",
+    ll_materia_grasa: "materia_grasa", ll_acidez: "acidez",
+    ll_proteinas: "proteinas", ll_granos_picados: "granos_picados"
+  };
+  Object.entries(map).forEach(([elId, campo]) => {
+    const el = document.getElementById(elId);
+    if(el) el.value = d[campo] ?? "";
+  });
+  document.getElementById("ll_insectos").checked = d.insectos === "1";
+  document.getElementById("modalLlenado").style.display = "flex";
+});
+
+async function eliminarCarga(id){
+  if(!confirm("¿Eliminar esta carga? Esta acción no se puede deshacer.")) return;
+  const res = await fetch(`/api/llenado/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  if(data.ok){ location.reload(); }
+  else { alert(data.error || "Error al eliminar."); }
+}
+
+function cerrarModalLlenado(){
+  document.getElementById("modalLlenado").style.display = "none";
+}
+
+async function guardarLlenado(){
+  const kg = parseFloat(document.getElementById("ll_kg").value);
+  if(!kg || kg <= 0){
+    document.getElementById("ll_error").textContent = "⚠ Ingresá los KG de la carga.";
+    document.getElementById("ll_error").style.display = "block";
+    return;
+  }
+  const olor_val = parseFloat(document.getElementById("ll_olor").value) || 0;
+  const moho_val = parseFloat(document.getElementById("ll_moho").value) || 0;
+  if(olor_val > 2 || moho_val > 2){
+    document.getElementById("ll_error").textContent = "⚠ Olor y Moho no pueden superar 2%.";
+    document.getElementById("ll_error").style.display = "block";
+    return;
+  }
+
+  document.getElementById("btnGuardarLlenado").disabled = true;
+  document.getElementById("btnGuardarLlenado").textContent = "Guardando...";
+
+  function getVal(id){ const el = document.getElementById(id); return el ? (el.value || null) : null; }
+
+  const id_carga = document.getElementById("ll_id").value;
+  const url    = id_carga ? `/api/llenado/${id_carga}` : "/api/llenado";
+  const method = id_carga ? "PUT" : "POST";
+
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      numero_qr:       "{{ silo.numero_qr }}",
+      kg, temperatura: getVal("ll_temperatura"),
+      humedad:         getVal("ll_humedad"),
+      materia_extrana: getVal("ll_materia_extrana"),
+      danados:         getVal("ll_danados"),
+      quebrados:       getVal("ll_quebrados"),
+      ph:              getVal("ll_ph"),
+      chamico:         getVal("ll_chamico"),
+      materia_grasa:   getVal("ll_materia_grasa"),
+      acidez:          getVal("ll_acidez"),
+      proteinas:       getVal("ll_proteinas"),
+      granos_picados:  getVal("ll_granos_picados"),
+      olor:            getVal("ll_olor"),
+      moho:            getVal("ll_moho"),
+      insectos:        document.getElementById("ll_insectos").checked
+    })
+  });
+
+  const data = await res.json();
+  if(data.ok){
+    cerrarModalLlenado();
+    location.reload();
+  } else {
+    document.getElementById("ll_error").textContent = data.error || "Error al guardar.";
+    document.getElementById("ll_error").style.display = "block";
+    document.getElementById("btnGuardarLlenado").disabled = false;
+    document.getElementById("btnGuardarLlenado").textContent = id_carga ? "💾 Actualizar carga" : "💾 Guardar carga";
+  }
+}
+</script>
+<!-- ===================== FIN LLENADO ===================== -->
+
+{% if silo.estado_silo in ("En extracción", "Extraído") %}
+<!-- ===================== VACIADO ===================== -->
+<div class="container" style="margin-top:10px;border-top:3px solid {% if silo.estado_silo == 'Extraído' %}#2e7d32{% else %}#1565c0{% endif %};">
+  <h3 style="color:{% if silo.estado_silo == 'Extraído' %}#2e7d32{% else %}#1565c0{% endif %};border-bottom:2px solid {% if silo.estado_silo == 'Extraído' %}#2e7d32{% else %}#1565c0{% endif %};padding-bottom:6px;">
+    {% if silo.estado_silo == "Extraído" %}✔{% else %}🚛{% endif %} Vaciado de Silo Bolsa
+  </h3>
+
+  {% if silo.estado_silo == "Extraído" and comparativo %}
+  <!-- Resumen comparativo llenado vs vaciado -->
+  <div style="background:#f1f8e9;border-radius:10px;padding:14px 18px;margin-bottom:14px;border:1px solid #a5d6a7;">
+    <div style="font-size:.85rem;color:#555;margin-bottom:8px;font-weight:bold;">📊 Resumen de extracción — Cerrado: {{ silo.fecha_extraccion or "-" }}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">KG Llenado</div>
+        <div style="font-size:1.2rem;font-weight:bold;">{{ "{:,.0f}".format(comparativo.kg_llenado) }}</div>
+      </div>
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">KG Vaciado</div>
+        <div style="font-size:1.2rem;font-weight:bold;color:#1565c0;">{{ "{:,.0f}".format(comparativo.kg_vaciado) }}</div>
+      </div>
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">Diferencia KG</div>
+        <div style="font-size:1.2rem;font-weight:bold;color:{% if comparativo.dif_kg and comparativo.dif_kg >= 0 %}#2e7d32{% else %}#c62828{% endif %};">
+          {% if comparativo.dif_kg is not none %}{{ "{:+,.0f}".format(comparativo.dif_kg) }}{% else %}—{% endif %}
+        </div>
+      </div>
+      {% if comparativo.factor_llenado %}
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">Factor Llenado</div>
+        <div style="font-size:1.2rem;font-weight:bold;">{{ ((comparativo.factor_llenado)*100)|round(2) }}%</div>
+      </div>
+      {% endif %}
+      {% if comparativo.factor_vaciado %}
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">Factor Vaciado</div>
+        <div style="font-size:1.2rem;font-weight:bold;color:#1565c0;">{{ ((comparativo.factor_vaciado)*100)|round(2) }}%</div>
+      </div>
+      {% endif %}
+      {% if comparativo.dif_factor is not none %}
+      <div style="background:white;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.8rem;color:#777;">Dif. Factor</div>
+        <div style="font-size:1.2rem;font-weight:bold;color:{% if comparativo.dif_factor >= 0 %}#2e7d32{% else %}#c62828{% endif %};">
+          {{ "{:+.3f}".format(comparativo.dif_factor) }}%
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+    <div style="background:#e3f2fd;border-radius:10px;padding:12px 20px;font-size:1.1rem;"><b>KG Extraídos acumulados:</b> <span style="font-size:1.4rem;font-weight:bold;color:#1565c0;">{{ "{:,.0f}".format(kg_extraidos) }} kg</span></div>
+    <button onclick="cerrarExtraccion('{{ silo.numero_qr }}')" style="background:#2e7d32;align-self:center;">✔ Cerrar extracción</button>
+  </div>
+  {% endif %}
+  {% if camionadas %}<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#bbdefb;"><th style="padding:7px;">Nro</th><th>Patente</th><th>Fecha</th><th>KG</th><th>Hum%</th><th>M.Ext%</th><th>Factor</th><th>TAS</th><th>Ins.</th><th>Destino</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+    {% for c in camionadas %}<tr style="text-align:center;border-bottom:1px solid #bbdefb;"><td style="padding:6px;font-weight:bold;">{{ c.nro_camion or loop.index }}</td><td>{{ c.patente or "-" }}</td><td style="font-size:.8rem;">{{ c.fecha }}</td><td><b>{{ "{:,.0f}".format(c.kg or 0) if c.kg else "-" }}</b></td><td>{{ c.humedad or "-" }}</td><td>{{ c.materia_extrana if c.materia_extrana is not none else "-" }}</td><td>{{ ((c.factor or 0)*100)|round(2) ~ "%" if c.factor else "-" }}</td><td>{{ c.tas or "-" }}</td><td>{{ "✔" if c.insectos else "-" }}</td><td>{% if c.destino == "puerto" %}<span style="background:#1565c0;color:white;padding:2px 8px;border-radius:10px;font-size:.78rem;">Puerto</span>{% elif c.destino == "planta" %}<span style="background:#6a1b9a;color:white;padding:2px 8px;border-radius:10px;font-size:.78rem;">Planta</span>{% else %}<span style="color:#999;">-</span>{% endif %}</td><td>{% if c.kg and c.kg > 0 %}<span style="background:#2e7d32;color:white;padding:2px 8px;border-radius:10px;font-size:.78rem;">✔ Completo</span>{% else %}<span style="background:#f9a825;color:#333;padding:2px 8px;border-radius:10px;font-size:.78rem;">⏳ Pendiente</span>{% endif %}</td>
+      <td style="white-space:nowrap;">{% if puede_calado and silo.estado_silo == "En extracción" %}<button class="btn-editar-cam" data-id="{{ c.id }}" data-nro="{{ c.nro_camion or loop.index }}" data-patente="{{ c.patente or '' }}" data-fecha="{{ c.fecha }}" data-kg="{{ c.kg or '' }}" data-temperatura="{{ c.temperatura or '' }}" data-humedad="{{ c.humedad or '' }}" data-materia_extrana="{{ c.materia_extrana or '' }}" data-danados="{{ c.danados or '' }}" data-quebrados="{{ c.quebrados or '' }}" data-ph="{{ c.ph or '' }}" data-chamico="{{ c.chamico or '' }}" data-materia_grasa="{{ c.materia_grasa or '' }}" data-acidez="{{ c.acidez or '' }}" data-proteinas="{{ c.proteinas or '' }}" data-granos_picados="{{ c.granos_picados or '' }}" data-olor="{{ c.olor or '0' }}" data-moho="{{ c.moho or '0' }}" data-insectos="{{ c.insectos or 0 }}" data-destino="{{ c.destino or '' }}" data-obs="{{ c.obs or '' }}" onclick="abrirModalVaciado(this)" style="background:#1565c0;padding:4px 8px;font-size:.8rem;margin:2px;">{% if c.kg and c.kg > 0 %}✏️ Editar{% else %}✏️ Completar{% endif %}</button>{% endif %}{% if puede_admin %}<button onclick="eliminarCamionada({{ c.id }})" style="background:#c62828;padding:4px 8px;font-size:.8rem;margin:2px;">🗑️</button>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p style="color:#888;">Todavía no hay camionadas registradas.</p>{% endif %}
+</div>
+<div id="modalVaciado" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;"><div style="background:white;border-radius:14px;padding:24px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;border-top:5px solid #1565c0;">
+    <h3 style="color:#1565c0;margin-top:0;" id="vc_titulo">🚛 Completar Camionada — {{ silo.cereal }}</h3><input type="hidden" id="vc_id">
+    <div style="background:#e3f2fd;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.9rem;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;"><div><b>Camión Nº:</b> <span id="vc_info_nro"></span></div><div><b>Patente:</b> <span id="vc_info_patente"></span></div><div><b>Fecha:</b> <span id="vc_info_fecha"></span></div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><label style="font-size:.85rem;color:#555;">KG *</label><input id="vc_kg" type="number" placeholder="28000" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div><label style="font-size:.85rem;color:#555;">Temperatura °C</label><input id="vc_temperatura" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div><label style="font-size:.85rem;color:#555;">Humedad %</label><input id="vc_humedad" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div><label style="font-size:.85rem;color:#555;">Materia Extraña %</label><input id="vc_materia_extrana" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>
+      {% if silo.cereal in ["Soja","Maíz","Trigo","Sorgo"] %}<div><label style="font-size:.85rem;color:#555;">Dañados %</label><input id="vc_danados" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal in ["Maíz","Trigo","Sorgo"] %}<div><label style="font-size:.85rem;color:#555;">Quebrados %</label><input id="vc_quebrados" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal in ["Maíz","Trigo"] %}<div><label style="font-size:.85rem;color:#555;">PH</label><input id="vc_ph" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal in ["Girasol","Sorgo"] %}<div><label style="font-size:.85rem;color:#555;">Chamico %</label><input id="vc_chamico" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal == "Girasol" %}<div><label style="font-size:.85rem;color:#555;">Mat.Grasa %</label><input id="vc_materia_grasa" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div><label style="font-size:.85rem;color:#555;">Acidez %</label><input id="vc_acidez" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal == "Trigo" %}<div><label style="font-size:.85rem;color:#555;">Proteínas %</label><input id="vc_proteinas" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}
+      {% if silo.cereal == "Sorgo" %}<div><label style="font-size:.85rem;color:#555;">Granos Picados %</label><input id="vc_granos_picados" type="number" step="0.1" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div>{% endif %}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;"><div><label style="font-size:.85rem;color:#555;">Olor %(0-2)</label><input id="vc_olor" type="number" min="0" max="2" step="0.5" value="0" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div><label style="font-size:.85rem;color:#555;">Moho %(0-2)</label><input id="vc_moho" type="number" min="0" max="2" step="0.5" value="0" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></div><div style="display:flex;flex-direction:column;justify-content:flex-end;"><label style="font-size:.85rem;color:#555;">Insectos</label><label style="display:flex;align-items:center;gap:6px;padding:8px 0;"><input type="checkbox" id="vc_insectos"> Sí</label></div></div>
+    <div style="margin-top:12px;"><label style="font-size:.85rem;color:#555;font-weight:bold;">Destino *</label><div style="display:flex;gap:10px;margin-top:6px;"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:#e3f2fd;border-radius:8px;padding:8px 16px;flex:1;justify-content:center;border:2px solid transparent;"><input type="radio" name="vc_destino" value="puerto"> 🚢 Puerto</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:#ede7f6;border-radius:8px;padding:8px 16px;flex:1;justify-content:center;border:2px solid transparent;"><input type="radio" name="vc_destino" value="planta"> 🏭 Planta</label></div></div>
+    <div style="margin-top:10px;"><label style="font-size:.85rem;color:#555;">Observación</label><textarea id="vc_obs" rows="2" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;resize:vertical;"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:16px;"><button id="btnGuardarVaciado" onclick="guardarCamionada()" style="flex:1;background:#1565c0;padding:10px;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">💾 Guardar</button><button onclick="cerrarModalVaciado()" style="flex:1;background:#888;padding:10px;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">Cancelar</button></div>
+    <p id="vc_error" style="color:red;display:none;margin-top:8px;"></p></div></div>
+<script>
+function abrirModalVaciado(btn){var d=btn.dataset;document.getElementById("vc_id").value=d.id;document.getElementById("vc_info_nro").textContent=d.nro;document.getElementById("vc_info_patente").textContent=d.patente||"-";document.getElementById("vc_info_fecha").textContent=d.fecha;document.getElementById("vc_titulo").textContent="🚛 "+(d.kg?"Editar":"Completar")+" Camionada #"+d.nro+" — {{ silo.cereal }}";var campos={vc_kg:d.kg,vc_temperatura:d.temperatura,vc_humedad:d.humedad,vc_materia_extrana:d.materia_extrana,vc_danados:d.danados,vc_quebrados:d.quebrados,vc_ph:d.ph,vc_chamico:d.chamico,vc_materia_grasa:d.materia_grasa,vc_acidez:d.acidez,vc_proteinas:d.proteinas,vc_granos_picados:d.granos_picados,vc_olor:d.olor||"0",vc_moho:d.moho||"0"};for(var k in campos){var el=document.getElementById(k);if(el)el.value=campos[k]||"";}document.getElementById("vc_insectos").checked=(d.insectos==="1");document.querySelectorAll("input[name='vc_destino']").forEach(function(r){r.checked=(r.value===d.destino);});var obs=document.getElementById("vc_obs");if(obs)obs.value=d.obs||"";document.getElementById("vc_error").style.display="none";document.getElementById("btnGuardarVaciado").disabled=false;document.getElementById("btnGuardarVaciado").textContent="💾 Guardar";document.getElementById("modalVaciado").style.display="flex";}
+function cerrarModalVaciado(){document.getElementById("modalVaciado").style.display="none";}
+async function guardarCamionada(){var id=document.getElementById("vc_id").value;var kg=parseFloat(document.getElementById("vc_kg").value);if(!kg||kg<=0){document.getElementById("vc_error").textContent="⚠ Ingresá los KG.";document.getElementById("vc_error").style.display="block";return;}var destino=document.querySelector("input[name='vc_destino']:checked");if(!destino){document.getElementById("vc_error").textContent="⚠ Seleccioná destino.";document.getElementById("vc_error").style.display="block";return;}destino=destino.value;var btn=document.getElementById("btnGuardarVaciado");btn.disabled=true;btn.textContent="Guardando...";var body={kg:kg,temperatura:parseFloat(document.getElementById("vc_temperatura").value)||null,humedad:parseFloat(document.getElementById("vc_humedad").value)||null,materia_extrana:parseFloat(document.getElementById("vc_materia_extrana").value)||null,olor:parseFloat(document.getElementById("vc_olor").value)||0,moho:parseFloat(document.getElementById("vc_moho").value)||0,insectos:document.getElementById("vc_insectos").checked,destino:destino,obs:document.getElementById("vc_obs").value||null};["vc_danados","vc_quebrados","vc_ph","vc_chamico","vc_materia_grasa","vc_acidez","vc_proteinas","vc_granos_picados"].forEach(function(f){var el=document.getElementById(f);if(el&&el.value)body[{vc_danados:"danados",vc_quebrados:"quebrados",vc_ph:"ph",vc_chamico:"chamico",vc_materia_grasa:"materia_grasa",vc_acidez:"acidez",vc_proteinas:"proteinas",vc_granos_picados:"granos_picados"}[f]]=parseFloat(el.value)||null;});var res=await fetch("/api/vaciado/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});var data=await res.json();if(data.ok){cerrarModalVaciado();location.reload();}else{document.getElementById("vc_error").textContent=data.error||"Error.";document.getElementById("vc_error").style.display="block";btn.disabled=false;btn.textContent="💾 Guardar";}}
+async function eliminarCamionada(id){if(!confirm("¿Eliminar esta camionada?"))return;var res=await fetch("/api/vaciado/"+id,{method:"DELETE"});var data=await res.json();if(data.ok)location.reload();else alert(data.error||"Error.");}
+async function cerrarExtraccion(qr){
+  if(!confirm("⚠️ CERRAR EXTRACCIÓN\n\n¿Confirmar cierre del silo " + qr + "?\n\nSe calculará el comparativo llenado vs vaciado.")) return;
+
+  var res = await fetch("/api/cerrar_extraccion", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({numero_qr: qr})
+  });
+  var data = await res.json();
+
+  if(!data.ok){ alert(data.error || "Error al cerrar extracción"); return; }
+
+  var c = data.comparativo;
+  var fmt = n => n != null ? Number(n).toLocaleString("es-AR") : "—";
+  var fmtPct = n => n != null ? (n > 0 ? "+" : "") + Number(n).toFixed(3) + "%" : "—";
+  var fmtKg = n => n != null ? (n >= 0 ? "+" : "") + fmt(n) + " kg" : "—";
+  var signoColor = (n) => n == null ? "" : n >= 0 ? "▲" : "▼";
+
+  var msg =
+    "✔ EXTRACCIÓN CERRADA — Silo " + qr + "\n" +
+    "─────────────────────────────────\n" +
+    "📦 KILOGRAMOS\n" +
+    "  Llenado:  " + fmt(c.kg_llenado) + " kg\n" +
+    "  Vaciado:  " + fmt(c.kg_vaciado) + " kg\n" +
+    "  Diferencia: " + signoColor(c.dif_kg) + " " + fmtKg(c.dif_kg) + "\n" +
+    "─────────────────────────────────\n" +
+    "📊 FACTOR COMERCIAL\n" +
+    "  Llenado:  " + (c.factor_llenado != null ? (c.factor_llenado * 100).toFixed(2) + "%" : "—") + "\n" +
+    "  Vaciado:  " + (c.factor_vaciado != null ? (c.factor_vaciado * 100).toFixed(2) + "%" : "—") + "\n" +
+    "  Diferencia: " + signoColor(c.dif_factor) + " " + fmtPct(c.dif_factor);
+
+  alert(msg);
+  location.href = "/panel";
+}
+</script>
+<!-- ===================== FIN VACIADO ===================== -->
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+
+<style>
+body{
+  font-family:Arial;
+  background:#eef5ee;
+  margin:0
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  font-size:20px;
+  text-align:center
+}
+.container{
+  width:95%;
+  margin:15px auto;
+  background:white;
+  padding:15px;
+  border-radius:12px
+}
+table{
+  width:100%;
+  border-collapse:collapse
+}
+th,td{
+  border:1px solid #c8e6c9;
+  padding:8px;
+  text-align:center;
+  font-size:14px
+}
+th{background:#e8f5e9}
+input{
+  width:100%;
+  padding:5px
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  padding:6px 12px;
+  border-radius:6px;
+  cursor:pointer
+}
+button:hover{background:#2e7d32}
+.small{
+  font-size:12px;
+  color:#555
+}
+.btn-comparar{
+  display:inline-block;
+  background:#1976d2;
+  color:white;
+  padding:6px 14px;
+  border-radius:6px;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:bold;
+  line-height:1.4;
+}
+.btn-comparar:hover{
+  background:#1565c0;
+}
+.btn-bloqueado{
+  background:#9e9e9e;
+  color:white;
+  border:none;
+  padding:6px 14px;
+  border-radius:6px;
+  font-size:13px;
+  cursor:pointer;
+}
+</style>
+
+<header>💰 Comercial – Precios de mercado</header>
+
+{% set ref = mercado[0] if mercado %}
+
+{% if mercado and ref.fecha %}
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+  💱 Dólar oficial – <b>Bluelytics</b> – actualizado {{ fecha_dolar_arg }}
+</div>
+{% endif %}
+
+{% if fecha_pizarra %}
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+  📊 Pizarra – <b>CAC BCR</b> – actualizada {{ fecha_pizarra }}
+</div>
+{% endif %}
+
+<div class="container">
+
+<button onclick="actualizarDolar()" style="margin-bottom:10px">
+  🔄 Actualizar dólar
+</button>
+
+<button onclick="actualizarPizarra()">
+  📊 Actualizar pizarra
+</button>
+<table>
+<tr>
+  <th>Cereal</th>
+  <th>Pizarra auto</th>
+  <th>Fuente</th>
+  <th>Fecha fuente</th>
+  <th>Usar manual</th>
+  <th>Pizarra manual</th>
+  <th>Observación</th>
+  <th>Dólar</th>
+  <th>Comparar</th>
+  <th>Guardar</th>
+</tr>
+
+{% for m in mercado %}
+<tr>
+  <td><b>{{ m.cereal }}</b></td>
+
+  <td>
+    {% if m.pizarra_auto and m.pizarra_auto > 0 %}
+      {{ "{:,.0f}".format(m.pizarra_auto).replace(",", ".") }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+
+  <td>{{ m.fuente if m.fuente else "-" }}</td>
+  <td>{{ m.fecha_fuente if m.fecha_fuente else "-" }}</td>
+
+  <td>
+    <input type="checkbox"
+           id="usar_{{ m.cereal }}"
+           {% if m.usar_manual %}checked{% endif %}>
+  </td>
+
+  <td>
+    <input type="number" step="0.01"
+           id="manual_{{ m.cereal }}"
+           value="{{ m.pizarra_manual or '' }}">
+  </td>
+
+  <td>
+    <input type="text"
+           id="obs_{{ m.cereal }}"
+           value="{{ m.obs_precio or '' }}">
+  </td>
+
+  <td>
+    <input type="number" step="0.01"
+           id="dolar_{{ m.cereal }}"
+           value="{{ m.dolar or '' }}">
+  </td>
+
+  <td>
+    <a href="{{ url_for('comercial.comparador', cereal=m.cereal) }}"
+       class="btn-comparar {% if not puede_comparador %}btn-bloqueado{% endif %}">
+        {% if puede_comparador %}
+            📊 Comparar
+        {% else %}
+            🔒 Comparar
+        {% endif %}
+    </a>
+  </td>
+
+  <td>
+    <button onclick="guardar('{{ m.cereal }}')">💾</button>
+  </td>
+</tr>
+{% endfor %}
+<p class="small">
+✔ Si “Usar manual” está tildado, el sistema ignora la pizarra automática.
+</p>
+</table>
+<h3 style="margin-top:30px;">📈 ROFEX – Dólar Futuro</h3>
+{% if fecha_rofex_arg %}
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+📈 ROFEX – actualizado {{ fecha_rofex_arg }}
+</div>
+{% endif %}
+<button onclick="actualizarRofex()">📈 Actualizar ROFEX</button>
+
+{% if rofex and rofex|length > 0 %}
+<table style="margin-top:10px;">
+<tr>
+    <th>Posición</th>
+    <th>Ajuste</th>
+    <th>Variación</th>
+</tr>
+
+{% for r in rofex %}
+<tr>
+    <td>{{ r.posicion }}</td>
+    <td>{{ "%.2f"|format(r.ajuste) }}</td>
+    <td style="color:{% if r.variacion >= 0 %}green{% else %}red{% endif %}">
+        {{ "%.2f"|format(r.variacion) }}
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% else %}
+<p style="margin-top:10px; color:#888;">No hay datos cargados.</p>
+
+
+</table>
+{% endif %}
+
+<h3 style="margin-top:30px;">🌾 MATBA</h3>
+{% if fecha_matba_arg %}
+<div style="margin:10px 0;padding:10px;background:#e3f2fd;border-left:5px solid #1976d2;border-radius:6px;font-weight:bold;">
+🌾 MATBA – actualizado {{ fecha_matba_arg }}
+</div>
+{% endif %}
+<button onclick="actualizarMatba()">🌾 Actualizar MATBA</button>
+
+{% if matba %}
+<table>
+<tr>
+    <th>Posición</th>
+    <th>Cereal</th>
+    <th>Contrato</th>
+    <th>Precio</th>
+    <th>Variación</th>
+</tr>
+
+{% for m in matba %}
+<tr>
+    <td>{{ m.posicion }}</td>
+    <td>{{ m.cereal }}</td>
+    <td>{{ m.mes }}</td>
+
+    <td>{{ "%.2f"|format(m.precio) }}</td>
+
+    <td style="color:{% if m.variacion >= 0 %}green{% else %}red{% endif %}">
+        {{ "%.2f"|format(m.variacion) }}
+    </td>
+</tr>
+{% endfor %}
+
+</table>
+
+{% else %}
+
+<p>No hay datos MATBA cargados.</p>
+
+{% endif %}
+
+</div>
+
+<script>
+async function actualizarDolar(){
+
+  if(!confirm("¿Actualizar dólar oficial ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_dolar", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("💵 Dólar actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ " + (data.error || "Error al actualizar dólar"));
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+
+async function actualizarPizarra(){
+
+  if(!confirm("¿Actualizar pizarra automática ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_pizarra", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("📊 Pizarra actualizada correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar pizarra");
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+</script>
+
+<script>
+async function actualizarRofex(){
+
+  if(!confirm("¿Actualizar ROFEX ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_rofex", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("✅ ROFEX actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar ROFEX");
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+
+async function actualizarMatba(){
+
+  if(!confirm("¿Actualizar MATBA ahora?")) return;
+
+  try{
+    const res = await fetch("/comercial/api/actualizar_matba", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+      alert("✅ MATBA actualizado correctamente");
+      location.reload();
+    } else {
+      alert("❌ Error al actualizar MATBA");
+    }
+
+  }catch(e){
+    console.error(e);
+    alert("❌ Error de conexión");
+  }
+}
+</script>
+{% endblock %}

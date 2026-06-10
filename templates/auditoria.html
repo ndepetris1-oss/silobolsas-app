@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Auditoría</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:Arial;background:#e8f5e9;margin:0}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+input,select{padding:8px 12px;border-radius:8px;border:1px solid #c8e6c9;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:left}
+th{background:#a5d6a7;cursor:pointer}
+tr:hover{background:#f1f8f1}
+.badge{padding:3px 8px;border-radius:12px;font-size:.8rem;font-weight:bold;white-space:nowrap}
+.badge-silo{background:#c8e6c9;color:#1b5e20}
+.badge-extraccion{background:#ffccbc;color:#bf360c}
+.badge-calado{background:#bbdefb;color:#0d47a1}
+.badge-evento{background:#fff9c4;color:#f57f17}
+.badge-resolucion{background:#dcedc8;color:#33691e}
+.badge-llenado{background:#ffe0b2;color:#e65100}
+.badge-analisis{background:#e1bee7;color:#6a1b9a}
+.badge-excel{background:#b2ebf2;color:#006064}
+</style>
+</head>
+<body>
+<header>📋 AUDITORÍA · SILO BOLSAS</header>
+
+<div class="container">
+
+  <div class="toolbar">
+    <input type="text" id="filtroUsuario" placeholder="🔍 Buscar usuario..." oninput="filtrar()">
+    <select id="filtroAccion" onchange="filtrar()">
+      <option value="">Todas las acciones</option>
+      <option value="registro_silo">🌾 Registro silo</option>
+      <option value="extraccion">📦 Extracción</option>
+      <option value="calado">🧪 Calado</option>
+      <option value="evento_monitoreo">📸 Evento</option>
+      <option value="resolucion_evento">✅ Resolución</option>
+      <option value="llenado">🌽 Llenado</option>
+      <option value="analisis">🔬 Análisis</option>
+      <option value="exportacion_excel">📥 Excel</option>
+    </select>
+    <input type="date" id="filtroFecha" oninput="filtrar()">
+    <span id="contador" style="color:#555;font-size:.9rem;margin-left:auto;"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Usuario</th>
+        {% if current_user.es_superadmin %}
+        <th>Empresa</th>
+        {% endif %}
+        <th>Acción</th>
+        <th>QR / Detalle</th>
+      </tr>
+    </thead>
+    <tbody id="tabla">
+      {% for r in registros %}
+      <tr data-usuario="{{ r.username }}" data-accion="{{ r.accion }}" data-fecha="{{ r.fecha[:10] if r.fecha else '' }}">
+        <td style="white-space:nowrap">{{ r.fecha }}</td>
+        <td><b>{{ r.username }}</b></td>
+        {% if current_user.es_superadmin %}
+        <td>{{ r.empresa_nombre }}</td>
+        {% endif %}
+        <td>
+          {% if r.accion == "registro_silo" %}
+            <span class="badge badge-silo">🌾 Registro silo</span>
+          {% elif r.accion == "extraccion" %}
+            <span class="badge badge-extraccion">📦 Extracción</span>
+          {% elif r.accion == "calado" %}
+            <span class="badge badge-calado">🧪 Calado</span>
+          {% elif r.accion == "evento_monitoreo" %}
+            <span class="badge badge-evento">📸 Evento</span>
+          {% elif r.accion == "resolucion_evento" %}
+            <span class="badge badge-resolucion">✅ Resolución</span>
+          {% elif r.accion == "llenado" %}
+            <span class="badge badge-llenado">🌽 Llenado</span>
+          {% elif r.accion == "analisis" %}
+            <span class="badge badge-analisis">🔬 Análisis</span>
+          {% elif r.accion == "exportacion_excel" %}
+            <span class="badge badge-excel">📥 Excel</span>
+          {% else %}
+            <span class="badge">{{ r.accion }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.numero_qr %}<b>{{ r.numero_qr }}</b> — {% endif %}
+          {{ r.detalle or "" }}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Sin registros aún</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function filtrar(){
+  const usuario = document.getElementById("filtroUsuario").value.toLowerCase();
+  const accion  = document.getElementById("filtroAccion").value;
+  const fecha   = document.getElementById("filtroFecha").value;
+  const filas   = document.querySelectorAll("#tabla tr");
+  let visible   = 0;
+
+  filas.forEach(fila => {
+    const u = (fila.dataset.usuario || "").toLowerCase();
+    const a = fila.dataset.accion || "";
+    const f = fila.dataset.fecha  || "";
+    const ok = (!usuario || u.includes(usuario))
+            && (!accion  || a === accion)
+            && (!fecha   || f === fecha);
+    fila.style.display = ok ? "" : "none";
+    if(ok) visible++;
+  });
+
+  document.getElementById("contador").textContent = `${visible} registro${visible !== 1 ? "s" : ""}`;
+}
+
+filtrar();
+</script>
+</body>
+</html>
+{% endblock %}

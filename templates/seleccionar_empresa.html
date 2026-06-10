@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+
+<div class="selector-bg">
+    <div class="selector-card">
+
+        <div class="selector-header">
+            <h1>Seleccionar Empresa</h1>
+            <p>Elegí la empresa con la que querés trabajar</p>
+        </div>
+
+        <div class="empresa-grid">
+            {% for e in empresas %}
+            <a href="{{ url_for('panel.seleccionar_empresa', id=e.id) }}" 
+               class="empresa-card">
+                
+                <div class="empresa-icon">🏢</div>
+                <div class="empresa-nombre">{{ e.nombre }}</div>
+                <div class="empresa-cta">
+                    Ingresar →
+                </div>
+
+            </a>
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+
+<style>
+
+/* Fondo general */
+.selector-bg{
+    min-height: 80vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background: linear-gradient(135deg, #e6f4ea, #c8e6c9);
+    padding:40px 20px;
+}
+
+/* Card principal */
+.selector-card{
+    background:white;
+    padding:40px;
+    border-radius:16px;
+    width:100%;
+    max-width:1000px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+    animation: fadeIn 0.4s ease;
+}
+
+/* Header */
+.selector-header{
+    text-align:center;
+    margin-bottom:35px;
+}
+
+.selector-header h1{
+    margin:0;
+    font-size:32px;
+    color:#1e4620;
+}
+
+.selector-header p{
+    margin-top:8px;
+    color:#4f6f52;
+    font-size:15px;
+}
+
+/* Grid */
+.empresa-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap:25px;
+}
+
+/* Card empresa */
+.empresa-card{
+    background:#f9fdf9;
+    padding:30px 20px;
+    border-radius:14px;
+    text-align:center;
+    text-decoration:none;
+    color:#1e4620;
+    transition: all 0.25s ease;
+    border:1px solid #d7ead9;
+    position:relative;
+}
+
+.empresa-card:hover{
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    background:white;
+}
+
+/* Icono */
+.empresa-icon{
+    font-size:42px;
+    margin-bottom:15px;
+}
+
+/* Nombre */
+.empresa-nombre{
+    font-size:18px;
+    font-weight:600;
+    margin-bottom:18px;
+}
+
+/* CTA */
+.empresa-cta{
+    font-size:14px;
+    font-weight:bold;
+    color:#2e7d32;
+}
+
+/* Animación */
+@keyframes fadeIn{
+    from{
+        opacity:0;
+        transform:translateY(10px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+</style>
+
+{% endblock %}

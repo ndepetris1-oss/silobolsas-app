@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Muestreo - {{ muestreo.numero_qr }} - {{ muestreo.cereal }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#eef5ee;
+  margin:0
+}
+header{
+  background:#2e7d32;
+  color:white;
+  padding:14px;
+  font-size:20px;
+  text-align:center
+}
+.container{
+  width:90%;
+  margin:20px auto;
+  background:white;
+  padding:20px;
+  border-radius:12px
+}
+button{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer
+}
+button:hover{background:#2e7d32}
+.section{
+  border:1px solid #c8e6c9;
+  border-radius:10px;
+  padding:15px;
+  margin-bottom:15px
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin:10px 0
+}
+th,td{
+  border:1px solid #c8e6c9;
+  padding:6px;
+  font-size:13px;
+  text-align:center
+}
+th{background:#e8f5e9}
+.alert{
+  background:#fff3cd;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:10px
+}
+.modal{
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+  z-index:9999
+}
+.modal-content{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  width:420px;
+  max-height:90vh;
+  overflow:auto
+}
+input,select{
+  width:100%;
+  padding:6px;
+  margin-bottom:8px
+}
+  @media (max-width: 768px) {
+  .modal {
+    align-items: flex-start;
+  }
+
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    padding: 15px;
+  }
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: 0.3s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.switch input:checked + .slider {
+  background-color: #4caf50;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+</style>
+  
+</head>
+
+<body>
+
+<header>
+Muestreo · {{ muestreo.numero_qr }} · {{ muestreo.cereal }}
+</header>
+
+<div class="container">
+
+<button onclick="location.href='/silo/{{ muestreo.numero_qr }}'">⬅ Volver al silo</button>
+
+<p><b>Fecha muestreo:</b> {{ muestreo.fecha_muestreo }}</p>
+
+<hr>
+<h3>Secciones del muestreo</h3>
+
+{% for sec in ["punta","medio","final"] %}
+{% set a = (analisis | selectattr("seccion","equalto",sec) | list | first) %}
+
+<div class="section">
+  <h4>{{ sec|capitalize }}</h4>
+
+  {% if a %}
+<table>
+  <tr>
+    <th>Temp °C</th>
+    <th>Hum %</th>
+
+    {# === ENCABEZADOS POR CEREAL === #}
+
+    {# Maíz, Trigo, Sorgo → Dañados #}
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo","Soja") %}
+      <th>Dañados %</th>
+    {% endif %}
+
+    {# Maíz, Trigo, Sorgo → Quebrados (NO Soja, NO Girasol) #}
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <th>Quebrados %</th>
+    {% endif %}
+
+    {# Todos → M.Ext #}
+    <th>M.Ext %</th>
+
+    {# Maíz, Trigo → PH #}
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <th>PH</th>
+    {% endif %}
+
+    {# Sorgo → Granos picados #}
+    {% if muestreo.cereal == "Sorgo" %}
+      <th>Gr. picados</th>
+    {% endif %}
+
+    {# Girasol → Materia grasa y Acidez #}
+    {% if muestreo.cereal == "Girasol" %}
+      <th>Mat. grasa %</th>
+      <th>Acidez %</th>
+    {% endif %}
+
+    {# Trigo → Proteínas #}
+    {% if muestreo.cereal == "Trigo" %}
+      <th>Proteínas %</th>
+    {% endif %}
+
+    {# Girasol, Sorgo → Chamico #}
+    {% if muestreo.cereal in ("Girasol","Sorgo") %}
+      <th>Chamico</th>
+    {% endif %}
+
+    <th>Olor %</th>
+    <th>Moho %</th>
+    <th>Insectos</th>
+
+    {# Grado solo para Maíz, Trigo, Sorgo #}
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <th>Grado</th>
+    {% endif %}
+
+    <th>Factor</th>
+    <th>TAS (días)</th>
+  </tr>
+
+  <tr>
+    <td>{{ a.temperatura if a.temperatura is not none else "-" }}</td>
+    <td>{{ a.humedad if a.humedad is not none else "-" }}</td>
+
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo","Soja") %}
+      <td>{{ a.danados if a.danados is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <td>{{ a.quebrados if a.quebrados is not none else "-" }}</td>
+    {% endif %}
+
+    <td>{{ a.materia_extrana if a.materia_extrana is not none else "-" }}</td>
+
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
+      <td>{{ a.ph if a.ph is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Sorgo" %}
+      <td>{{ a.granos_picados if a.granos_picados is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Girasol" %}
+      <td>{{ a.materia_grasa if a.materia_grasa is not none else "-" }}</td>
+      <td>{{ a.Acidez if a.Acidez is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal == "Trigo" %}
+      <td>{{ a.proteinas if a.proteinas is not none else "-" }}</td>
+    {% endif %}
+
+    {% if muestreo.cereal in ("Girasol","Sorgo") %}
+      <td>{{ a.chamico if a.chamico is not none else "-" }}</td>
+    {% endif %}
+
+    <td>{{ a.olor if a.olor is not none else "-" }}</td>
+    <td>{{ a.moho if a.moho is not none else "-" }}</td>
+    <td>{{ "Sí" if a.insectos else "No" }}</td>
+
+    {% if muestreo.cereal in ("Maíz","Trigo","Sorgo") %}
+      <td>
+        {% if a.grado is not none %}
+          <b>{{ a.grado }}</b>
+        {% else %}-{% endif %}
+      </td>
+    {% endif %}
+
+    <td>
+      {% if a.factor is not none %}
+        <b>{{ (a.factor * 100)|round(2) }}%</b>
+      {% else %}-{% endif %}
+    </td>
+
+    <td>
+      {% if a.tas is not none %}
+        <b>{{ a.tas }}</b>
+      {% else %}-{% endif %}
+    </td>
+  </tr>
+</table>
+{% else %}
+<p><i>Sin análisis cargado</i></p>
+{% endif %}
+
+  {% if puede_laboratorio %}
+<button onclick='abrirAnalisis(
+  "{{ sec }}",
+  {{ dict(a)|tojson if a else "null" }}
+)'>
+  ➕ Cargar / Editar análisis
+</button>
+{% else %}
+<a href="{{ url_for('permissions.acceso', pantalla='laboratorio') }}"
+   style="background:#888; display:inline-block; padding:8px 14px; border-radius:8px; color:white; text-decoration:none;">
+    🔒 Cargar / Editar análisis
+</a>
+{% endif %}
+   
+{% endfor %}
+
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+
+    <h3 id="tituloModal"></h3>
+
+    <input id="temperatura" type="number" inputmode="decimal" placeholder="Temperatura">
+    <input id="humedad" type="number" inputmode="decimal" placeholder="Humedad">
+
+    {% if muestreo.cereal in ("Maíz","Trigo") %}
+    <input id="ph" type="number" inputmode="decimal" placeholder="PH">
+    {% endif %}
+
+    <!-- DANADOS -->
+    <div id="grupo_danados">
+      <input id="danados" type="number" placeholder="Total dañados">
+    </div>
+
+    <!-- QUEBRADOS (NO aplica a Girasol) -->
+    {% if muestreo.cereal != "Girasol" %}
+    <div id="grupo_quebrados">
+      <input id="quebrados" type="number" placeholder="Granos quebrados">
+    </div>
+    {% endif %}
+
+    <input id="materia_extrana" type="number" inputmode="decimal" placeholder="Materia extraña">
+
+    <!-- RUBROS TRIGO -->
+    {% if muestreo.cereal == "Trigo" %}
+        <input id="granos_carbon" type="number" placeholder="Granos con carbón">
+        <input id="panza_blanca" type="number" placeholder="Granos panza blanca">
+        <input id="granos_picados" type="number" placeholder="Granos picados">
+        <input id="punta_sombreada" type="number" placeholder="Punta sombreada por tierra">
+        <input id="revolcado_tierra" type="number" placeholder="Revolcado en tierra">
+        <input id="punta_negra" type="number" placeholder="Punta negra por carbón">
+        <input id="proteinas" type="number" step="0.1" placeholder="Proteínas">
+    {% endif %}
+
+<!-- RUBROS SORGO -->
+{% if muestreo.cereal == "Sorgo" %}
+    <input id="granos_picados" type="number" placeholder="Granos picados">
+{% endif %}
+
+    <!-- RUBROS GIRASOL -->
+    {% if muestreo.cereal == "Girasol" %}
+    <input id="materia_grasa" type="number" step="0.1" placeholder="Materia grasa (%)">
+    <input id="acidez" type="number" step="0.1" placeholder="Acidez (%)">
+    {% endif %}
+
+    <input id="chamico" type="number" inputmode="numeric" placeholder="Cantidad / semillas">
+
+    <label>Olor (%)</label>
+    <select id="olor">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+    <label>Moho (%)</label>
+    <select id="moho">
+      <option value="0">0</option>
+      <option value="0.5">0.5</option>
+      <option value="1">1</option>
+      <option value="1.5">1.5</option>
+      <option value="2">2</option>
+    </select>
+
+
+    <label style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+  <span>Insectos</span>
+  <label class="switch">
+    <input type="checkbox" id="insectos">
+    <span class="slider"></span>
+  </label>
+</label>
+    </label>
+        <button onclick="guardarAnalisis()">💾 Guardar</button>
+    <button onclick="cerrarModal()">Cancelar</button>
+
+  </div>
+</div>
+
+<script>
+let seccionActual = null;
+function abrirAnalisis(seccion, datos){
+  seccionActual = seccion;
+
+  document.getElementById("tituloModal").innerText =
+    "Análisis - " + seccion.toUpperCase();
+
+  // limpiar
+  ["temperatura","humedad","danados","quebrados","materia_extrana","chamico"]
+    .forEach(id => {
+      if(document.getElementById(id)) document.getElementById(id).value = "";
+    });
+
+  if(document.getElementById("ph")) ph.value = "";
+  olor.value = "0";
+  moho.value = "0";
+  document.getElementById("insectos").checked = false;
+
+  // precargar si hay datos
+  if(datos){
+    if (document.getElementById("temperatura") && datos.temperatura !== null)
+        document.getElementById("temperatura").value = datos.temperatura;
+    if (document.getElementById("humedad") && datos.humedad !== null)
+        document.getElementById("humedad").value = datos.humedad;
+    if(document.getElementById("ph") && datos.ph !== null) ph.value = datos.ph;
+    if (document.getElementById("danados") && datos.danados !== null)
+        document.getElementById("danados").value = datos.danados;
+    if (document.getElementById("quebrados") && datos.quebrados !== null)
+        document.getElementById("quebrados").value = datos.quebrados;
+    if (document.getElementById("materia_extrana") && datos.materia_extrana !== null)
+        document.getElementById("materia_extrana").value = datos.materia_extrana;
+    if (document.getElementById("chamico") && datos.chamico !== null)
+        document.getElementById("chamico").value = datos.chamico;
+    olor.value = datos.olor ?? "0";
+    moho.value = datos.moho ?? "0";
+    document.getElementById("insectos").checked = Boolean(datos.insectos);
+    if (document.getElementById("granos_carbon") && datos.granos_carbon !== null)
+    granos_carbon.value = datos.granos_carbon;
+
+    if (document.getElementById("panza_blanca") && datos.panza_blanca !== null)
+    panza_blanca.value = datos.panza_blanca;
+
+    if (document.getElementById("granos_picados") && datos.granos_picados !== null)
+    granos_picados.value = datos.granos_picados;
+
+    if (document.getElementById("punta_sombreada") && datos.punta_sombreada !== null)
+    punta_sombreada.value = datos.punta_sombreada;
+
+    if (document.getElementById("revolcado_tierra") && datos.revolcado_tierra !== null)
+    revolcado_tierra.value = datos.revolcado_tierra;
+
+    if (document.getElementById("punta_negra") && datos.punta_negra !== null)
+    punta_negra.value = datos.punta_negra;
+
+    if (document.getElementById("proteinas") && datos.proteinas !== null)
+        proteinas.value = datos.proteinas;
+    if (document.getElementById("materia_grasa") && datos.materia_grasa !== null)
+        materia_grasa.value = datos.materia_grasa;
+
+    if (document.getElementById("acidez") && datos.acidez !== null)
+        acidez.value = datos.acidez;
+      }
+  // ===============================
+  // Mostrar / ocultar según cereal
+  // ===============================
+
+  if ("{{ muestreo.cereal }}" === "Girasol") {
+
+    // Ocultar campos que NO aplican
+    if (document.getElementById("grupo_quebrados"))
+        document.getElementById("grupo_quebrados").style.display = "none";
+
+    if (document.getElementById("grupo_danados"))
+        document.getElementById("grupo_danados").style.display = "none";
+
+    // Limpiar valores por seguridad
+    if (document.getElementById("quebrados"))
+        document.getElementById("quebrados").value = "";
+
+    if (document.getElementById("danados"))
+        document.getElementById("danados").value = "";
+
+    // Mostrar grupo específico girasol
+    if (document.getElementById("grupo_girasol"))
+        document.getElementById("grupo_girasol").style.display = "block";
+
+  } else {
+
+    // Restaurar campos normales
+    if (document.getElementById("grupo_quebrados"))
+        document.getElementById("grupo_quebrados").style.display = "block";
+
+    if (document.getElementById("grupo_danados"))
+        document.getElementById("grupo_danados").style.display = "block";
+
+    if (document.getElementById("grupo_girasol"))
+        document.getElementById("grupo_girasol").style.display = "none";
+  }
+  document.getElementById("modal").style.display = "flex";
+}
+
+function cerrarModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+function guardarAnalisis(){
+  fetch("/api/analisis_seccion",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      id_muestreo: {{ muestreo.id }},
+      cereal: "{{ muestreo.cereal }}",
+      seccion: seccionActual,
+
+      temperatura: document.getElementById("temperatura")?.value || null,
+      humedad: document.getElementById("humedad")?.value || null,
+      ph: document.getElementById("ph")?.value || null,
+
+      danados: document.getElementById("danados")?.value || null,
+      quebrados: document.getElementById("quebrados")?.value || null,
+      materia_extrana: document.getElementById("materia_extrana")?.value || null,
+
+      olor: document.getElementById("olor")?.value || 0,
+      moho: document.getElementById("moho")?.value || 0,
+      insectos: document.getElementById("insectos")?.checked || false,
+      chamico: document.getElementById("chamico")?.value || null,
+
+      granos_carbon: document.getElementById("granos_carbon")?.value || null,
+      panza_blanca: document.getElementById("panza_blanca")?.value || null,
+      granos_picados: document.getElementById("granos_picados")?.value || null,
+      punta_sombreada: document.getElementById("punta_sombreada")?.value || null,
+      revolcado_tierra: document.getElementById("revolcado_tierra")?.value || null,
+      punta_negra: document.getElementById("punta_negra")?.value || null,
+      proteinas: document.getElementById("proteinas")?.value || null,
+
+      materia_grasa: document.getElementById("materia_grasa") 
+          ? document.getElementById("materia_grasa").value
+          : null,
+      acidez: document.getElementById("acidez") 
+          ? document.getElementById("acidez").value
+          : null,
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+      if(data.ok){
+          location.reload();
+      } else {
+          alert("Error guardando análisis");
+      }
+  })
+  .catch(e => console.error(e));
+}
+</script>
+
+</body>
+</html>
+{% endblock %}

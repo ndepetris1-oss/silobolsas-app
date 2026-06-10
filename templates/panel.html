@@ -1,0 +1,800 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel de Control - Silo Bolsas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+body{font-family:Arial;background:#e8f5e9;margin:0}
+header{background:#2e7d32;color:white;text-align:center;padding:14px;font-size:20px}
+.container{width:95%;margin:15px auto;background:white;border-radius:14px;padding:15px}
+
+.dashboard-nav{
+  display:flex;
+  gap:15px;
+  flex-wrap:wrap;
+  padding:15px;
+  background:white;
+  border-radius:14px;
+  width:95%;
+  margin:15px auto 0 auto;
+}
+
+.nav-btn{
+  background:#1e4620;
+  color:white;
+  padding:10px 18px;
+  border-radius:10px;
+  text-decoration:none;
+  font-weight:bold;
+  transition:0.2s;
+}
+
+.nav-btn:hover{
+  background:#2e7d32;
+  transform:translateY(-2px);
+}
+
+.nav-btn.admin{
+  background:#003366;
+}
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px
+}
+
+button,select{
+  background:#43a047;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  cursor:pointer
+}
+.nav-bar{
+  display:flex;
+  gap:12px;
+  margin-bottom:15px;
+  flex-wrap:wrap;
+}
+
+.nav-btn{
+  background:#1b5e20;
+  color:white;
+  padding:10px 16px;
+  border-radius:12px;
+  font-weight:bold;
+  border:none;
+  cursor:pointer;
+  text-decoration:none;
+}
+
+.nav-btn.locked{
+  background:#888;
+}
+
+.alerta-tas {
+  background: #ffdddd;
+  color: #b30000;
+  font-weight: bold;
+}
+
+.nav-btn.admin{
+  background:#0d47a1;
+}
+select{background:#c8e6c9;color:black}
+
+button:hover{background:#2e7d32}
+
+/* Mapa normal */
+#map {
+  width: 100%;
+  height: 400px;
+  border-radius: 12px;
+}
+
+/* Mapa en pantalla completa */
+#map.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+}
+
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #c8e6c9;text-align:center}
+th{background:#a5d6a7;cursor:pointer}
+
+.humedo{background:#ffebee;color:#b71c1c;font-weight:bold}
+.estado-activo{color:#2e7d32;font-weight:bold}
+.estado-extracción-parcial{color:#f9a825;font-weight:bold}
+.estado-extraído{color:#b71c1c;font-weight:bold}
+.estado-humedo{
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
+
+.tas-alerta{
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
+.tas-vencido{
+  background:#b71c1c;
+  color:#fff;
+  font-weight:bold;
+  animation: parpadeo 1.2s infinite;
+}
+@keyframes parpadeo {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.nav-btn.excel{
+    background:#1f4e79;
+}
+
+.nav-btn.excel:hover{
+    background:#163a5c;
+}
+</style>
+</head>
+
+<body>
+<a href="#" onclick="confirmarExportar(event)" class="nav-btn excel">
+ 📥 Exportar Excel
+</a>
+<header>PANEL DE CONTROL · SILO BOLSAS</header>
+
+<!-- ===== RESUMEN RÁPIDO — BOTONES FILTRO ===== -->
+<style>
+.badge-filtro {
+  flex:1;min-width:130px;
+  border-radius:14px;padding:14px 18px;
+  text-align:center;color:white;
+  cursor:pointer;border:3px solid transparent;
+  transition:transform .15s, box-shadow .15s, border-color .15s;
+  background:none;font-family:inherit;
+}
+.badge-filtro:hover {
+  transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+.badge-filtro.activo {
+  border-color:white !important;
+  box-shadow:0 0 0 3px rgba(255,255,255,.5), 0 6px 18px rgba(0,0,0,.3);
+  transform:translateY(-2px);
+}
+</style>
+
+<div style="display:flex;flex-wrap:wrap;gap:12px;width:95%;margin:14px auto 0 auto;">
+
+  <!-- Todos (reset) -->
+  <button id="badge-todos" class="badge-filtro activo"
+    style="background:#1b5e20;"
+    onclick="toggleBadge('todos','','')">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_activos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">🌾 Silos activos</div>
+    {% set factor_general_num = namespace(suma_kg=0, suma_kgf=0) %}
+    {% for cereal, d in resumen_comercial.items() %}
+      {% if d.factor_pond %}
+        {% set factor_general_num.suma_kg = factor_general_num.suma_kg + d.kg_total %}
+        {% set factor_general_num.suma_kgf = factor_general_num.suma_kgf + (d.factor_pond * d.kg_total) %}
+      {% endif %}
+    {% endfor %}
+    {% if factor_general_num.suma_kg > 0 %}
+    <div style="font-size:.9rem;margin-top:6px;opacity:.9;">
+      Factor: <b>{{ (factor_general_num.suma_kgf / factor_general_num.suma_kg) | round(2) }}%</b>
+    </div>
+    {% endif %}
+  </button>
+
+  <!-- Por cereal -->
+  {% for cereal, cant in resumen.por_cereal.items() %}
+  {% set colores = {'Soja':'#f9a825','Maíz':'#e65100','Trigo':'#78909c','Girasol':'#558b2f','Sorgo':'#6d4c41'} %}
+  <button id="badge-{{ cereal|lower|replace('í','i')|replace('á','a') }}"
+    class="badge-filtro"
+    style="background:{{ colores.get(cereal,'#455a64') }};"
+    onclick="toggleBadge('cereal','cereal','{{ cereal }}')">
+    <div style="font-size:2rem;font-weight:bold;">{{ cant }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">{{ cereal }}</div>
+    {% if resumen_comercial and cereal in resumen_comercial and resumen_comercial[cereal].factor_pond %}
+    <div style="font-size:.9rem;margin-top:6px;opacity:.9;">
+      Factor: <b>{{ resumen_comercial[cereal].factor_pond }}%</b>
+    </div>
+    {% endif %}
+  </button>
+  {% endfor %}
+
+  <!-- Alertas TAS -->
+  <button id="badge-alertas" class="badge-filtro"
+    style="background:{{ '#b71c1c' if resumen.con_alertas > 0 else '#37474f' }};"
+    onclick="toggleBadge('alerta_tas','alerta_tas','si')">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.con_alertas }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">⚠️ En alerta TAS</div>
+  </button>
+
+  <!-- Con eventos -->
+  <button id="badge-eventos" class="badge-filtro"
+    style="background:{{ '#e65100' if resumen.con_eventos > 0 else '#37474f' }};"
+    onclick="toggleBadge('eventos','eventos','si')">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.con_eventos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">🚨 Con eventos</div>
+  </button>
+
+  <!-- En extracción -->
+  <button id="badge-extraccion" class="badge-filtro"
+    style="background:#e65100;"
+    onclick="toggleBadge('estado_silo','estado_silo','En extracción')">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_en_extraccion }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">🚛 En extracción</div>
+  </button>
+
+  <!-- Extraídos -->
+  <button id="badge-extraidos" class="badge-filtro"
+    style="background:#4e342e;"
+    onclick="toggleBadge('estado_silo','estado_silo','Extraído')">
+    <div style="font-size:2rem;font-weight:bold;">{{ resumen.total_extraidos }}</div>
+    <div style="font-size:.85rem;margin-top:4px;">✔ Extraídos</div>
+  </button>
+
+</div>
+<!-- ===== FIN RESUMEN ===== -->
+
+
+
+<div class="container">
+
+<button id="btnMapa"
+        onclick="toggleMapa()"
+        style="
+          position:absolute;
+          z-index:10000;
+          margin:10px;
+          padding:8px 12px;
+          border-radius:8px;
+          border:none;
+          background:#1976d2;
+          color:white;
+          font-weight:bold;
+          cursor:pointer;
+        ">
+  🗺 Pantalla completa
+</button>
+
+<div id="map"></div>
+
+<table>
+<thead>
+<tr>
+  <th onclick="ordenar('qr')">QR ⬍</th>
+  <th>Cereal</th>
+  <th>Estado grano</th>
+  <th>Estado silo</th>
+  <th onclick="ordenar('confeccion')">Confección ⬍</th>
+  <th onclick="ordenar('grado')">Grado ⬍</th>
+  <th onclick="ordenar('factor')">Factor ⬍</th>
+  <th onclick="ordenar('tas')">TAS mín ⬍</th>
+  <th onclick="ordenar('extraccion')">Extracción estimada ⬍</th>
+  <th>Eventos</th>
+  <th>Acción</th>
+</tr>
+
+<tr>
+  <th></th>
+
+  <th>
+    <select onchange="setFiltro('cereal', this.value)">
+      <option value="">Todos</option>
+      <option>Maíz</option>
+      <option>Soja</option>
+      <option>Trigo</option>
+      <option>Girasol</option>
+    </select>
+  </th>
+
+  <th>
+    <select onchange="setFiltro('estado_grano', this.value)">
+      <option value="">Todos</option>
+      <option>Seco</option>
+      <option>Humedo</option>
+    </select>
+  </th>
+
+  <th>
+    <select onchange="setFiltro('estado_silo', this.value)">
+      <option value="">Todos</option>
+      <option>Activo</option>
+      <option>Extracción parcial</option>
+      <option>En extracción</option>
+      <option>Extraído</option>
+    </select>
+  </th>
+
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+
+  <th>
+    <select onchange="setFiltro('eventos', this.value)">
+      <option value="">Todos</option>
+      <option value="no">No</option>
+      <option value="si">Con eventos</option>
+    </select>
+  </th>
+
+  <th></th>
+</tr>
+</thead>
+
+<tbody id="tabla"></tbody>
+</table>
+
+</div>
+<script>
+function toggleMapa(){
+  const mapDiv = document.getElementById("map");
+  mapDiv.classList.toggle("fullscreen");
+
+  // Leaflet necesita recalcular tamaño
+  setTimeout(() => {
+    if(window.map){
+      map.invalidateSize();
+    }
+  }, 300);
+}
+</script>
+
+<script>
+/* ===== DATOS ===== */
+const registros = {{ registros | tojson | safe }};
+let visibles = [...registros];
+const tbody = document.getElementById("tabla");
+
+/* ===== MAPA ===== */
+const map = L.map('map', { zoomControl:false });
+map.setView([-34.6, -58.4], 6);
+
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution:'© Esri' }
+).addTo(map);
+
+setTimeout(() => map.invalidateSize(true), 300);
+
+let markers = [];
+
+function icono(c){
+  let color="blue";
+  if(c==="Maíz") color="orange";
+  if(c==="Soja") color="yellow";
+  if(c==="Trigo") color="#bdbdbd";
+  if(c==="Girasol") color="black";
+  return L.divIcon({ html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white"></div>` });
+}
+
+/* ===== RENDER ===== */
+function render(){
+  tbody.innerHTML="";
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
+
+  let bounds=[];
+
+  visibles.forEach(r=>{
+    // --- Cuenta regresiva TAS ---
+      let tasRestante = null;
+      let diasAlmacenados = 0;
+      let tasTexto = '-';
+      let tasClase = '';
+      let tasTooltip = '';
+      if (r.tas_min != null && r.fecha_confeccion) {
+        const partes = r.fecha_confeccion.replace(/[-:\/]/g,' ').split(/\s+/);
+        const fechaConf = new Date(partes[0], partes[1]-1, partes[2]||1);
+        const hoy = new Date(); hoy.setHours(0,0,0,0);
+        diasAlmacenados = Math.floor((hoy - fechaConf) / 86400000);
+        if (diasAlmacenados < 0) diasAlmacenados = 0;
+        tasRestante = r.tas_min - diasAlmacenados;
+        tasTooltip = `TAS total: ${r.tas_min} días | Almacenado: ${diasAlmacenados} días`;
+        if (tasRestante <= 0) {
+          tasTexto = '\u{1F6A8} Vencido';
+          tasClase = 'tas-vencido';
+        } else if (tasRestante <= 30) {
+          tasTexto = tasRestante + ' días';
+          tasClase = 'alerta-tas';
+        } else {
+          tasTexto = tasRestante + ' días';
+          tasClase = '';
+        }
+      } else if (r.tas_min != null) {
+        tasTexto = r.tas_min + ' días';
+        tasClase = r.tas_min <= 30 ? 'alerta-tas' : '';
+        tasTooltip = `TAS total: ${r.tas_min} días (sin fecha de confección)`;
+      }
+      // --- Fin cuenta regresiva TAS ---
+      tbody.innerHTML+=`
+      <tr>
+        <td>${r.numero_qr}</td>
+        <td>${r.cereal}</td>
+        <td class="${r.estado_grano === 'Humedo' ? 'estado-humedo' : ''}">
+          ${r.estado_grano ?? '-'}
+        </td>
+        <td>${r.estado_silo ?? 'Activo'}</td>
+        <td>${r.fecha_confeccion}</td>
+        <td>${r.grado ?? '-'}</td>
+        <td>
+          ${r.factor ? (r.factor*100).toFixed(2)+'%' : '-'}
+          ${r.fuente_calidad === 'llenado' ? '<br><span style="font-size:.75rem;color:#e65100;font-weight:bold;">🌽 Llenado</span>' : ''}
+        </td>
+        <td class="${tasClase}" title="${tasTooltip}">
+          ${tasTexto}
+        </td>
+        <td>${r.fecha_extraccion_estimada ?? '-'}</td>
+        <td>${r.eventos>0 ? r.eventos : 'No'}</td>
+        <td>
+  <button
+    onclick="location.href='/silo/${r.numero_qr}'"
+    style="margin-bottom:6px">
+    🔍 Ver
+  </button>
+
+  <br>
+
+  ${
+    r.estado_silo === "Extraído"
+      ? `<span style="color:#388e3c;font-weight:bold">✔ Extraído</span>` +
+        (r.fecha_extraccion ? `<br><span style="font-size:.78rem;color:#777;">🔒 ${r.fecha_extraccion}</span>` : "") +
+        (r.dif_kg != null
+          ? `<br><span style="font-size:.78rem;font-weight:bold;color:${r.dif_kg >= 0 ? '#2e7d32' : '#c62828'};">` +
+            `${r.dif_kg >= 0 ? "▲" : "▼"} ${(r.dif_kg >= 0 ? "+" : "") + Number(r.dif_kg).toLocaleString("es-AR")} kg vs llenado</span>`
+          : "")
+      : r.estado_silo === "En extracción"
+        ? `<span style="color:#e65100;font-weight:bold">🚛 En extracción</span>
+           <br>
+           <button
+             onclick="location.href='/silo/${r.numero_qr}'"
+             style="background:#1565c0;color:white;margin-top:4px;font-size:.85rem;">
+             Ver camionadas
+           </button>`
+        : (userIsAdmin
+            ? `<button
+                 onclick="confirmarExtraccion('${r.numero_qr}')"
+                 style="background:#c62828;color:white;margin-top:4px">
+                 🚛 Iniciar extracción
+               </button>`
+            : `<span style="color:#888;font-size:.85rem;">Activo</span>`)
+  }
+
+  {% if current_user.rol == 'admin_empresa' or current_user.es_superadmin %}
+  <br>
+  <button
+    onclick="abrirEditorSilo('${r.numero_qr}','${r.cereal}','${r.estado_grano}','${r.fecha_confeccion}','${r.metros}','${r.estado_silo}')"
+    style="background:#1976d2;color:white;margin-top:4px">
+    ✏️ Editar
+  </button>
+  <button
+    onclick="confirmarBorrarSilo('${r.numero_qr}')"
+    style="background:#b71c1c;color:white;margin-top:4px">
+    🗑️ Borrar
+  </button>
+  {% endif %}
+</td>
+      </tr>
+    `;
+
+    if(r.lat && r.lon){
+      const tooltip = `<b>${r.numero_qr}</b><br>${r.cereal}<br>${r.estado_silo}`;
+      const m=L.marker([r.lat,r.lon],{icon:icono(r.cereal)})
+        .bindTooltip(tooltip, {permanent:false, direction:"top", offset:[0,-10]})
+        .bindPopup(`<b>${r.numero_qr}</b><br>🌾 ${r.cereal}<br>📅 ${r.fecha_confeccion}<br>Estado: ${r.estado_silo}`)
+        .addTo(map);
+      markers.push(m);
+      bounds.push([r.lat,r.lon]);
+    }
+  });
+
+  if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+}
+
+/* ===== FILTROS + ORDEN EXCEL ===== */
+const userRol = "{{ current_user.rol }}";
+const userIsAdmin = {{ 'true' if (current_user.rol == 'admin_empresa' or current_user.es_superadmin) else 'false' }};
+
+const filtros = {
+  cereal:"",
+  estado_grano:"",
+  estado_silo:"",
+  eventos:"",
+  alerta_tas:"",
+  orden:""
+};
+
+// badge activo actual
+let badgeActivo = "todos";
+
+function toggleBadge(badgeId, campo, valor){
+  // Si clickeo el mismo que ya está activo → reset a "todos"
+  if(badgeActivo === badgeId){
+    badgeId = "todos"; campo = ""; valor = "";
+  }
+  // Quitar activo de todos
+  document.querySelectorAll(".badge-filtro").forEach(b => b.classList.remove("activo"));
+  // Poner activo en el clickeado
+  const el = document.getElementById("badge-" + badgeId);
+  if(el) el.classList.add("activo");
+  badgeActivo = badgeId;
+
+  // Resetear todos los filtros de badge y aplicar el nuevo
+  filtros.cereal = "";
+  filtros.estado_silo = "";
+  filtros.eventos = "";
+  filtros.alerta_tas = "";
+  if(campo) filtros[campo] = valor;
+  aplicarFiltros();
+}
+
+function setFiltro(campo,valor){
+  filtros[campo]=valor;
+  if(campo !== "orden"){
+    document.querySelectorAll(".badge-filtro").forEach(b => b.classList.remove("activo"));
+    document.getElementById("badge-todos").classList.add("activo");
+    badgeActivo = "todos";
+  }
+  aplicarFiltros();
+}
+
+function ordenar(campo){
+  filtros.orden = campo;
+  aplicarFiltros();
+}
+
+function aplicarFiltros(){
+  visibles = registros.filter(r=>{
+    if(filtros.cereal && r.cereal!==filtros.cereal) return false;
+    if(filtros.estado_grano && r.estado_grano!==filtros.estado_grano) return false;
+    if(filtros.estado_silo && r.estado_silo!==filtros.estado_silo) return false;
+    if(filtros.eventos==="si" && r.eventos===0) return false;
+    if(filtros.eventos==="no" && r.eventos>0) return false;
+    if(filtros.alerta_tas==="si" && !(r.tas_min!==null && r.tas_min<=30)) return false;
+    return true;
+  });
+
+  switch(filtros.orden){
+    case "qr": visibles.sort((a,b)=>a.numero_qr.localeCompare(b.numero_qr)); break;
+    case "confeccion": visibles.sort((a,b)=>new Date(a.fecha_confeccion)-new Date(b.fecha_confeccion)); break;
+    case "grado": visibles.sort((a,b)=>(a.grado??99)-(b.grado??99)); break;
+    case "factor": visibles.sort((a,b)=>(a.factor??999)-(b.factor??999)); break;
+    case "tas": visibles.sort((a,b)=>{
+      function _tasR(r){
+        if(r.tas_min==null||!r.fecha_confeccion) return r.tas_min??9999;
+        const p=r.fecha_confeccion.replace(/[-:\/]/g,' ').split(/\s+/);
+        const f=new Date(p[0],p[1]-1,p[2]||1);
+        const h=new Date();h.setHours(0,0,0,0);
+        let d=Math.floor((h-f)/86400000); if(d<0)d=0;
+        return r.tas_min-d;
+      }
+      return (_tasR(a))- (_tasR(b));
+    }); break;
+    case "extraccion":
+      visibles.sort((a,b)=>{
+        if(!a.fecha_extraccion_estimada) return 1;
+        if(!b.fecha_extraccion_estimada) return -1;
+        return new Date(a.fecha_extraccion_estimada)-new Date(b.fecha_extraccion_estimada);
+      });
+      break;
+  }
+
+  render();
+}
+
+/* INIT */
+render();
+</script>
+<script>
+async function confirmarExtraccion(qr){
+  if(!confirm(
+    "⚠️ INICIAR EXTRACCIÓN\n\n" +
+    "Esto activa el módulo de vaciado para el silo " + qr + ".\n" +
+    "Podrás registrar cada camionada con kg, calidad y destino.\n\n" +
+    "¿Confirmar inicio de extracción?"
+  )) return;
+
+  const res = await fetch("/api/extraccion",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ numero_qr: qr })
+  });
+
+  const data = await res.json();
+
+  if(!data.ok){
+    alert(data.error || "Error al iniciar extracción");
+    return;
+  }
+
+  alert("🚛 Extracción iniciada. Podés registrar camionadas desde el detalle del silo.");
+  location.reload();
+}
+</script>
+
+
+<script>
+function confirmarExportar(e) {
+  e.preventDefault();
+  if (confirm(
+    '⚠️ RECORDATORIO\n\n' +
+    'Antes de exportar, asegurate de tener los precios actualizados en el módulo "Comercial".\n\n' +
+    '¿Deseas continuar con la exportación?'
+  )) {
+    window.location.href = '/exportar_excel';
+  }
+}
+</script>
+</body>
+</html>
+
+<!-- MODAL EDITAR SILO -->
+<div id="modalEditarSilo" style="
+  display:none;position:fixed;top:0;left:0;
+  width:100%;height:100%;background:rgba(0,0,0,0.5);
+  z-index:9999;justify-content:center;align-items:center;
+">
+  <div style="
+    background:white;border-radius:14px;padding:24px;
+    width:90%;max-width:480px;
+    border-top:5px solid #1976d2;
+  ">
+    <h3 style="color:#1976d2;margin-top:0;">✏️ Editar Silo <span id="editQRtitulo"></span></h3>
+
+    <input type="hidden" id="editQR">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Cereal</label>
+        <select id="editCereal" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+          <option>Maíz</option>
+          <option>Soja</option>
+          <option>Trigo</option>
+          <option>Girasol</option>
+          <option>Sorgo</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Estado grano</label>
+        <select id="editEstadoGrano" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+          <option>Seco</option>
+          <option>Humedo</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Fecha confección</label>
+        <input type="datetime-local" id="editFecha"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px;">Metros lineales</label>
+        <input type="number" id="editMetros"
+          style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+      </div>
+    </div>
+
+    <p id="editError" style="color:red;display:none;margin-top:8px;"></p>
+
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="btnGuardarEdicion" onclick="guardarEdicionSilo()"
+        style="flex:1;background:#1976d2;padding:10px;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
+        💾 Guardar cambios
+      </button>
+      <button onclick="cerrarEditorSilo()"
+        style="flex:1;background:#888;padding:10px;color:white;border:none;border-radius:8px;cursor:pointer;">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirEditorSilo(qr, cereal, estadoGrano, fecha, metros, estadoSilo){
+  document.getElementById("editQR").value = qr;
+  document.getElementById("editQRtitulo").textContent = qr;
+  document.getElementById("editCereal").value = cereal;
+  document.getElementById("editEstadoGrano").value = estadoGrano;
+  // Convertir fecha a formato datetime-local
+  const f = fecha ? fecha.replace(" ", "T") : "";
+  document.getElementById("editFecha").value = f;
+  document.getElementById("editMetros").value = metros;
+  document.getElementById("editError").style.display = "none";
+  document.getElementById("modalEditarSilo").style.display = "flex";
+}
+
+function cerrarEditorSilo(){
+  document.getElementById("modalEditarSilo").style.display = "none";
+}
+
+async function confirmarBorrarSilo(qr){
+  if(!confirm(`⚠️ ¿Estás seguro de borrar el silo ${qr}?\n\nEsta acción eliminará también todos sus muestreos, monitoreos y registros de llenado. No se puede deshacer.`)) return;
+
+  try{
+    const res = await fetch("/api/borrar_silo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ numero_qr: qr })
+    });
+
+    if(!res.ok) throw new Error(`Error HTTP: ${res.status}`);
+
+    const data = await res.json();
+    if(data.ok){
+      alert(`✅ Silo ${qr} eliminado correctamente`);
+      location.reload();
+    } else {
+      alert("❌ " + (data.error || "Error al borrar el silo"));
+    }
+  }catch(e){
+    alert("❌ Error: " + e.message);
+  }
+}
+
+async function guardarEdicionSilo(){
+  const qr = document.getElementById("editQR").value;
+  const cereal = document.getElementById("editCereal").value;
+  const estado_grano = document.getElementById("editEstadoGrano").value;
+  const fecha = document.getElementById("editFecha").value.replace("T", " ");
+  const metros = document.getElementById("editMetros").value;
+
+  if(!metros || Number(metros) <= 0){
+    document.getElementById("editError").textContent = "❌ Los metros deben ser mayor a 0";
+    document.getElementById("editError").style.display = "block";
+    return;
+  }
+
+  document.getElementById("btnGuardarEdicion").disabled = true;
+  document.getElementById("btnGuardarEdicion").textContent = "Guardando...";
+
+  try{
+    const res = await fetch("/api/editar_silo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ numero_qr: qr, cereal, estado_grano, fecha_confeccion: fecha, metros })
+    });
+
+    if(!res.ok){
+      throw new Error(`Error HTTP: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    if(data.ok){
+      cerrarEditorSilo();
+      location.reload();
+    } else {
+      document.getElementById("editError").textContent = data.error || "Error al guardar";
+      document.getElementById("editError").style.display = "block";
+      document.getElementById("btnGuardarEdicion").disabled = false;
+      document.getElementById("btnGuardarEdicion").textContent = "💾 Guardar cambios";
+    }
+  }catch(e){
+    document.getElementById("editError").textContent = "❌ Error: " + e.message;
+    document.getElementById("editError").style.display = "block";
+    document.getElementById("btnGuardarEdicion").disabled = false;
+    document.getElementById("btnGuardarEdicion").textContent = "💾 Guardar cambios";
+  }
+}
+</script>
+
+{% endblock %}

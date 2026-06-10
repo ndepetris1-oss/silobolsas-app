@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Silo Bolsa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+
+<style>
+body{ background:#e6f4ea; font-family:Arial, sans-serif; padding:20px; color:#1e4620; }
+h2{text-align:center}
+label{display:block;margin-top:14px;font-weight:bold}
+input,select,button{ width:100%; padding:12px; margin-top:6px; border-radius:10px; border:1px solid #4caf50; font-size:15px; }
+input[readonly]{background:#f0f0f0}
+button{ background:#4caf50; color:white; border:none; margin-top:18px; font-size:16px; font-weight:bold; }
+button:disabled{background:#9ccc9c}
+.hidden{display:none}
+.card{ background:#ffffff; border-radius:12px; padding:14px; margin-top:14px; }
+.alert{ background:#fff3cd; padding:10px; border-radius:8px; margin-top:10px; font-weight:bold; }
+.switch { position:relative; display:inline-block; width:56px; height:32px; margin-right:10px; }
+.switch input { display:none }
+.slider { position:absolute; top:0; left:0; right:0; bottom:0; background:#ccc; border-radius:34px; transition:.3s; }
+.slider:before { content:""; position:absolute; width:24px; height:24px; left:4px; bottom:4px; background:white; border-radius:50%; transition:.3s; }
+.switch input:checked + .slider { background:#4caf50 }
+.switch input:checked + .slider:before { transform:translateX(24px) }
+.btn-calado { display:block; width:100%; text-align:center; padding:14px; margin-top:15px; border-radius:10px; font-weight:bold; text-decoration:none; font-size:15px; transition:0.2s; cursor:pointer; background:#1976d2; color:white; border:none; }
+.btn-calado:hover { background:#0d47a1; }
+.btn-bloqueado { background:#90a4ae; }
+#btnGuardar { background:#2e7d32; margin-top:14px; }
+#btnGuardar:hover { background:#1b5e20; }
+</style>
+</head>
+
+<body>
+<h2>Silo Bolsa</h2>
+
+<label>QR</label>
+<div style="display:flex;gap:8px;align-items:center;">
+  <input id="qr" readonly style="flex:1;margin-top:0;">
+  <button type="button" onclick="abrirEscaner()"
+    style="width:auto;margin-top:0;padding:12px 16px;background:#1976d2;white-space:nowrap;">
+    📷 Escanear
+  </button>
+</div>
+
+<!-- ESCANER QR -->
+<div id="bloqueEscaner" style="display:none;margin-top:12px;">
+  <div style="position:relative;width:100%;max-width:400px;margin:0 auto;">
+    <video id="videoQR" style="width:100%;border-radius:10px;" playsinline autoplay></video>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;height:60%;border:3px solid #4caf50;border-radius:8px;pointer-events:none;"></div>
+  </div>
+  <p id="escanerEstado" style="text-align:center;color:#555;margin:8px 0;">📷 Apuntá la cámara al código QR...</p>
+  <button type="button" onclick="cerrarEscaner()" style="background:#888;margin-top:4px;">✖ Cancelar</button>
+</div>
+
+<div id="infoSilo" class="alert hidden"></div>
+
+<div id="bloqueEventosPendientes" class="card hidden">
+  <h3>⚠️ Eventos pendientes</h3>
+  <div id="listaEventos"></div>
+</div>
+
+<div id="bloqueRegistro" class="card hidden">
+  <h3>🆕 Registro de silo</h3>
+  <div id="bloqueGPS" style="background:#e8f5e9;border-radius:10px;padding:12px;margin-bottom:14px;">
+    <p style="margin:0 0 8px 0;font-weight:bold;">📍 Ubicación del silo</p>
+    <p id="gpsEstado" style="margin:0 0 10px 0;color:#888;font-size:.9rem;">Sin ubicación capturada. Pará junto al silo y presioná el botón.</p>
+    <button type="button" id="btnGPS" onclick="capturarGPS()" style="background:#388e3c;margin-top:0;">📍 Capturar ubicación ahora</button>
+  </div>
+  <label>Cereal</label>
+  <select id="cereal">
+    <option value="">Seleccione…</option>
+    <option>Maíz</option><option>Soja</option><option>Trigo</option><option>Girasol</option><option>Sorgo</option>
+  </select>
+  <label>Estado del grano</label>
+  <select id="estado_grano">
+    <option value="">Seleccione…</option>
+    <option>Seco</option><option>Humedo</option>
+  </select>
+  <label>Metros lineales</label>
+  <input type="number" id="metros">
+</div>
+
+<div id="bloqueMonitoreo" class="card hidden">
+  <h3>📸 Monitoreo en campo</h3>
+  <label>Tipo de evento</label>
+  <select id="tipo_evento">
+    <option value="">Seleccione…</option>
+    <option>Rotura</option><option>Malezas</option><option>Encharcado</option><option>Animales</option><option>Otros</option>
+  </select>
+  <input id="detalle_evento" class="hidden" placeholder="Detalle (solo si es Otros)">
+  <label>Foto del evento</label>
+  <input type="file" id="foto" accept="image/*" capture="environment">
+</div>
+
+<div id="bloqueResolucion" class="card hidden">
+  <h3>✅ Resolver evento</h3>
+  <label class="switch"><input type="checkbox" id="resuelto"><span class="slider"></span></label>
+  Marcar evento como resuelto
+  <label>Foto de resolución</label>
+  <input type="file" id="foto_resolucion" accept="image/*" capture="environment">
+</div>
+
+<div id="bloqueExtraccion" class="card hidden"
+  style="border-left:4px solid #1565c0;">
+  <h3 style="color:#1565c0;">🚛 Extracción de silo</h3>
+  <p style="font-size:.9rem;color:#555;margin-top:0;">
+    Al confirmar, el silo pasa a modo vaciado y podés registrar cada camionada
+    con kg, calidad y destino (puerto o planta).
+  </p>
+  <button type="button" id="btnIniciarExtraccion" onclick="iniciarExtraccion()"
+    style="background:#1565c0;margin-top:8px;">
+    🚛 Iniciar extracción
+  </button>
+</div>
+
+<div id="bloqueRegistrarCamionada" class="card hidden" style="border-left:4px solid #1565c0;">
+  <h3 style="color:#1565c0;">Registrar camionada</h3>
+  <p id="resumenKgExtraidos" style="font-size:.9rem;color:#555;margin-top:0;"></p>
+  <p style="font-size:.9rem;color:#555;">Ingresa la patente. Nro, fecha y hora se asignan automaticamente.<br>
+    <span style="color:#888;font-size:.82rem;">El laboratorio completara calidad, peso y destino.</span></p>
+  <div style="margin-top:10px;">
+    <label style="font-size:.85rem;font-weight:bold;">Patente del camion *</label>
+    <input id="vc_patente" type="text" placeholder="Ej: ABC 123" style="margin-top:6px;text-transform:uppercase;">
+  </div>
+  <button type="button" onclick="guardarCamionadaForm()" style="background:#1565c0;margin-top:14px;">Registrar camionada</button>
+</div>
+<div id="bloqueCamionadasRegistradas" class="card hidden" style="border-left:4px solid #0d47a1;">
+  <h3 style="color:#0d47a1;">Camionadas registradas</h3>
+  <div id="tablaCamionadas" style="overflow-x:auto;"></div>
+</div>
+
+{% if current_user.rol == 'admin_empresa' or current_user.es_superadmin %}
+<div id="bloqueActualizarGPS" class="card hidden"
+  style="border-left:4px solid #1976d2;">
+  <h3 style="color:#1976d2;">📍 Actualizar GPS del silo</h3>
+  <p style="font-size:.9rem;color:#555;">
+    Parece junto al silo y capturá las coordenadas nuevas.
+  </p>
+  <p id="gpsUpdateEstado" style="color:#888;font-size:.9rem;margin:6px 0;">
+    Sin ubicación capturada.
+  </p>
+  <button type="button" id="btnGPSUpdate" onclick="capturarGPSUpdate()"
+    style="background:#1976d2;margin-top:0;">
+    📍 Capturar nueva ubicación
+  </button>
+</div>
+{% endif %}
+
+<div id="bloqueCalado" class="card hidden">
+  <h3>🧪 Calado</h3>
+  <div class="alert">Presione el botón luego de realizar el calado físico del silo.</div>
+  <label class="switch"><input type="checkbox" id="chkTemp"><span class="slider"></span></label>
+  Informar temperatura del grano
+  <div id="bloqueTemperaturas" class="hidden" style="margin-top:10px">
+    <label>🌡 Temperatura Punta (°C)</label><input type="number" step="0.1" id="temp_punta">
+    <label>🌡 Temperatura Medio (°C)</label><input type="number" step="0.1" id="temp_medio">
+    <label>🌡 Temperatura Final (°C)</label><input type="number" step="0.1" id="temp_final">
+  </div>
+  {% if puede_calado %}
+    <a href="#" onclick="informarCalado()" class="btn-calado">🧪 Registrar Calado</a>
+  {% else %}
+    <a href="{{ url_for('calado.calado') }}" class="btn-calado btn-bloqueado">🔒 Registrar Calado</a>
+  {% endif %}
+</div>
+
+<div id="bloqueEventosResueltos" class="card hidden">
+  <h3>✅ Eventos resueltos</h3>
+  <div id="listaEventosResueltos"></div>
+</div>
+
+<div style="margin-top:20px">
+  <button id="btnGuardar" onclick="guardar()">💾 Guardar cambios</button>
+</div>
+
+<script>
+// ⚠️ IMPORTANTE: qrActual es variable (let), no const
+let qrActual = new URLSearchParams(window.location.search).get("id") || null;
+let modo = null;
+let lat = null;
+let lon = null;
+let eventoPendiente = null;
+
+if(qrActual) document.getElementById("qr").value = qrActual;
+
+/* ===== ESCANER QR ===== */
+let lectorQR = null;
+
+async function abrirEscaner(){
+  document.getElementById("bloqueEscaner").style.display = "block";
+  document.getElementById("escanerEstado").textContent = "📷 Apuntá la cámara al código QR...";
+  try{
+    lectorQR = new ZXing.BrowserMultiFormatReader();
+    await lectorQR.decodeFromConstraints(
+      { video: { facingMode: "environment" } },
+      "videoQR",
+      (result, err) => {
+        if(result){
+          let codigo = result.getText();
+          // Si el QR contiene una URL completa, extraer solo el id
+          try{
+            const url = new URL(codigo);
+            const idParam = url.searchParams.get("id");
+            if(idParam) codigo = idParam;
+          }catch(e){
+            // No es una URL, usar el texto directo
+          }
+          cerrarEscaner();
+          document.getElementById("qr").value = codigo;
+          procesarSilo(codigo);
+        }
+      }
+    );
+  }catch(e){
+    document.getElementById("escanerEstado").textContent = "❌ No se pudo acceder a la cámara. Verificá los permisos.";
+  }
+}
+
+function cerrarEscaner(){
+  if(lectorQR){ lectorQR.reset(); lectorQR = null; }
+  document.getElementById("bloqueEscaner").style.display = "none";
+}
+
+/* ===== GPS ===== */
+async function capturarGPS(){
+  const btn = document.getElementById("btnGPS");
+  const estado = document.getElementById("gpsEstado");
+  btn.disabled = true;
+  btn.textContent = "⏳ Obteniendo ubicación...";
+  estado.style.color = "#888";
+  estado.textContent = "Buscando señal GPS...";
+  try{
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 0
+      })
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    estado.style.color = "#2e7d32";
+    estado.textContent = `✅ Ubicación capturada (±${Math.round(pos.coords.accuracy)}m)`;
+    btn.textContent = "📍 Recapturar ubicación";
+    btn.style.background = "#888";
+  }catch(err){
+    estado.style.color = "#b71c1c";
+    estado.textContent = "❌ No se pudo obtener la ubicación. Activá el GPS e intentá de nuevo.";
+    btn.textContent = "📍 Reintentar";
+    btn.style.background = "#388e3c";
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ===== INIT ===== */
+async function init(){
+  if(!qrActual) return;
+  await procesarSilo(qrActual);
+}
+
+async function procesarSilo(codigo){
+  qrActual = codigo;
+
+  try{
+    const res = await fetch(`/api/silo/${codigo}`);
+    const data = await res.json();
+
+    if(!data.existe){
+      // MODO REGISTRO — silo nuevo
+      modo = "registro";
+      document.getElementById("bloqueRegistro").classList.remove("hidden");
+      return;
+    }
+
+    if(data.estado_silo === "Extraído"){
+      const infoSilo = document.getElementById("infoSilo");
+      const tnFinal = data.kg_extraidos > 0
+        ? `<br>📦 TN Extraídas: <b>${(data.kg_extraidos / 1000).toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2})} TN</b> (${data.kg_extraidos.toLocaleString("es-AR")} kg)`
+        : "";
+      const fechaCierre = data.fecha_extraccion
+        ? `<br>🔒 Cierre: <b>${data.fecha_extraccion}</b>`
+        : "";
+      infoSilo.innerHTML =
+        `✔ <b>SILO EXTRAÍDO</b><br>` +
+        `🌽 ${data.cereal} | 📅 Confección: ${data.fecha_confeccion}` +
+        fechaCierre + tnFinal;
+      infoSilo.style.background = "#e8f5e9";
+      infoSilo.style.borderLeft = "4px solid #2e7d32";
+      infoSilo.style.borderRadius = "8px";
+      infoSilo.style.padding = "10px 14px";
+      infoSilo.classList.remove("hidden");
+      document.getElementById("btnGuardar").style.display = "none";
+      return;
+    }
+
+    if(data.estado_silo === "En extracción"){
+      const infoSilo = document.getElementById("infoSilo");
+      infoSilo.innerHTML = `🚛 <b>SILO EN EXTRACCIÓN</b><br>🌽 ${data.cereal}<br>📅 Confección: ${data.fecha_confeccion}` +
+        (data.kg_extraidos > 0 ? `<br>📦 KG extraídos: <b>${data.kg_extraidos.toLocaleString("es-AR")}</b>` : "");
+      infoSilo.classList.remove("hidden");
+      modo = "vaciado";
+      document.getElementById("bloqueRegistrarCamionada").classList.remove("hidden");
+      if(data.kg_extraidos > 0){
+        document.getElementById("resumenKgExtraidos").textContent =
+          `📦 KG extraídos hasta ahora: ${data.kg_extraidos.toLocaleString("es-AR")} kg`;
+      }
+      document.getElementById("btnGuardar").style.display = "none";
+      cargarCamionadas(qrActual);
+      return;
+    }
+
+    // MODO OPERACION — silo activo
+    modo = "operacion";
+    let info = `🌽 <b>${data.cereal}</b> | 📅 ${data.fecha_confeccion}`;
+    if(data.ultimo_calado) info += `<br>🧪 Último calado: ${data.ultimo_calado}`;
+    const infoSilo = document.getElementById("infoSilo");
+    infoSilo.innerHTML = info;
+    infoSilo.classList.remove("hidden");
+
+    document.getElementById("bloqueMonitoreo").classList.remove("hidden");
+    document.getElementById("bloqueExtraccion").classList.remove("hidden");
+    document.getElementById("bloqueCalado").classList.remove("hidden");
+
+    // Mostrar opción GPS para admin
+    const bloqueGPSUpdate = document.getElementById("bloqueActualizarGPS");
+    if(bloqueGPSUpdate) bloqueGPSUpdate.classList.remove("hidden");
+
+    await cargarEventosPendientes();
+    await cargarEventosResueltos();
+
+  }catch(e){
+    alert("Error al consultar el silo. Intentá de nuevo.");
+  }
+}
+
+/* ===== EVENTOS ===== */
+async function cargarEventosPendientes(){
+  const res = await fetch(`/api/monitoreo/pendiente/${qrActual}`);
+  const eventos = await res.json();
+  const bloque = document.getElementById("bloqueEventosPendientes");
+  const lista = document.getElementById("listaEventos");
+  if(!eventos.length){ bloque.classList.add("hidden"); return; }
+  bloque.classList.remove("hidden");
+  lista.innerHTML = "";
+  eventos.forEach(ev=>{
+    const d = document.createElement("div");
+    d.className = "alert";
+    d.innerHTML = `<b>${ev.tipo}</b><br>📅 ${ev.fecha}<br><br><button onclick="resolverEvento(${ev.id})">Resolver</button>`;
+    lista.appendChild(d);
+  });
+}
+
+function resolverEvento(id){
+  eventoPendiente = {id};
+  document.getElementById("bloqueResolucion").classList.remove("hidden");
+  document.getElementById("bloqueMonitoreo").classList.add("hidden");
+}
+
+async function cargarEventosResueltos(){
+  const res = await fetch(`/api/monitoreo/resueltos/${qrActual}`);
+  const eventos = await res.json();
+  const bloque = document.getElementById("bloqueEventosResueltos");
+  const lista = document.getElementById("listaEventosResueltos");
+  if(!eventos.length){ bloque.classList.add("hidden"); return; }
+  bloque.classList.remove("hidden");
+  lista.innerHTML = "";
+  eventos.forEach(ev=>{
+    const div = document.createElement("div");
+    div.className = "alert";
+    div.innerHTML = `<b>Evento resuelto: ${ev.tipo}</b><br>📅 ${ev.fecha}`;
+    lista.appendChild(div);
+  });
+}
+
+/* ===== OTROS ===== */
+document.getElementById("tipo_evento").onchange = e => {
+  document.getElementById("detalle_evento").classList.toggle("hidden", e.target.value !== "Otros");
+};
+document.getElementById("chkTemp").onchange = e => {
+  document.getElementById("bloqueTemperaturas").classList.toggle("hidden", !e.target.checked);
+};
+
+/* ===== CALADO ===== */
+async function informarCalado(){
+  if(!confirm("¿Confirmar calado del silo ahora?")) return;
+  const chkTemp = document.getElementById("chkTemp");
+  const payload = { numero_qr: qrActual, informar_temperatura: chkTemp.checked };
+  if(chkTemp.checked){
+    payload.temp_punta = document.getElementById("temp_punta").value;
+    payload.temp_medio = document.getElementById("temp_medio").value;
+    payload.temp_final = document.getElementById("temp_final").value;
+  }
+  const res = await fetch("/calado/api/informar_calado",{
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if(!data.ok){ alert(data.error || "Error al registrar calado"); return; }
+  alert("🧪 Calado registrado correctamente");
+  location.reload();
+}
+
+/* ===== GUARDAR ===== */
+async function guardar(){
+  const btn = document.getElementById("btnGuardar");
+  btn.disabled = true;
+
+  if(modo === "registro"){
+    const cereal = document.getElementById("cereal").value;
+    const estado_grano = document.getElementById("estado_grano").value;
+    const metros = document.getElementById("metros").value;
+    if(!cereal){ alert("❌ Falta seleccionar el cereal"); btn.disabled=false; return; }
+    if(!estado_grano){ alert("❌ Falta indicar el estado del grano"); btn.disabled=false; return; }
+    if(!metros || Number(metros)<=0){ alert("❌ Falta indicar los metros lineales"); btn.disabled=false; return; }
+    if(lat===null||lon===null){ alert("📍 Debe capturar la ubicación antes de guardar"); btn.disabled=false; return; }
+    await fetch("/api/registrar_silo",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ numero_qr:qrActual, cereal, estado_grano, metros, lat, lon })
+    });
+    location.reload();
+    return;
+  }
+
+  const tipo_evento = document.getElementById("tipo_evento").value;
+  const foto = document.getElementById("foto");
+  if(tipo_evento && !eventoPendiente){
+    if(!foto.files[0]){ alert("❌ Debe sacar o seleccionar una foto del evento"); btn.disabled=false; return; }
+    const fd = new FormData();
+    fd.append("numero_qr", qrActual);
+    fd.append("tipo", tipo_evento);
+    fd.append("detalle", document.getElementById("detalle_evento").value);
+    fd.append("foto", foto.files[0]);
+    const res = await fetch("/api/monitoreo",{ method:"POST", body:fd });
+    if(!res.ok){ alert("❌ Error al registrar el evento"); btn.disabled=false; return; }
+    alert("📸 Evento registrado correctamente");
+    location.reload();
+    return;
+  }
+
+  const resuelto = document.getElementById("resuelto");
+  const foto_resolucion = document.getElementById("foto_resolucion");
+  if(eventoPendiente && resuelto.checked){
+    const fd = new FormData();
+    fd.append("id_monitoreo", eventoPendiente.id);
+    if(foto_resolucion.files[0]) fd.append("foto", foto_resolucion.files[0]);
+    await fetch("/api/monitoreo/resolver",{ method:"POST", body:fd });
+    eventoPendiente = null;
+    resuelto.checked = false;
+    document.getElementById("bloqueResolucion").classList.add("hidden");
+    await cargarEventosPendientes();
+    await cargarEventosResueltos();
+    alert("Evento resuelto correctamente");
+    btn.disabled = false;
+    return;
+  }
+
+  btn.disabled = false;
+}
+
+/* ===== EXTRACCION ===== */
+async function iniciarExtraccion(){
+  if(!confirm(
+    "⚠️ INICIAR EXTRACCIÓN\n\n" +
+    "Esto activa el módulo de vaciado para el silo " + qrActual + ".\n" +
+    "Podrás registrar cada camionada con kg, calidad y destino.\n\n" +
+    "¿Confirmar inicio de extracción?"
+  )) return;
+
+  const btn = document.getElementById("btnIniciarExtraccion");
+  btn.disabled = true;
+  btn.textContent = "Iniciando...";
+
+  const res = await fetch("/api/extraccion", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ numero_qr: qrActual })
+  });
+  const data = await res.json();
+
+  if(!data.ok){
+    alert(data.error || "Error al iniciar extracción");
+    btn.disabled = false;
+    btn.textContent = "🚛 Iniciar extracción";
+    return;
+  }
+
+  alert("🚛 Extracción iniciada. Ahora podés registrar las camionadas.");
+  location.reload();
+}
+
+async function guardarCamionadaForm(){
+  var patente=document.getElementById("vc_patente").value.trim();
+  if(!patente){alert("Ingresa la patente.");return;}
+  var btn=document.querySelector("#bloqueRegistrarCamionada button[onclick='guardarCamionadaForm()']");
+  if(btn){btn.disabled=true;btn.textContent="Guardando...";}
+  var res=await fetch("/api/vaciado",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({numero_qr:qrActual,patente:patente})});
+  var data=await res.json();
+  if(data.ok){
+    alert("Camionada No "+(data.nro_camion||"")+" registrada.");
+    document.getElementById("vc_patente").value="";
+    if(btn){btn.disabled=false;btn.textContent="Registrar camionada";}
+    cargarCamionadas(qrActual);
+  }else{alert(data.error||"Error.");if(btn){btn.disabled=false;btn.textContent="Registrar camionada";}}
+}
+async function cargarCamionadas(qr){
+  try{
+    var res=await fetch("/api/camionadas/"+qr);
+    var lista=await res.json();
+    var div=document.getElementById("tablaCamionadas");
+    var bloque=document.getElementById("bloqueCamionadasRegistradas");
+    if(!lista||lista.length===0){bloque.classList.add("hidden");return;}
+    bloque.classList.remove("hidden");
+    var html='<table style="width:100%;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#bbdefb;"><th style="padding:6px;border-bottom:1px solid #90caf9;">Nro</th><th>Patente</th><th>Fecha / Hora</th><th>Estado</th></tr></thead><tbody>';
+    lista.forEach(function(c){
+      var estado=c.kg&&c.kg>0
+        ?'<span style="background:#2e7d32;color:white;padding:2px 8px;border-radius:10px;font-size:.78rem;">Completo</span>'
+        :'<span style="background:#f9a825;color:#333;padding:2px 8px;border-radius:10px;font-size:.78rem;">Pendiente</span>';
+      html+='<tr style="text-align:center;border-bottom:1px solid #e3f2fd;"><td style="padding:5px;font-weight:bold;">'+(c.nro_camion||'-')+'</td><td>'+(c.patente||'-')+'</td><td style="font-size:.8rem;">'+(c.fecha||'-')+'</td><td>'+estado+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    div.innerHTML=html;
+  }catch(e){console.error("Error:",e);}
+}
+
+/* ===== GPS UPDATE (admin) ===== */
+let latUpdate = null;
+let lonUpdate = null;
+
+async function capturarGPSUpdate(){
+  const btn = document.getElementById("btnGPSUpdate");
+  const estado = document.getElementById("gpsUpdateEstado");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Obteniendo ubicación...";
+  estado.style.color = "#888";
+  estado.textContent = "Buscando señal GPS...";
+
+  try{
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 0
+      })
+    );
+    latUpdate = pos.coords.latitude;
+    lonUpdate = pos.coords.longitude;
+    estado.style.color = "#1565c0";
+    estado.textContent = `✅ Ubicación capturada (±${Math.round(pos.coords.accuracy)}m)`;
+    btn.textContent = "📍 Recapturar";
+    btn.style.background = "#888";
+
+    // Confirmar y guardar
+    if(confirm(`¿Actualizar GPS del silo ${qrActual}?\nLat: ${latUpdate.toFixed(6)}\nLon: ${lonUpdate.toFixed(6)}`)){
+      const res = await fetch("/api/actualizar_gps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numero_qr: qrActual, lat: latUpdate, lon: lonUpdate })
+      });
+      const data = await res.json();
+      if(data.ok){
+        estado.style.color = "#2e7d32";
+        estado.textContent = "✅ GPS actualizado correctamente";
+        btn.textContent = "✔ GPS actualizado";
+        btn.disabled = true;
+      } else {
+        estado.style.color = "#b71c1c";
+        estado.textContent = "❌ " + (data.error || "Error al actualizar");
+        btn.disabled = false;
+        btn.textContent = "📍 Reintentar";
+        btn.style.background = "#1976d2";
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = "📍 Capturar nueva ubicación";
+      btn.style.background = "#1976d2";
+    }
+  }catch(err){
+    estado.style.color = "#b71c1c";
+    estado.textContent = "❌ No se pudo obtener la ubicación.";
+    btn.disabled = false;
+    btn.textContent = "📍 Reintentar";
+    btn.style.background = "#1976d2";
+  }
+}
+
+init();
+</script>
+</body>
+</html>
+{% endblock %}
