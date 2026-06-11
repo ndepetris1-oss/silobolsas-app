@@ -662,11 +662,10 @@ def registrar_extraccion():
 
     conn.execute("""
         UPDATE silos
-        SET estado_silo = 'En extracción',
-            fecha_inicio_extraccion = ?
+        SET estado_silo = 'En extracción'
         WHERE numero_qr = ?
         AND empresa_id = ?
-    """, (ahora(), qr, current_user.empresa_id))
+    """, (qr, current_user.empresa_id))
 
     registrar_auditoria(
         conn, current_user.id, current_user.empresa_id,
