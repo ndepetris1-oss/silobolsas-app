@@ -212,4 +212,22 @@ def ejecutar_migraciones():
         except:
             try:
                 conn.rollback()
-       
+            except:
+                pass
+
+    # ==========================
+    # VACIADO — columnas completado y nro_camion
+    # ==========================
+    for col_v, def_v in [("completado", "INTEGER DEFAULT 0"), ("nro_camion", "INTEGER DEFAULT 0")]:
+        try:
+            conn.execute(f"ALTER TABLE vaciado ADD COLUMN {col_v} {def_v}")
+            conn.commit()
+            print(f"Migración aplicada: vaciado.{col_v}")
+        except:
+            try:
+                conn.rollback()
+            except:
+                pass
+
+    conn.commit()
+    conn.close()
