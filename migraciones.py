@@ -98,6 +98,7 @@ def ejecutar_migraciones():
 
     try:
         conn.execute(sql_vaciado)
+        conn.commit()
         print("Migración aplicada: tabla vaciado")
     except Exception as e:
         try:
@@ -112,6 +113,7 @@ def ejecutar_migraciones():
 
     try:
         conn.execute("ALTER TABLE vaciado ADD COLUMN patente TEXT")
+        conn.commit()
         print("Migración aplicada: vaciado.patente")
     except:
         try:
@@ -205,12 +207,9 @@ def ejecutar_migraciones():
     for nombre, tipo in columnas_vaciado:
         try:
             conn.execute(f"ALTER TABLE vaciado ADD COLUMN {nombre} {tipo}")
+            conn.commit()
             print(f"Migración aplicada: vaciado.{nombre}")
         except:
             try:
                 conn.rollback()
-            except:
-                pass
-
-    conn.commit()
-    conn.close()
+       
