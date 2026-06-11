@@ -37,17 +37,19 @@ def ejecutar_migraciones():
             pass
 
     # ==========================
-    # SILOS — columna fecha_inicio_extraccion
+    # SILOS — columnas de extraccion
     # ==========================
 
-    try:
-        conn.execute("ALTER TABLE silos ADD COLUMN fecha_inicio_extraccion TEXT")
-        print("Migración aplicada: silos.fecha_inicio_extraccion")
-    except:
+    for col in ["fecha_inicio_extraccion", "fecha_extraccion"]:
         try:
-            conn.rollback()
-        except:
-            pass
+            conn.execute(f"ALTER TABLE silos ADD COLUMN {col} TEXT")
+            conn.commit()
+            print(f"Migración aplicada: silos.{col}")
+        except Exception as e:
+            try:
+                conn.rollback()
+            except:
+                pass
 
     # ==========================
     # VACIADO — crear tabla
