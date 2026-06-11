@@ -570,7 +570,7 @@ function aplicarFiltros(){
     if(filtros.estado_silo && r.estado_silo!==filtros.estado_silo) return false;
     if(filtros.eventos==="si" && r.eventos===0) return false;
     if(filtros.eventos==="no" && r.eventos>0) return false;
-    if(filtros.alerta_tas==="si" && !(r.tas_min!==null && r.tas_min<=30)) return false;
+    if(filtros.alerta_tas==="si" && !(r.tas_restante!==null && r.tas_restante!==undefined && r.tas_restante<=30)) return false;
     return true;
   });
 

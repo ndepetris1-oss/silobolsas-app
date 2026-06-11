@@ -565,11 +565,35 @@ def panel():
                 try: conn.rollback()
                 except: pass
 
+        # Calcular días restantes de TAS en Python (mismo criterio que el JS)
+        tas_restante = None
+        try:
+            fecha_conf = s["fecha_confeccion"]
+        except:
+            fecha_conf = None
+        if tas_min is not None and fecha_conf:
+            try:
+                fecha_base = None
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                    try:
+                        fecha_base = datetime.strptime(fecha_conf[:19], fmt)
+                        break
+                    except:
+                        continue
+                if not fecha_base:
+                    fecha_base = datetime.strptime(fecha_conf[:10], "%Y-%m-%d")
+                hoy = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                dias_almacenados = max(0, (hoy - fecha_base).days)
+                tas_restante = tas_min - dias_almacenados
+            except:
+                pass
+
         registros.append({
             **dict(s),
             "grado": grado,
             "factor": factor_prom,
             "tas_min": tas_min,
+            "tas_restante": tas_restante,
             "fecha_extraccion_estimada": fecha_estimada,
             "eventos": eventos,
             "kg_total": kg_total,
@@ -583,7 +607,7 @@ def panel():
     total_activos       = sum(1 for r in registros if r.get("estado_silo") not in ("Extraído", "En extracción"))
     total_en_extraccion = sum(1 for r in registros if r.get("estado_silo") == "En extracción")
     total_extraidos     = sum(1 for r in registros if r.get("estado_silo") == "Extraído")
-    con_alertas     = sum(1 for r in registros if r.get("tas_min") is not None and r["tas_min"] <= 30)
+    con_alertas     = sum(1 for r in registros if r.get("tas_restante") is not None and r["tas_restante"] <= 30)
     con_eventos     = sum(1 for r in registros if r.get("eventos", 0) > 0)
 
     por_cereal = {}
